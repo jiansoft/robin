@@ -36,7 +36,7 @@ func (c *jobSchedulerExecutor) Every(interval int64) *Job {
 
 type Job struct {
 	fiber        fiber.Fiber
-	Identify   string
+	identifyId     string
 	loc          *time.Location
 	task         core.Task
 	taskDisposer robin.Disposable
@@ -56,7 +56,7 @@ func (c *Job) init(intervel int64, fiber fiber.Fiber) *Job {
 	c.fiber = fiber
 	c.loc = time.Local
 	c.interval = intervel
-	c.Identify = fmt.Sprintf("%p-%p", &c, &fiber)
+	c.identifyId = fmt.Sprintf("%p-%p", &c, &fiber)
 	return c
 }
 
@@ -82,7 +82,7 @@ func (c *Job) Dispose() {
 }
 
 func (c Job) Identify() string {
-	return c.Identify
+	return c.identifyId
 }
 
 func (c *Job) Days() *Job {

@@ -6,7 +6,7 @@ import (
 )
 
 type timerTask struct {
-	Identify   string
+	identifyId     string
 	scheduler    ISchedulerRegistry
 	firstInMs    int64
 	intervalInMs int64
@@ -21,7 +21,7 @@ func (t *timerTask) init(scheduler ISchedulerRegistry, task Task, firstInMs int6
 	t.task = task
 	t.firstInMs = firstInMs
 	t.intervalInMs = intervalInMs
-	t.Identify = fmt.Sprintf("%p-%p", &t, &task)
+	t.identifyId = fmt.Sprintf("%p-%p", &t, &task)
 	return t
 }
 
@@ -45,8 +45,8 @@ func (t *timerTask) Dispose() {
 	}
 }
 
-func (t timerTask) Identify() string {
-	return t.Identify
+func (t *timerTask) Identify() string {
+	return t.identifyId
 }
 
 /*
