@@ -29,8 +29,8 @@ func (c *channelSubscription) OnMessageOnProducerThread(msg ...interface{}) {
 }
 
 //實作 IProducerThreadSubscriber.Subscriptions
-func (c *channelSubscription) Subscriptions() core.ISubscriptionRegistry {
-	return c.fiber.(core.ISubscriptionRegistry)
+func (c *channelSubscription) Subscriptions() core.SubscriptionRegistry {
+	return c.fiber.(core.SubscriptionRegistry)
 }
 
 //實作 IProducerThreadSubscriber.ReceiveOnProducerThread
@@ -39,7 +39,7 @@ func (c *channelSubscription) ReceiveOnProducerThread(msg ...interface{}) {
 }
 
 func (c *channelSubscription) Dispose() {
-	c.fiber.(core.ISubscriptionRegistry).DeregisterSubscription(c)
+	c.fiber.(core.SubscriptionRegistry).DeregisterSubscription(c)
 }
 
 func (c *channelSubscription) Identify() string {

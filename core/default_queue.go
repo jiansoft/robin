@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-type IQueue interface {
+type TaskQueue interface {
 	Enqueue(t Task)
 	DequeueAll() ([]Task, bool)
 	Count() int

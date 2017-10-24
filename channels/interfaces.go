@@ -6,7 +6,6 @@ import (
 	"github.com/jiansoft/robin/fiber"
 )
 
-
 type IPublisher interface {
 	Publish(interface{})
 }
@@ -31,17 +30,16 @@ type IReply interface {
 }
 
 type IReplySubscriber interface {
-	//Action<IRequest<TR, TM>>
 	Subscribe(fiber fiber.Fiber, onRequest *interface{}) robin.Disposable
 }
 
 type IQueueChannel interface {
-	Subscribe(executionContext core.IExecutionContext, onMessage interface{}) robin.Disposable
+	Subscribe(executionContext core.ExecutionContext, onMessage interface{}) robin.Disposable
 	Publish(message interface{})
 }
 type IProducerThreadSubscriber interface {
 	//Allows for the registration and deregistration of fiber. Fiber
-	Subscriptions() core.ISubscriptionRegistry
+	Subscriptions() core.SubscriptionRegistry
 	/*Method called from producer threads*/
 	ReceiveOnProducerThread(msg ...interface{})
 }

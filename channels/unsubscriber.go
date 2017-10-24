@@ -10,10 +10,10 @@ type unsubscriber struct {
 	identifyId string
 	channel    *channel
 	receiver   core.Task
-	fiber      core.ISubscriptionRegistry
+	fiber      core.SubscriptionRegistry
 }
 
-func (u *unsubscriber) init(receiver core.Task, channel *channel, fiber core.ISubscriptionRegistry) *unsubscriber {
+func (u *unsubscriber) init(receiver core.Task, channel *channel, fiber core.SubscriptionRegistry) *unsubscriber {
 	u.identifyId = fmt.Sprintf("%p-%p", &u, &u.channel)
 	u.fiber = fiber
 	u.receiver = receiver
@@ -21,7 +21,7 @@ func (u *unsubscriber) init(receiver core.Task, channel *channel, fiber core.ISu
 	return u
 }
 
-func NewUnsubscriber(receiver core.Task, channel *channel, fiber core.ISubscriptionRegistry) *unsubscriber {
+func NewUnsubscriber(receiver core.Task, channel *channel, fiber core.SubscriptionRegistry) *unsubscriber {
 	return new(unsubscriber).init(receiver, channel, fiber)
 }
 

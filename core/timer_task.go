@@ -6,8 +6,8 @@ import (
 )
 
 type timerTask struct {
-	identifyId     string
-	scheduler    ISchedulerRegistry
+	identifyId   string
+	scheduler    SchedulerRegistry
 	firstInMs    int64
 	intervalInMs int64
 	firstTimer   *time.Timer
@@ -16,7 +16,7 @@ type timerTask struct {
 	cancelled    bool
 }
 
-func (t *timerTask) init(scheduler ISchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
+func (t *timerTask) init(scheduler SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
 	t.scheduler = scheduler
 	t.task = task
 	t.firstInMs = firstInMs
@@ -25,7 +25,7 @@ func (t *timerTask) init(scheduler ISchedulerRegistry, task Task, firstInMs int6
 	return t
 }
 
-func newTimerTask(fiber ISchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
+func newTimerTask(fiber SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
 	return new(timerTask).init(fiber, task, firstInMs, intervalInMs)
 }
 

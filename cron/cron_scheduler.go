@@ -36,7 +36,7 @@ func (c *jobSchedulerExecutor) Every(interval int64) *Job {
 
 type Job struct {
 	fiber        fiber.Fiber
-	identifyId     string
+	identifyId   string
 	loc          *time.Location
 	task         core.Task
 	taskDisposer robin.Disposable
@@ -119,37 +119,33 @@ func (c *Job) At(hour int, minute int, second int) *Job {
 
 func (c *Job) Do(fun interface{}, params ...interface{}) robin.Disposable {
 	c.task = core.NewTask(fun, params...)
-	firstInMs := int64(0)
+	//firstInMs := int64(0)
 	now := time.Now()
 	switch c.unit {
+	case delay:
+		c.nextRunTime = now.Add(time.Duration(c.interval) * time.Millisecond)
 	case weeks:
 		i := (7 - (int(now.Weekday() - c.weekday))) % 7
 		c.nextRunTime = time.Date(now.Year(), now.Month(), now.Day()+int(i), c.hour, c.minute, c.second, 0, c.loc)
 		if c.nextRunTime.Before(now) {
 			c.nextRunTime = c.nextRunTime.AddDate(0, 0, 7)
 		}
-		firstInMs = int64(c.nextRunTime.Sub(now)) / 1000000
-		c.taskDisposer = c.fiber.Schedule(firstInMs, c.canDo)
 	case days:
 		if c.second < 0 || c.minute < 0 || c.hour < 0 {
 			c.nextRunTime = now.AddDate(0, 0, 1)
 			c.second = c.nextRunTime.Second()
 			c.minute = c.nextRunTime.Minute()
 			c.hour = c.nextRunTime.Hour()
-			firstInMs = int64(c.nextRunTime.Sub(now)) / 1000000
 		} else {
 			c.nextRunTime = time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc)
 			if c.interval > 1 {
 				c.nextRunTime = c.nextRunTime.AddDate(0, 0, int(c.interval-1))
 			}
-			if now.After(c.nextRunTime) {
+			if c.nextRunTime.Before(now) {
 				c.nextRunTime = c.nextRunTime.AddDate(0, 0, int(c.interval))
 			}
-			firstInMs = int64(c.nextRunTime.Sub(now)) / 1000000
 		}
-		c.taskDisposer = c.fiber.Schedule(firstInMs, c.canDo)
 	case hours:
-		firstInMs = c.interval * 60 * 60 * 1000
 		if c.minute < 0 {
 			c.minute = now.Minute()
 		}
@@ -161,42 +157,41 @@ func (c *Job) Do(fun interface{}, params ...interface{}) robin.Disposable {
 		if c.nextRunTime.Before(now) {
 			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Hour /*.Duration(60*60*1000000)*/)
 		}
-		firstInMs = int64(c.nextRunTime.Sub(now)) / 1000000
-		c.taskDisposer = c.fiber.Schedule(firstInMs, c.canDo)
 	case minutes:
-		firstInMs = c.interval * 60 * 1000
-		c.taskDisposer = c.fiber.ScheduleOnInterval(firstInMs, firstInMs, c.task.Run)
+		c.nextRunTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), c.second, 0, c.loc)
+		c.nextRunTime.Add(time.Duration(c.interval-1) * time.Hour)
+		if c.nextRunTime.Before(now) {
+			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Minute /*.Duration(60*60*1000000)*/)
+		}
 	case seconds:
-		firstInMs = c.interval * 1000
-		c.taskDisposer = c.fiber.ScheduleOnInterval(firstInMs, firstInMs, c.task.Run)
-	case delay:
-		c.taskDisposer = c.fiber.Schedule(c.interval, c.task.Run)
+		c.nextRunTime = now.Add(time.Duration(c.interval) * time.Second)
 	}
+
+	firstInMs := int64(c.nextRunTime.Sub(now) / time.Millisecond)
+	c.taskDisposer = c.fiber.Schedule(firstInMs, c.canDo)
 	return c
 }
 
 func (c *Job) canDo() {
 	now := time.Now()
-	//var adjustTime int64
 	if now.After(c.nextRunTime) {
 		c.fiber.EnqueueWithTask(c.task)
 		switch c.unit {
+		case delay:
+			return
 		case weeks:
 			c.nextRunTime = c.nextRunTime.AddDate(0, 0, 7)
-			//adjustTime = int64(c.nextRunTime.Sub(now) / 1000000)
 		case days:
 			c.nextRunTime = c.nextRunTime.AddDate(0, 0, int(c.interval))
-			// adjustTime = int64(c.nextRunTime.Sub(now) / 1000000)
 		case hours:
-			c.nextRunTime = c.nextRunTime.Add(time.Hour)
-			// adjustTime = int64(c.nextRunTime.Sub(now) / 1000000)
+			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Hour)
+		case minutes:
+			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Minute)
+		case seconds:
+			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Second)
 		}
 	} else {
 		c.taskDisposer.Dispose()
-		//adjustTime = int64(c.nextRunTime.Sub(now)) / 1000000
-		//if adjustTime < 1 {
-		//    adjustTime = 1
-		//}
 	}
 	adjustTime := int64(c.nextRunTime.Sub(now)) / 1000000
 	if adjustTime < 1 {

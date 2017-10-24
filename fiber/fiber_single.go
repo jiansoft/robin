@@ -8,19 +8,19 @@ import (
 )
 
 type GoroutineSingle struct {
-	queue          core.IQueue
+	queue          core.TaskQueue
 	scheduler      core.IScheduler
-	executor       core.IExecutor
+	executor       core.Executor
 	executionState executionState
 	lock           *sync.Mutex
 	cond           *sync.Cond
-	subscriptions  *core.Disposer
+	subscriptions  *robin.Disposer
 }
 
 func (g *GoroutineSingle) init() *GoroutineSingle {
 	g.queue = core.NewDefaultQueue()
 	g.executionState = created
-	g.subscriptions = core.NewDisposer()
+	g.subscriptions = robin.NewDisposer()
 	g.scheduler = core.NewScheduler(g)
 	g.executor = core.NewDefaultExecutor()
 	g.lock = new(sync.Mutex)
@@ -84,12 +84,12 @@ func (g GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, 
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)
 }
 
-/*implement ISubscriptionRegistry.RegisterSubscription */
+/*implement SubscriptionRegistry.RegisterSubscription */
 func (g *GoroutineSingle) RegisterSubscription(toAdd robin.Disposable) {
 	g.subscriptions.Add(toAdd)
 }
 
-/*implement ISubscriptionRegistry.DeregisterSubscription */
+/*implement SubscriptionRegistry.DeregisterSubscription */
 func (g *GoroutineSingle) DeregisterSubscription(toRemove robin.Disposable) {
 	g.subscriptions.Remove(toRemove)
 }

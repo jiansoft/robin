@@ -12,27 +12,40 @@ type IScheduler interface {
 	Dispose()
 }
 
-type ISchedulerRegistry interface {
+type SchedulerRegistry interface {
 	Enqueue(taskFun interface{}, params ...interface{})
 	EnqueueWithTask(task Task)
 	Remove(d robin.Disposable)
 }
 
-type Scheduler struct {
-	fiber       IExecutionContext
-	running     bool
-	isDispose   bool
-	disposabler *Disposer
+//Allows for the registration and deregistration of subscriptions /*The IFiber has implemented*/
+type SubscriptionRegistry interface {
+	//Register subscription to be unsubcribed from when the scheduler is disposed.
+	RegisterSubscription(robin.Disposable)
+	//Deregister a subscription.
+	DeregisterSubscription(robin.Disposable)
 }
 
-func (s *Scheduler) init(executionState IExecutionContext) *Scheduler {
+type ExecutionContext interface {
+	Enqueue(taskFun interface{}, params ...interface{})
+	EnqueueWithTask(task Task)
+}
+
+type Scheduler struct {
+	fiber       ExecutionContext
+	running     bool
+	isDispose   bool
+	disposabler *robin.Disposer
+}
+
+func (s *Scheduler) init(executionState ExecutionContext) *Scheduler {
 	s.fiber = executionState
 	s.running = true
-	s.disposabler = NewDisposer()
+	s.disposabler = robin.NewDisposer()
 	return s
 }
 
-func NewScheduler(executionState IExecutionContext) *Scheduler {
+func NewScheduler(executionState ExecutionContext) *Scheduler {
 	return new(Scheduler).init(executionState)
 }
 
@@ -51,7 +64,7 @@ func (s *Scheduler) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskF
 	return pending
 }
 
-//實作 ISchedulerRegistry.Enqueue
+//Implement SchedulerRegistry.Enqueue
 func (s *Scheduler) Enqueue(taskFun interface{}, params ...interface{}) {
 	s.EnqueueWithTask(NewTask(taskFun, params...))
 }
@@ -60,7 +73,7 @@ func (s *Scheduler) EnqueueWithTask(task Task) {
 	s.fiber.EnqueueWithTask(task)
 }
 
-//實作 ISchedulerRegistry.Remove
+//Implement SchedulerRegistry.Remove
 func (s *Scheduler) Remove(d robin.Disposable) {
 	s.fiber.Enqueue(s.disposabler.Remove, d)
 }

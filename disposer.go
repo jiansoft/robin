@@ -1,11 +1,15 @@
-package core
+package robin
 
 import (
 	"sync"
 
-	"github.com/jiansoft/robin"
 	"github.com/jiansoft/robin/collections"
 )
+
+type Disposable interface {
+	Dispose()
+	Identify() string
+}
 
 type Disposer struct {
 	disposables collections.ConcurrentMap
@@ -22,11 +26,11 @@ func NewDisposer() *Disposer {
 	return new(Disposer).Init()
 }
 
-func (d *Disposer) Add(disposable robin.Disposable) {
+func (d *Disposer) Add(disposable Disposable) {
 	d.disposables.Set(disposable.Identify(), disposable)
 }
 
-func (d *Disposer) Remove(disposable robin.Disposable) {
+func (d *Disposer) Remove(disposable Disposable) {
 	d.disposables.Remove(disposable.Identify())
 }
 
@@ -39,7 +43,7 @@ func (d *Disposer) Dispose() {
 	defer d.lock.Unlock()
 	for _, key := range d.disposables.Keys() {
 		if tmp, ok := d.disposables.Pop(key); ok {
-			tmp.(robin.Disposable).Dispose()
+			tmp.(Disposable).Dispose()
 		}
 	}
 }
