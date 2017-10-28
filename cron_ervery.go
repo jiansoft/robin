@@ -1,15 +1,14 @@
-package cron
+package robin
 
 import (
 	"time"
 
-	"github.com/jiansoft/robin/fiber"
 )
 
 var everyExecutor = NewEverySchedulerExecutor()
 
 type everySchedulerExecutor struct {
-	fiber fiber.Fiber
+	fiber Fiber
 }
 
 func NewEverySchedulerExecutor() *everySchedulerExecutor {
@@ -17,7 +16,7 @@ func NewEverySchedulerExecutor() *everySchedulerExecutor {
 }
 
 func (c *everySchedulerExecutor) init() *everySchedulerExecutor {
-	c.fiber = fiber.NewGoroutineMulti()
+	c.fiber = NewGoroutineMulti()
 	c.fiber.Start()
 	return c
 }

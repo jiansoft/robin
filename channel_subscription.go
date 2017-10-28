@@ -1,26 +1,23 @@
-package channels
+package robin
 
 import (
 	"fmt"
-
-	"github.com/jiansoft/robin/core"
-	"github.com/jiansoft/robin/fiber"
 )
 
 type channelSubscription struct {
 	identifyId string
-	fiber      fiber.Fiber
-	receiver   core.Task
+	fiber      Fiber
+	receiver   Task
 }
 
-func (c *channelSubscription) init(fiber fiber.Fiber, task core.Task) *channelSubscription {
+func (c *channelSubscription) init(fiber Fiber, task Task) *channelSubscription {
 	c.fiber = fiber
 	c.receiver = task
 	c.identifyId = fmt.Sprintf("%p-%p", &c, &task)
 	return c
 }
 
-func NewChannelSubscription(fiber fiber.Fiber, task core.Task) *channelSubscription {
+func NewChannelSubscription(fiber Fiber, task Task) *channelSubscription {
 	return new(channelSubscription).init(fiber, task)
 }
 
@@ -29,8 +26,8 @@ func (c *channelSubscription) OnMessageOnProducerThread(msg ...interface{}) {
 }
 
 //實作 IProducerThreadSubscriber.Subscriptions
-func (c *channelSubscription) Subscriptions() core.SubscriptionRegistry {
-	return c.fiber.(core.SubscriptionRegistry)
+func (c *channelSubscription) Subscriptions() SubscriptionRegistry {
+	return c.fiber.(SubscriptionRegistry)
 }
 
 //實作 IProducerThreadSubscriber.ReceiveOnProducerThread
@@ -39,7 +36,7 @@ func (c *channelSubscription) ReceiveOnProducerThread(msg ...interface{}) {
 }
 
 func (c *channelSubscription) Dispose() {
-	c.fiber.(core.SubscriptionRegistry).DeregisterSubscription(c)
+	c.fiber.(SubscriptionRegistry).DeregisterSubscription(c)
 }
 
 func (c *channelSubscription) Identify() string {

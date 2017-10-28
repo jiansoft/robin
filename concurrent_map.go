@@ -37,7 +37,7 @@
    // Removes item under key "foo"
    map.Remove("foo")
 */
-package collections
+package robin
 
 import (
 	"encoding/json"

@@ -2,8 +2,6 @@ package robin
 
 import (
 	"sync"
-
-	"github.com/jiansoft/robin/collections"
 )
 
 type Disposable interface {
@@ -12,12 +10,12 @@ type Disposable interface {
 }
 
 type Disposer struct {
-	disposables collections.ConcurrentMap
+	disposables ConcurrentMap
 	lock        *sync.Mutex
 }
 
 func (d *Disposer) Init() *Disposer {
-	d.disposables = collections.NewConcurrentMap()
+	d.disposables = NewConcurrentMap()
 	d.lock = new(sync.Mutex)
 	return d
 }

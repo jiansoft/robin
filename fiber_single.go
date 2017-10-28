@@ -1,28 +1,25 @@
-package fiber
+package robin
 
 import (
 	"sync"
-
-	"github.com/jiansoft/robin"
-	"github.com/jiansoft/robin/core"
 )
 
 type GoroutineSingle struct {
-	queue          core.TaskQueue
-	scheduler      core.IScheduler
-	executor       core.Executor
+	queue          TaskQueue
+	scheduler      IScheduler
+	executor       Executor
 	executionState executionState
 	lock           *sync.Mutex
 	cond           *sync.Cond
-	subscriptions  *robin.Disposer
+	subscriptions  *Disposer
 }
 
 func (g *GoroutineSingle) init() *GoroutineSingle {
-	g.queue = core.NewDefaultQueue()
+	g.queue = NewDefaultQueue()
 	g.executionState = created
-	g.subscriptions = robin.NewDisposer()
-	g.scheduler = core.NewScheduler(g)
-	g.executor = core.NewDefaultExecutor()
+	g.subscriptions = NewDisposer()
+	g.scheduler = NewScheduler(g)
+	g.executor = NewDefaultExecutor()
 	g.lock = new(sync.Mutex)
 	g.cond = sync.NewCond(g.lock)
 	return g
@@ -64,10 +61,10 @@ func (g *GoroutineSingle) Dispose() {
 }
 
 func (g *GoroutineSingle) Enqueue(taskFun interface{}, params ...interface{}) {
-	g.EnqueueWithTask(core.NewTask(taskFun, params...))
+	g.EnqueueWithTask(NewTask(taskFun, params...))
 }
 
-func (g *GoroutineSingle) EnqueueWithTask(task core.Task) {
+func (g *GoroutineSingle) EnqueueWithTask(task Task) {
 	if g.executionState != running {
 		return
 	}
@@ -76,21 +73,21 @@ func (g *GoroutineSingle) EnqueueWithTask(task core.Task) {
 	g.cond.Broadcast()
 }
 
-func (g GoroutineSingle) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d robin.Disposable) {
+func (g GoroutineSingle) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.Schedule(firstInMs, taskFun, params...)
 }
 
-func (g GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d robin.Disposable) {
+func (g GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)
 }
 
 /*implement SubscriptionRegistry.RegisterSubscription */
-func (g *GoroutineSingle) RegisterSubscription(toAdd robin.Disposable) {
+func (g *GoroutineSingle) RegisterSubscription(toAdd Disposable) {
 	g.subscriptions.Add(toAdd)
 }
 
 /*implement SubscriptionRegistry.DeregisterSubscription */
-func (g *GoroutineSingle) DeregisterSubscription(toRemove robin.Disposable) {
+func (g *GoroutineSingle) DeregisterSubscription(toRemove Disposable) {
 	g.subscriptions.Remove(toRemove)
 }
 
@@ -106,7 +103,7 @@ func (g *GoroutineSingle) executeNextBatch() bool {
 	return ok
 }
 
-func (g *GoroutineSingle) dequeueAll() ([]core.Task, bool) {
+func (g *GoroutineSingle) dequeueAll() ([]Task, bool) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	if !g.readyToDequeue() {

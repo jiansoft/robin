@@ -1,19 +1,17 @@
-package channels
+package robin
 
 import (
 	"fmt"
-
-	"github.com/jiansoft/robin/core"
 )
 
 type unsubscriber struct {
 	identifyId string
 	channel    *channel
-	receiver   core.Task
-	fiber      core.SubscriptionRegistry
+	receiver   Task
+	fiber      SubscriptionRegistry
 }
 
-func (u *unsubscriber) init(receiver core.Task, channel *channel, fiber core.SubscriptionRegistry) *unsubscriber {
+func (u *unsubscriber) init(receiver Task, channel *channel, fiber SubscriptionRegistry) *unsubscriber {
 	u.identifyId = fmt.Sprintf("%p-%p", &u, &u.channel)
 	u.fiber = fiber
 	u.receiver = receiver
@@ -21,7 +19,7 @@ func (u *unsubscriber) init(receiver core.Task, channel *channel, fiber core.Sub
 	return u
 }
 
-func NewUnsubscriber(receiver core.Task, channel *channel, fiber core.SubscriptionRegistry) *unsubscriber {
+func NewUnsubscriber(receiver Task, channel *channel, fiber SubscriptionRegistry) *unsubscriber {
 	return new(unsubscriber).init(receiver, channel, fiber)
 }
 

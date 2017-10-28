@@ -1,4 +1,4 @@
-package collections
+package robin
 
 import (
 	"container/list"

@@ -1,10 +1,5 @@
-package channels
+package robin
 
-import (
-	"github.com/jiansoft/robin"
-	"github.com/jiansoft/robin/core"
-	"github.com/jiansoft/robin/fiber"
-)
 
 type IPublisher interface {
 	Publish(interface{})
@@ -12,12 +7,12 @@ type IPublisher interface {
 
 //Channel subscription methods.
 type ISubscriber interface {
-	Subscribe(fiber fiber.Fiber, taskFun interface{}, params ...interface{}) robin.Disposable
+	Subscribe(fiber Fiber, taskFun interface{}, params ...interface{}) Disposable
 	ClearSubscribers()
 }
 
 type IChannel interface {
-	SubscribeOnProducerThreads(subscriber IProducerThreadSubscriber) robin.Disposable
+	SubscribeOnProducerThreads(subscriber IProducerThreadSubscriber) Disposable
 }
 
 type IRequest interface {
@@ -26,20 +21,20 @@ type IRequest interface {
 }
 
 type IReply interface {
-	Receive(timeoutInMs int, result *interface{}) robin.Disposable
+	Receive(timeoutInMs int, result *interface{}) Disposable
 }
 
 type IReplySubscriber interface {
-	Subscribe(fiber fiber.Fiber, onRequest *interface{}) robin.Disposable
+	Subscribe(fiber Fiber, onRequest *interface{}) Disposable
 }
 
 type IQueueChannel interface {
-	Subscribe(executionContext core.ExecutionContext, onMessage interface{}) robin.Disposable
+	Subscribe(executionContext ExecutionContext, onMessage interface{}) Disposable
 	Publish(message interface{})
 }
 type IProducerThreadSubscriber interface {
 	//Allows for the registration and deregistration of fiber. Fiber
-	Subscriptions() core.SubscriptionRegistry
+	Subscriptions() SubscriptionRegistry
 	/*Method called from producer threads*/
 	ReceiveOnProducerThread(msg ...interface{})
 }

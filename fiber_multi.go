@@ -1,28 +1,25 @@
-package fiber
+package robin
 
 import (
 	"sync"
-
-	"github.com/jiansoft/robin"
-	"github.com/jiansoft/robin/core"
 )
 
 type GoroutineMulti struct {
-	queue          core.TaskQueue
-	scheduler      core.IScheduler
-	executor       core.Executor
+	queue          TaskQueue
+	scheduler      IScheduler
+	executor       Executor
 	executionState executionState
 	lock           *sync.Mutex
-	subscriptions  *robin.Disposer
+	subscriptions  *Disposer
 	flushPending   bool
 }
 
 func (g *GoroutineMulti) init() *GoroutineMulti {
-	g.queue = core.NewDefaultQueue()
+	g.queue = NewDefaultQueue()
 	g.executionState = created
-	g.scheduler = core.NewScheduler(g)
-	g.executor = core.NewDefaultExecutor()
-	g.subscriptions = robin.NewDisposer()
+	g.scheduler = NewScheduler(g)
+	g.executor = NewDefaultExecutor()
+	g.subscriptions = NewDisposer()
 	g.lock = new(sync.Mutex)
 	return g
 }
@@ -52,10 +49,10 @@ func (g *GoroutineMulti) Dispose() {
 }
 
 func (g *GoroutineMulti) Enqueue(taskFun interface{}, params ...interface{}) {
-	g.EnqueueWithTask(core.NewTask(taskFun, params...))
+	g.EnqueueWithTask(NewTask(taskFun, params...))
 }
 
-func (g *GoroutineMulti) EnqueueWithTask(task core.Task) {
+func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 	if g.executionState != running {
 		return
 	}
@@ -69,21 +66,21 @@ func (g *GoroutineMulti) EnqueueWithTask(task core.Task) {
 	go g.flush()
 }
 
-func (g *GoroutineMulti) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d robin.Disposable) {
+func (g *GoroutineMulti) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.Schedule(firstInMs, taskFun, params...)
 }
 
-func (g *GoroutineMulti) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d robin.Disposable) {
+func (g *GoroutineMulti) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)
 }
 
 /*implement SubscriptionRegistry.RegisterSubscription */
-func (g *GoroutineMulti) RegisterSubscription(toAdd robin.Disposable) {
+func (g *GoroutineMulti) RegisterSubscription(toAdd Disposable) {
 	g.subscriptions.Add(toAdd)
 }
 
 /*implement SubscriptionRegistry.DeregisterSubscription */
-func (g *GoroutineMulti) DeregisterSubscription(toRemove robin.Disposable) {
+func (g *GoroutineMulti) DeregisterSubscription(toRemove Disposable) {
 	g.subscriptions.Remove(toRemove)
 }
 

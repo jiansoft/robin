@@ -1,19 +1,14 @@
-package cron
+package robin
 
 import (
 	"fmt"
 	"time"
-
-	"github.com/jiansoft/robin"
-	"github.com/jiansoft/robin/core"
-	"github.com/jiansoft/robin/fiber"
-	"github.com/jiansoft/robin/math"
 )
 
 var schedulerExecutor = NewSchedulerExecutor()
 
 type jobSchedulerExecutor struct {
-	fiber *fiber.GoroutineMulti
+	fiber *GoroutineMulti
 }
 
 func NewSchedulerExecutor() *jobSchedulerExecutor {
@@ -21,7 +16,7 @@ func NewSchedulerExecutor() *jobSchedulerExecutor {
 }
 
 func (c *jobSchedulerExecutor) init() *jobSchedulerExecutor {
-	c.fiber = fiber.NewGoroutineMulti()
+	c.fiber = NewGoroutineMulti()
 	c.fiber.Start()
 	return c
 }
@@ -35,11 +30,11 @@ func (c *jobSchedulerExecutor) Every(interval int64) *Job {
 }
 
 type Job struct {
-	fiber        fiber.Fiber
+	fiber        Fiber
 	identifyId   string
 	loc          *time.Location
-	task         core.Task
-	taskDisposer robin.Disposable
+	task         Task
+	taskDisposer Disposable
 	weekday      time.Weekday
 	hour         int
 	minute       int
@@ -49,7 +44,7 @@ type Job struct {
 	nextRunTime  time.Time
 }
 
-func (c *Job) init(intervel int64, fiber fiber.Fiber) *Job {
+func (c *Job) init(intervel int64, fiber Fiber) *Job {
 	c.hour = -1
 	c.minute = -1
 	c.second = -1
@@ -60,7 +55,7 @@ func (c *Job) init(intervel int64, fiber fiber.Fiber) *Job {
 	return c
 }
 
-func NewJob(intervel int64, fiber fiber.Fiber) *Job {
+func NewJob(intervel int64, fiber Fiber) *Job {
 	return new(Job).init(intervel, fiber)
 }
 
@@ -106,9 +101,9 @@ func (c *Job) Seconds() *Job {
 }
 
 func (c *Job) At(hour int, minute int, second int) *Job {
-	c.hour = math.Abs(c.hour)
-	c.minute = math.Abs(c.minute)
-	c.second = math.Abs(c.second)
+	c.hour = Abs(c.hour)
+	c.minute = Abs(c.minute)
+	c.second = Abs(c.second)
 	if c.unit != hours {
 		c.hour = hour % 24
 	}
@@ -117,8 +112,8 @@ func (c *Job) At(hour int, minute int, second int) *Job {
 	return c
 }
 
-func (c *Job) Do(fun interface{}, params ...interface{}) robin.Disposable {
-	c.task = core.NewTask(fun, params...)
+func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
+	c.task = NewTask(fun, params...)
 	//firstInMs := int64(0)
 	now := time.Now()
 	switch c.unit {

@@ -1,12 +1,9 @@
-package core
+package robin
 
-import (
-	"github.com/jiansoft/robin"
-)
 
 type IScheduler interface {
-	Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d robin.Disposable)
-	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d robin.Disposable)
+	Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
+	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
 	Start()
 	Stop()
 	Dispose()
@@ -15,15 +12,15 @@ type IScheduler interface {
 type SchedulerRegistry interface {
 	Enqueue(taskFun interface{}, params ...interface{})
 	EnqueueWithTask(task Task)
-	Remove(d robin.Disposable)
+	Remove(d Disposable)
 }
 
 //Allows for the registration and deregistration of subscriptions /*The IFiber has implemented*/
 type SubscriptionRegistry interface {
 	//Register subscription to be unsubcribed from when the scheduler is disposed.
-	RegisterSubscription(robin.Disposable)
+	RegisterSubscription(Disposable)
 	//Deregister a subscription.
-	DeregisterSubscription(robin.Disposable)
+	DeregisterSubscription(Disposable)
 }
 
 type ExecutionContext interface {
@@ -35,13 +32,13 @@ type Scheduler struct {
 	fiber       ExecutionContext
 	running     bool
 	isDispose   bool
-	disposabler *robin.Disposer
+	disposabler *Disposer
 }
 
 func (s *Scheduler) init(executionState ExecutionContext) *Scheduler {
 	s.fiber = executionState
 	s.running = true
-	s.disposabler = robin.NewDisposer()
+	s.disposabler = NewDisposer()
 	return s
 }
 
@@ -49,7 +46,7 @@ func NewScheduler(executionState ExecutionContext) *Scheduler {
 	return new(Scheduler).init(executionState)
 }
 
-func (s *Scheduler) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d robin.Disposable) {
+func (s *Scheduler) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	if firstInMs <= 0 {
 		pendingAction := NewPendingTask(NewTask(taskFun, params...))
 		s.Enqueue(pendingAction.Execute)
@@ -58,7 +55,7 @@ func (s *Scheduler) Schedule(firstInMs int64, taskFun interface{}, params ...int
 	return s.ScheduleOnInterval(firstInMs, -1, taskFun, params...)
 }
 
-func (s *Scheduler) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d robin.Disposable) {
+func (s *Scheduler) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	pending := newTimerTask(s, NewTask(taskFun, params...), firstInMs, regularInMs)
 	s.addPending(pending)
 	return pending
@@ -74,7 +71,7 @@ func (s *Scheduler) EnqueueWithTask(task Task) {
 }
 
 //Implement SchedulerRegistry.Remove
-func (s *Scheduler) Remove(d robin.Disposable) {
+func (s *Scheduler) Remove(d Disposable) {
 	s.fiber.Enqueue(s.disposabler.Remove, d)
 }
 

@@ -1,13 +1,9 @@
-package cron
-
-import (
-	"github.com/jiansoft/robin/fiber"
-)
+package robin
 
 var delayExecutor = NewDelaySchedulerExecutor()
 
 type delaySchedulerExecutor struct {
-	fiber fiber.Fiber
+	fiber Fiber
 }
 
 func NewDelaySchedulerExecutor() *delaySchedulerExecutor {
@@ -15,7 +11,7 @@ func NewDelaySchedulerExecutor() *delaySchedulerExecutor {
 }
 
 func (c *delaySchedulerExecutor) init() *delaySchedulerExecutor {
-	c.fiber = fiber.NewGoroutineMulti()
+	c.fiber = NewGoroutineMulti()
 	c.fiber.Start()
 	return c
 }

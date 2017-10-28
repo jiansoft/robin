@@ -1,18 +1,12 @@
-package channels
+package robin
 
-import (
-	"github.com/jiansoft/robin"
-	"github.com/jiansoft/robin/collections"
-	"github.com/jiansoft/robin/core"
-	"github.com/jiansoft/robin/fiber"
-)
 
 type channel struct {
-	subscribers collections.ConcurrentMap
+	subscribers ConcurrentMap
 }
 
 func (c *channel) init() *channel {
-	c.subscribers = collections.NewConcurrentMap()
+	c.subscribers = NewConcurrentMap()
 	return c
 }
 
@@ -20,17 +14,17 @@ func NewChannel() *channel {
 	return new(channel).init()
 }
 
-func (c *channel) Subscribe(fiber fiber.Fiber, taskFun interface{}, params ...interface{}) robin.Disposable {
-	subscription := NewChannelSubscription(fiber, core.Task{Func: taskFun, Params: params})
+func (c *channel) Subscribe(fiber Fiber, taskFun interface{}, params ...interface{}) Disposable {
+	subscription := NewChannelSubscription(fiber, Task{Func: taskFun, Params: params})
 	return c.SubscribeOnProducerThreads(subscription)
 }
 
-func (c *channel) SubscribeOnProducerThreads(subscriber IProducerThreadSubscriber) robin.Disposable {
-	job := core.Task{Func: subscriber.ReceiveOnProducerThread}
+func (c *channel) SubscribeOnProducerThreads(subscriber IProducerThreadSubscriber) Disposable {
+	job := Task{Func: subscriber.ReceiveOnProducerThread}
 	return c.subscribeOnProducerThreads(job, subscriber.Subscriptions())
 }
 
-func (c *channel) subscribeOnProducerThreads(subscriber core.Task, fiber core.SubscriptionRegistry) robin.Disposable {
+func (c *channel) subscribeOnProducerThreads(subscriber Task, fiber SubscriptionRegistry) Disposable {
 	unsubscriber := NewUnsubscriber(subscriber, c, fiber)
 	//將訂閱者的方法註冊到 IFiber內 ，當 Fiber.Dispose()時，同步將訂閱的方法移除
 	fiber.RegisterSubscription(unsubscriber)
@@ -41,11 +35,11 @@ func (c *channel) subscribeOnProducerThreads(subscriber core.Task, fiber core.Su
 
 func (c *channel) Publish(msg ...interface{}) {
 	for _, val := range c.subscribers.Items() {
-		val.(*unsubscriber).fiber.(fiber.Fiber).Enqueue(val.(*unsubscriber).receiver.Func, msg...)
+		val.(*unsubscriber).fiber.(Fiber).Enqueue(val.(*unsubscriber).receiver.Func, msg...)
 	}
 }
 
-func (c *channel) unsubscribe(disposable robin.Disposable) {
+func (c *channel) unsubscribe(disposable Disposable) {
 	//Remove the subscriber
 	if val, ok := c.subscribers.Get(disposable.Identify()); ok {
 		val.(*unsubscriber).fiber.DeregisterSubscription(val.(*unsubscriber))

@@ -1,4 +1,4 @@
-package core
+package robin
 
 type Executor interface {
 	ExecuteTasks(t []Task)
