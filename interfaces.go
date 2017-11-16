@@ -1,6 +1,5 @@
 package robin
 
-
 type IPublisher interface {
 	Publish(interface{})
 }

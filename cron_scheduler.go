@@ -26,7 +26,7 @@ func Every(interval int64) *Job {
 }
 
 func (c *jobSchedulerExecutor) Every(interval int64) *Job {
-	return NewJob(interval, c.fiber)
+	return NewJob(interval, c.fiber, delayNone)
 }
 
 type Job struct {
@@ -40,28 +40,30 @@ type Job struct {
 	minute       int
 	second       int
 	unit         unit
+	delayUnit    delayUnit
 	interval     int64
 	nextRunTime  time.Time
 }
 
-func (c *Job) init(intervel int64, fiber Fiber) *Job {
+func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 	c.hour = -1
 	c.minute = -1
 	c.second = -1
 	c.fiber = fiber
 	c.loc = time.Local
 	c.interval = intervel
+	c.delayUnit = delayUnit
 	c.identifyId = fmt.Sprintf("%p-%p", &c, &fiber)
 	return c
 }
 
-func NewJob(intervel int64, fiber Fiber) *Job {
-	return new(Job).init(intervel, fiber)
+func NewJob(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
+	return new(Job).init(intervel, fiber, delayUnit)
 }
 
 type unit int
+type delayUnit int
 
-// iota 初始化後會自動遞增
 const (
 	delay unit = iota
 	weeks
@@ -69,6 +71,16 @@ const (
 	hours
 	minutes
 	seconds
+)
+
+const (
+	delayNone delayUnit = iota
+	delayWeeks
+	delayDays
+	delayHours
+	delayMinutes
+	delaySeconds
+	delayMilliseconds
 )
 
 func (c *Job) Dispose() {
@@ -81,22 +93,38 @@ func (c Job) Identify() string {
 }
 
 func (c *Job) Days() *Job {
-	c.unit = days
+	if c.delayUnit == delayNone {
+		c.unit = days
+	} else {
+		c.delayUnit = delayDays
+	}
 	return c
 }
 
 func (c *Job) Hours() *Job {
-	c.unit = hours
+	if c.delayUnit == delayNone {
+		c.unit = hours
+	} else {
+		c.delayUnit = delayHours
+	}
 	return c
 }
 
 func (c *Job) Minutes() *Job {
-	c.unit = minutes
+	if c.delayUnit == delayNone {
+		c.unit = minutes
+	} else {
+		c.delayUnit = delayMinutes
+	}
 	return c
 }
 
 func (c *Job) Seconds() *Job {
-	c.unit = seconds
+	if c.delayUnit == delayNone {
+		c.unit = seconds
+	} else {
+		c.delayUnit = delaySeconds
+	}
 	return c
 }
 
@@ -118,7 +146,21 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	now := time.Now()
 	switch c.unit {
 	case delay:
-		c.nextRunTime = now.Add(time.Duration(c.interval) * time.Millisecond)
+		switch c.delayUnit {
+		case delayWeeks:
+			c.nextRunTime = now.AddDate(0, 0, 7)
+		case delayDays:
+			c.nextRunTime = now.AddDate(0, 0, int(c.interval))
+		case delayHours:
+			c.nextRunTime = now.Add(time.Duration(c.interval) * time.Hour)
+		case delayMinutes:
+			c.nextRunTime = now.Add(time.Duration(c.interval) * time.Minute)
+		case delaySeconds:
+			c.nextRunTime = now.Add(time.Duration(c.interval) * time.Second)
+		case delayMilliseconds:
+			c.nextRunTime = now.Add(time.Duration(c.interval) * time.Millisecond)
+		}
+
 	case weeks:
 		i := (7 - (int(now.Weekday() - c.weekday))) % 7
 		c.nextRunTime = time.Date(now.Year(), now.Month(), now.Day()+int(i), c.hour, c.minute, c.second, 0, c.loc)
@@ -153,6 +195,9 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Hour /*.Duration(60*60*1000000)*/)
 		}
 	case minutes:
+		if c.second < 0 {
+			c.second = now.Second()
+		}
 		c.nextRunTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), c.second, 0, c.loc)
 		c.nextRunTime.Add(time.Duration(c.interval-1) * time.Hour)
 		if c.nextRunTime.Before(now) {

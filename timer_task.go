@@ -118,9 +118,6 @@ func (t *timerTask) doIntervalSchedule() {
 		for !t.cancelled {
 			select {
 			case <-t.timer.C:
-				if t.cancelled {
-					break
-				}
 				t.scheduler.Enqueue(t.executeOnFiber)
 			}
 		}

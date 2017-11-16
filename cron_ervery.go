@@ -2,7 +2,6 @@ package robin
 
 import (
 	"time"
-
 )
 
 var everyExecutor = NewEverySchedulerExecutor()
@@ -50,7 +49,7 @@ func EverySaturday() *Job {
 }
 
 func newCronWeekday(weekday time.Weekday) *Job {
-	c := NewJob(1, everyExecutor.fiber)
+	c := NewJob(1, everyExecutor.fiber, delayNone)
 	c.unit = weeks
 	c.weekday = weekday
 	return c
