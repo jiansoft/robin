@@ -5,7 +5,7 @@
 
 Fiber  
 -------
-* GoroutineSingle - a fiber backed by a dedicated goroutine.
+* GoroutineSingle - a fiber backed by a dedicated goroutine. Every job is executed by a goroutine.
 * GoroutineMulti - a fiber backed by more goroutine. Each job is executed by a new goroutine.
 
 Channels
