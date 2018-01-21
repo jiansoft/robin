@@ -14,12 +14,13 @@ func NewChannel() *channel {
 }
 
 func (c *channel) Subscribe(fiber Fiber, taskFun interface{}, params ...interface{}) Disposable {
-	subscription := NewChannelSubscription(fiber, Task{Func: taskFun, Params: params})
+	job := NewTask(taskFun, params...)
+	subscription := NewChannelSubscription(fiber, job)
 	return c.SubscribeOnProducerThreads(subscription)
 }
 
 func (c *channel) SubscribeOnProducerThreads(subscriber IProducerThreadSubscriber) Disposable {
-	job := Task{Func: subscriber.ReceiveOnProducerThread}
+	job := NewTask(subscriber.ReceiveOnProducerThread)
 	return c.subscribeOnProducerThreads(job, subscriber.Subscriptions())
 }
 
