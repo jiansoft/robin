@@ -23,6 +23,7 @@ Usage
 func main() {
     minute := 11
     second := 50
+    
     //Every friday do once at 14:11:50(HH:mm:ss).
     robin.EveryFriday().At(14, minute, second).Do(runCron, "Friday")
 
@@ -43,6 +44,7 @@ func runCron(s string) {
     log.Printf("I am %s CronTest %v\n", s, time.Now())
 }
 ~~~
+[More example](<https://github.com/jiansoft/robin/blob/master/example/main.go>)
 
 ## License
 
