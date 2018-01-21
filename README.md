@@ -3,8 +3,18 @@
 
 ### Features
 
-* Fiber
-* Cron Golang job scheduling for humans. It is inspired by [schedule](<https://github.com/dbader/schedule>).
+Fiber  
+-------
+* GoroutineSingle - a fiber backed by a dedicated goroutine.
+* GoroutineMulti - a fiber backed by more goroutine. Each job is executed by a new goroutine.
+
+Channels
+-------
+* Channels callback is executed for each message received.
+
+Cron
+-------
+Golang job scheduling for humans. It is inspired by [schedule](<https://github.com/dbader/schedule>).
   
 
 
