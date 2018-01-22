@@ -30,6 +30,12 @@ Usage
 
 2.Use examples
 ~~~ golang
+import (
+    "log"
+    "time"
+    
+	"github.com/jiansoft/robin"
+)
 func main() {
     minute := 11
     second := 50
