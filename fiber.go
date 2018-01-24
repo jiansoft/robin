@@ -9,3 +9,11 @@ type Fiber interface {
 	Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
 	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
 }
+
+type executionState int
+
+const (
+	created executionState = iota
+	running
+	stopped
+)

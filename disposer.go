@@ -14,14 +14,14 @@ type Disposer struct {
 	lock        *sync.Mutex
 }
 
-func (d *Disposer) Init() *Disposer {
+func (d *Disposer) init() *Disposer {
 	d.disposables = NewConcurrentMap()
 	d.lock = new(sync.Mutex)
 	return d
 }
 
 func NewDisposer() *Disposer {
-	return new(Disposer).Init()
+	return new(Disposer).init()
 }
 
 func (d *Disposer) Add(disposable Disposable) {

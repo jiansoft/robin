@@ -43,13 +43,13 @@ func main() {
 	robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
 
 	// Use a new cron executor
-	//newCronDelay := cron.NewCronDelayExecutor()
-	//newCronDelay.Delay(2000).Do(runCron, "newDelayCron Delay 2000 in Ms")
+	newCronDelay := robin.NewDelaySchedulerExecutor()
+	newCronDelay.Delay(2000).Do(runCron, "newDelayCron Delay 2000 in Ms")
 
 	// Use a new cron executor
-	//newCronScheduler := cron.NewCronSchedulerExecutor()
-	//newCronScheduler.Every(1).Hours().Do(runCron, "newCronScheduler Hours")
-	//newCronScheduler.Every(1).Minutes().Do(runCron, "newCronScheduler Minutes")
+	newCronScheduler := robin.NewSchedulerExecutor()
+	newCronScheduler.Every(1).Hours().Do(runCron, "newCronScheduler Hours")
+	newCronScheduler.Every(1).Minutes().Do(runCron, "newCronScheduler Minutes")
 	<-quitSemaphore
 }
 
