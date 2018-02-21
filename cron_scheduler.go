@@ -142,7 +142,6 @@ func (c *Job) At(hour int, minute int, second int) *Job {
 
 func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	c.task = NewTask(fun, params...)
-	//firstInMs := int64(0)
 	now := time.Now()
 	switch c.unit {
 	case delay:
@@ -160,7 +159,6 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 		case delayMilliseconds:
 			c.nextRunTime = now.Add(time.Duration(c.interval) * time.Millisecond)
 		}
-
 	case weeks:
 		i := (7 - (int(now.Weekday() - c.weekday))) % 7
 		c.nextRunTime = time.Date(now.Year(), now.Month(), now.Day()+int(i), c.hour, c.minute, c.second, 0, c.loc)

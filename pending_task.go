@@ -27,7 +27,7 @@ func (p *PendingTask) Identify() string {
 	return p.identifyId
 }
 
-func (p *PendingTask) Execute() {
+func (p PendingTask) execute() {
 	if p.cancelled {
 		return
 	}
