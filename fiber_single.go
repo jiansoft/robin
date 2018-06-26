@@ -61,10 +61,10 @@ func (g *GoroutineSingle) Dispose() {
 }
 
 func (g *GoroutineSingle) Enqueue(taskFun interface{}, params ...interface{}) {
-	g.EnqueueWithTask(NewTask(taskFun, params...))
+	g.EnqueueWithTask(newTask(taskFun, params...))
 }
 
-func (g *GoroutineSingle) EnqueueWithTask(task Task) {
+func (g *GoroutineSingle) EnqueueWithTask(task task) {
 	if g.executionState != running {
 		return
 	}
@@ -103,7 +103,7 @@ func (g *GoroutineSingle) executeNextBatch() bool {
 	return ok
 }
 
-func (g *GoroutineSingle) dequeueAll() ([]Task, bool) {
+func (g *GoroutineSingle) dequeueAll() ([]task, bool) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	if !g.readyToDequeue() {

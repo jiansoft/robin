@@ -11,6 +11,7 @@ var quitSemaphore chan bool
 
 func main() {
 	log.Printf("Start\n")
+
 	RunChannelTest()
 	var runCronFiber = robin.NewGoroutineMulti()
 	runCronFiber.Start()
@@ -55,6 +56,9 @@ func main() {
 
 func runCron(s string) {
 	log.Printf("I am %s CronTest %v\n", s, time.Now())
+}
+func runCron1() {
+	log.Printf("康中文測試 %s", time.Now())
 }
 
 func RunChannelTest() {

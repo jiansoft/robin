@@ -12,11 +12,11 @@ type timerTask struct {
 	intervalInMs int64
 	firstTime    *time.Timer
 	interval     *time.Ticker
-	task         Task
+	task         task
 	cancelled    bool
 }
 
-func (t *timerTask) init(scheduler SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
+func (t *timerTask) init(scheduler SchedulerRegistry, task task, firstInMs int64, intervalInMs int64) *timerTask {
 	t.scheduler = scheduler
 	t.task = task
 	t.firstInMs = firstInMs
@@ -25,7 +25,7 @@ func (t *timerTask) init(scheduler SchedulerRegistry, task Task, firstInMs int64
 	return t
 }
 
-func newTimerTask(fiber SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
+func newTimerTask(fiber SchedulerRegistry, task task, firstInMs int64, intervalInMs int64) *timerTask {
 	return new(timerTask).init(fiber, task, firstInMs, intervalInMs)
 }
 
@@ -95,26 +95,25 @@ func (t *timerTask) runFirstSchedule() {
 	t.firstTime = time.NewTimer(time.Duration(t.firstInMs) * time.Millisecond)
 	select {
 	case <-t.firstTime.C:
-        if t.cancelled {
-            return
-        }
+		if t.cancelled {
+			return
+		}
 
 		t.scheduler.Enqueue(t.execute)
 
-        if nil != t.firstTime {
-            t.firstTime.Stop()
-            t.firstTime = nil
-        }
+		if nil != t.firstTime {
+			t.firstTime.Stop()
+			t.firstTime = nil
+		}
 
-        if t.intervalInMs <= 0 {
-            t.Dispose()
-            return
-        }
+		if t.intervalInMs <= 0 {
+			t.Dispose()
+			return
+		}
 
-        t.scheduler.Enqueue(t.runIntervalSchedule)
+		t.scheduler.Enqueue(t.runIntervalSchedule)
 	}
 }
-
 
 func (t *timerTask) runIntervalSchedule() {
 	t.interval = time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
@@ -123,8 +122,8 @@ func (t *timerTask) runIntervalSchedule() {
 		//case <-t.interval.C:
 		//	t.scheduler.Enqueue(t.execute)
 		//}
-        <-t.interval.C
-        t.scheduler.Enqueue(t.execute)
+		<-t.interval.C
+		t.scheduler.Enqueue(t.execute)
 	}
 }
 
@@ -132,5 +131,5 @@ func (t timerTask) execute() {
 	if t.cancelled {
 		return
 	}
-	t.task.Run()
+	t.task.run()
 }

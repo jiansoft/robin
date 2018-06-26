@@ -14,17 +14,17 @@ func NewChannel() *channel {
 }
 
 func (c *channel) Subscribe(fiber Fiber, taskFun interface{}, params ...interface{}) Disposable {
-	job := NewTask(taskFun, params...)
+	job := newTask(taskFun, params...)
 	subscription := NewChannelSubscription(fiber, job)
 	return c.SubscribeOnProducerThreads(subscription)
 }
 
 func (c *channel) SubscribeOnProducerThreads(subscriber IProducerThreadSubscriber) Disposable {
-	job := NewTask(subscriber.ReceiveOnProducerThread)
+	job := newTask(subscriber.ReceiveOnProducerThread)
 	return c.subscribeOnProducerThreads(job, subscriber.Subscriptions())
 }
 
-func (c *channel) subscribeOnProducerThreads(subscriber Task, fiber SubscriptionRegistry) Disposable {
+func (c *channel) subscribeOnProducerThreads(subscriber task, fiber SubscriptionRegistry) Disposable {
 	unsubscriber := NewUnsubscriber(subscriber, c, fiber)
 	//將訂閱者的方法註冊到 IFiber內 ，當 Fiber.Dispose()時，同步將訂閱的方法移除
 	fiber.RegisterSubscription(unsubscriber)
@@ -35,7 +35,7 @@ func (c *channel) subscribeOnProducerThreads(subscriber Task, fiber Subscription
 
 func (c *channel) Publish(msg ...interface{}) {
 	for _, val := range c.subscribers.Items() {
-		val.(*unsubscriber).fiber.(Fiber).Enqueue(val.(*unsubscriber).receiver.Func, msg...)
+		val.(*unsubscriber).fiber.(Fiber).Enqueue(val.(*unsubscriber).receiver.doFunc, msg...)
 	}
 }
 

@@ -5,7 +5,7 @@ type Fiber interface {
 	Stop()
 	Dispose()
 	Enqueue(taskFun interface{}, params ...interface{})
-	EnqueueWithTask(task Task)
+	EnqueueWithTask(task task)
 	Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
 	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
 }

@@ -33,7 +33,7 @@ type Job struct {
 	fiber        Fiber
 	identifyId   string
 	loc          *time.Location
-	task         Task
+	task         task
 	taskDisposer Disposable
 	weekday      time.Weekday
 	hour         int
@@ -141,7 +141,7 @@ func (c *Job) At(hour int, minute int, second int) *Job {
 }
 
 func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
-	c.task = NewTask(fun, params...)
+	c.task = newTask(fun, params...)
 	now := time.Now()
 	switch c.unit {
 	case delay:

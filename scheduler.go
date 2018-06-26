@@ -10,7 +10,7 @@ type IScheduler interface {
 
 type SchedulerRegistry interface {
 	Enqueue(taskFun interface{}, params ...interface{})
-	EnqueueWithTask(task Task)
+	EnqueueWithTask(task task)
 	Remove(d Disposable)
 }
 
@@ -24,7 +24,7 @@ type SubscriptionRegistry interface {
 
 type ExecutionContext interface {
 	Enqueue(taskFun interface{}, params ...interface{})
-	EnqueueWithTask(task Task)
+	EnqueueWithTask(task task)
 }
 
 type Scheduler struct {
@@ -47,7 +47,7 @@ func NewScheduler(executionState ExecutionContext) *Scheduler {
 
 func (s *Scheduler) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	if firstInMs <= 0 {
-		pending := NewPendingTask(NewTask(taskFun, params...))
+		pending := NewPendingTask(newTask(taskFun, params...))
 		s.Enqueue(pending.execute)
 		return pending
 	}
@@ -55,17 +55,17 @@ func (s *Scheduler) Schedule(firstInMs int64, taskFun interface{}, params ...int
 }
 
 func (s *Scheduler) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
-	pending := newTimerTask(s, NewTask(taskFun, params...), firstInMs, regularInMs)
+	pending := newTimerTask(s, newTask(taskFun, params...), firstInMs, regularInMs)
 	s.addPending(pending)
 	return pending
 }
 
 //Implement SchedulerRegistry.Enqueue
 func (s *Scheduler) Enqueue(taskFun interface{}, params ...interface{}) {
-	s.EnqueueWithTask(NewTask(taskFun, params...))
+	s.EnqueueWithTask(newTask(taskFun, params...))
 }
 
-func (s *Scheduler) EnqueueWithTask(task Task) {
+func (s *Scheduler) EnqueueWithTask(task task) {
 	s.fiber.EnqueueWithTask(task)
 }
 

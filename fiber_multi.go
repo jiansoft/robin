@@ -49,10 +49,10 @@ func (g *GoroutineMulti) Dispose() {
 }
 
 func (g *GoroutineMulti) Enqueue(taskFun interface{}, params ...interface{}) {
-	g.EnqueueWithTask(NewTask(taskFun, params...))
+	g.EnqueueWithTask(newTask(taskFun, params...))
 }
 
-func (g *GoroutineMulti) EnqueueWithTask(task Task) {
+func (g *GoroutineMulti) EnqueueWithTask(task task) {
 	if g.executionState != running {
 		return
 	}
@@ -99,7 +99,7 @@ func (g *GoroutineMulti) flush() {
 		//It has new task enqueue when clear tasks
 		go g.flush()
 	} else {
-		//Task is empty
+		//task is empty
 		g.flushPending = false
 	}
 }

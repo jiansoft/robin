@@ -7,22 +7,22 @@ import (
 type channelSubscription struct {
 	identifyId string
 	fiber      Fiber
-	receiver   Task
+	receiver   task
 }
 
-func (c *channelSubscription) init(fiber Fiber, task Task) *channelSubscription {
+func (c *channelSubscription) init(fiber Fiber, task task) *channelSubscription {
 	c.fiber = fiber
 	c.receiver = task
 	c.identifyId = fmt.Sprintf("%p-%p", &c, &task)
 	return c
 }
 
-func NewChannelSubscription(fiber Fiber, task Task) *channelSubscription {
+func NewChannelSubscription(fiber Fiber, task task) *channelSubscription {
 	return new(channelSubscription).init(fiber, task)
 }
 
 func (c *channelSubscription) OnMessageOnProducerThread(msg ...interface{}) {
-	c.fiber.Enqueue(c.receiver.Func, msg...)
+	c.fiber.Enqueue(c.receiver.doFunc, msg...)
 }
 
 //實作 IProducerThreadSubscriber.Subscriptions

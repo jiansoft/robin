@@ -1,8 +1,8 @@
 package robin
 
 type Executor interface {
-	ExecuteTasks(t []Task)
-	ExecuteTasksWithGoroutine(t []Task)
+	ExecuteTasks(t []task)
+	ExecuteTasksWithGoroutine(t []task)
 }
 
 type defaultExecutor struct {
@@ -12,14 +12,14 @@ func NewDefaultExecutor() defaultExecutor {
 	return defaultExecutor{}
 }
 
-func (d defaultExecutor) ExecuteTasks(tasks []Task) {
+func (d defaultExecutor) ExecuteTasks(tasks []task) {
 	for _, task := range tasks {
-		task.Run()
+		task.run()
 	}
 }
 
-func (d defaultExecutor) ExecuteTasksWithGoroutine(tasks []Task) {
+func (d defaultExecutor) ExecuteTasksWithGoroutine(tasks []task) {
 	for _, task := range tasks {
-		go task.Run()
+		go task.run()
 	}
 }

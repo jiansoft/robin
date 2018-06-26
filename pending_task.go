@@ -4,18 +4,18 @@ import "fmt"
 
 type PendingTask struct {
 	identifyId string
-	task       Task
+	task       task
 	cancelled  bool
 }
 
-func (p *PendingTask) init(task Task) *PendingTask {
+func (p *PendingTask) init(task task) *PendingTask {
 	p.task = task
 	p.cancelled = false
 	p.identifyId = fmt.Sprintf("%p-%p", &p, &task)
 	return p
 }
 
-func NewPendingTask(task Task) *PendingTask {
+func NewPendingTask(task task) *PendingTask {
 	return new(PendingTask).init(task)
 }
 
@@ -31,5 +31,5 @@ func (p PendingTask) execute() {
 	if p.cancelled {
 		return
 	}
-	p.task.Run()
+	p.task.run()
 }
