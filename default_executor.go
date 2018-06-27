@@ -1,6 +1,6 @@
 package robin
 
-type Executor interface {
+type executor interface {
 	ExecuteTasks(t []task)
 	ExecuteTasksWithGoroutine(t []task)
 }
@@ -8,7 +8,7 @@ type Executor interface {
 type defaultExecutor struct {
 }
 
-func NewDefaultExecutor() defaultExecutor {
+func newDefaultExecutor() defaultExecutor {
 	return defaultExecutor{}
 }
 

@@ -7,7 +7,7 @@ import (
 type GoroutineSingle struct {
 	queue          TaskQueue
 	scheduler      IScheduler
-	executor       Executor
+	executor       executor
 	executionState executionState
 	lock           *sync.Mutex
 	cond           *sync.Cond
@@ -19,7 +19,7 @@ func (g *GoroutineSingle) init() *GoroutineSingle {
 	g.executionState = created
 	g.subscriptions = NewDisposer()
 	g.scheduler = NewScheduler(g)
-	g.executor = NewDefaultExecutor()
+	g.executor = newDefaultExecutor()
 	g.lock = new(sync.Mutex)
 	g.cond = sync.NewCond(g.lock)
 	return g

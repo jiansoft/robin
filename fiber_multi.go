@@ -7,7 +7,7 @@ import (
 type GoroutineMulti struct {
 	queue          TaskQueue
 	scheduler      IScheduler
-	executor       Executor
+	executor       executor
 	executionState executionState
 	lock           *sync.Mutex
 	subscriptions  *Disposer
@@ -18,7 +18,7 @@ func (g *GoroutineMulti) init() *GoroutineMulti {
 	g.queue = NewDefaultQueue()
 	g.executionState = created
 	g.scheduler = NewScheduler(g)
-	g.executor = NewDefaultExecutor()
+	g.executor = newDefaultExecutor()
 	g.subscriptions = NewDisposer()
 	g.lock = new(sync.Mutex)
 	return g
