@@ -35,15 +35,20 @@ func (c *channel) subscribeOnProducerThreads(subscriber task, fiber Subscription
 
 func (c *channel) Publish(msg ...interface{}) {
 	for _, val := range c.subscribers.Items() {
-		val.(*unsubscriber).fiber.(Fiber).Enqueue(val.(*unsubscriber).receiver.doFunc, msg...)
+		if subscriber, ok := val.(*unsubscriber); ok {
+			subscriber.fiber.(Fiber).Enqueue(subscriber.receiver.doFunc, msg...)
+		}
 	}
 }
 
+// Remove the subscriber
 func (c *channel) unsubscribe(disposable Disposable) {
-	//Remove the subscriber
+
 	if val, ok := c.subscribers.Get(disposable.Identify()); ok {
-		val.(*unsubscriber).fiber.DeregisterSubscription(val.(*unsubscriber))
-		c.subscribers.Remove(disposable.Identify())
+		if subscriber, ok := val.(*unsubscriber); ok {
+			subscriber.fiber.DeregisterSubscription(subscriber)
+			c.subscribers.Remove(disposable.Identify())
+		}
 	}
 }
 

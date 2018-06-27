@@ -212,7 +212,7 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 
 func (c *Job) canDo() {
 	now := time.Now()
-	if now.After(c.nextRunTime) {
+	if int64(now.Sub(c.nextRunTime)/time.Millisecond /*1000000*/) >= 0 {
 		c.fiber.EnqueueWithTask(c.task)
 		switch c.unit {
 		case delay:
@@ -231,7 +231,7 @@ func (c *Job) canDo() {
 	} else {
 		c.taskDisposer.Dispose()
 	}
-	adjustTime := int64(c.nextRunTime.Sub(now)) / 1000000
+	adjustTime := int64(c.nextRunTime.Sub(now) / time.Millisecond /*1000000*/)
 	if adjustTime < 1 {
 		adjustTime = 1
 	}
