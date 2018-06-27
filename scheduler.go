@@ -47,7 +47,7 @@ func NewScheduler(executionState ExecutionContext) *Scheduler {
 
 func (s *Scheduler) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	if firstInMs <= 0 {
-		pending := NewPendingTask(newTask(taskFun, params...))
+		pending := newPendingTask(newTask(taskFun, params...))
 		s.Enqueue(pending.execute)
 		return pending
 	}

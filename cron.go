@@ -5,64 +5,7 @@ import (
 	"time"
 )
 
-var schedulerExecutor = NewSchedulerExecutor()
 
-type jobSchedulerExecutor struct {
-	fiber *GoroutineMulti
-}
-
-func NewSchedulerExecutor() *jobSchedulerExecutor {
-	return new(jobSchedulerExecutor).init()
-}
-
-func (c *jobSchedulerExecutor) init() *jobSchedulerExecutor {
-	c.fiber = NewGoroutineMulti()
-	c.fiber.Start()
-	return c
-}
-
-func Every(interval int64) *Job {
-	return schedulerExecutor.Every(interval)
-}
-
-func (c *jobSchedulerExecutor) Every(interval int64) *Job {
-	return NewJob(interval, c.fiber, delayNone)
-}
-
-type Job struct {
-	fiber        Fiber
-	identifyId   string
-	loc          *time.Location
-	task         task
-	taskDisposer Disposable
-	weekday      time.Weekday
-	hour         int
-	minute       int
-	second       int
-	unit         unit
-	delayUnit    delayUnit
-	interval     int64
-	nextRunTime  time.Time
-}
-
-func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
-	c.hour = -1
-	c.minute = -1
-	c.second = -1
-	c.fiber = fiber
-	c.loc = time.Local
-	c.interval = intervel
-	c.delayUnit = delayUnit
-	c.identifyId = fmt.Sprintf("%p-%p", &c, &fiber)
-	return c
-}
-
-func NewJob(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
-	return new(Job).init(intervel, fiber, delayUnit)
-}
-
-type unit int
-type delayUnit int
 
 const (
 	delay unit = iota
@@ -82,6 +25,144 @@ const (
 	delaySeconds
 	delayMilliseconds
 )
+
+var dc = NewCronDelay()
+var ec = NewEveryCron()
+
+//var schedulerExecutor = NewSchedulerExecutor()
+//type jobSchedulerExecutor struct {
+//	fiber *GoroutineMulti
+//}
+
+type unit int
+type delayUnit int
+
+type cronDelay struct {
+	fiber Fiber
+}
+
+type cronEvery struct {
+	fiber Fiber
+}
+
+type Job struct {
+	fiber        Fiber
+	identifyId   string
+	loc          *time.Location
+	task         task
+	taskDisposer Disposable
+	weekday      time.Weekday
+	hour         int
+	minute       int
+	second       int
+	unit         unit
+	delayUnit    delayUnit
+	interval     int64
+	nextRunTime  time.Time
+}
+
+func Delay(delayInMs int64) *Job {
+	return dc.Delay(delayInMs)
+}
+
+func NewCronDelay() *cronDelay {
+	return new(cronDelay).init()
+}
+
+func newDelayJob(delayInMs int64) *Job {
+	c := NewJob(delayInMs, dc.fiber, delayMilliseconds)
+	c.unit = delay
+	return c
+}
+
+func (c *cronDelay) init() *cronDelay {
+	c.fiber = NewGoroutineMulti()
+	c.fiber.Start()
+	return c
+}
+
+func (c *cronDelay) Delay(delayInMs int64) *Job {
+	return newDelayJob(delayInMs)
+}
+
+func NewEveryCron() *cronEvery {
+	return new(cronEvery).init()
+}
+
+func (c *cronEvery) init() *cronEvery {
+	c.fiber = NewGoroutineMulti()
+	c.fiber.Start()
+	return c
+}
+
+func EverySunday() *Job {
+	return newEveryJob(time.Sunday)
+}
+
+func EveryMonday() *Job {
+	return newEveryJob(time.Monday)
+}
+
+func EveryTuesday() *Job {
+	return newEveryJob(time.Tuesday)
+}
+
+func EveryWednesday() *Job {
+	return newEveryJob(time.Wednesday)
+}
+
+func EveryThursday() *Job {
+	return newEveryJob(time.Thursday)
+}
+
+func EveryFriday() *Job {
+	return newEveryJob(time.Friday)
+}
+
+func EverySaturday() *Job {
+	return newEveryJob(time.Saturday)
+}
+
+func Every(interval int64) *Job {
+	return ec.Every(interval)
+}
+
+func (c *cronEvery) Every(interval int64) *Job {
+	return NewJob(interval, c.fiber, delayNone)
+}
+
+func newEveryJob(weekday time.Weekday) *Job {
+	c := NewJob(1, ec.fiber, delayNone)
+	c.unit = weeks
+	c.weekday = weekday
+	return c
+}
+
+//func NewSchedulerExecutor() *jobSchedulerExecutor {
+//	return new(jobSchedulerExecutor).init()
+//}
+//
+//func (c *jobSchedulerExecutor) init() *jobSchedulerExecutor {
+//	c.fiber = NewGoroutineMulti()
+//	c.fiber.Start()
+//	return c
+//}
+
+func NewJob(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
+    return new(Job).init(intervel, fiber, delayUnit)
+}
+
+func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
+	c.hour = -1
+	c.minute = -1
+	c.second = -1
+	c.fiber = fiber
+	c.loc = time.Local
+	c.interval = intervel
+	c.delayUnit = delayUnit
+	c.identifyId = fmt.Sprintf("%p-%p", &c, &fiber)
+	return c
+}
 
 func (c *Job) Dispose() {
 	c.taskDisposer.Dispose()
@@ -228,9 +309,10 @@ func (c *Job) canDo() {
 		case seconds:
 			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Second)
 		}
-	} else {
-		c.taskDisposer.Dispose()
 	}
+
+	c.taskDisposer.Dispose()
+
 	adjustTime := int64(c.nextRunTime.Sub(now) / time.Millisecond /*1000000*/)
 	if adjustTime < 1 {
 		adjustTime = 1

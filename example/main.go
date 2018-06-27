@@ -13,7 +13,7 @@ func main() {
 	log.Printf("Start\n")
 
 	RunChannelTest()
-	var runCronFiber = robin.NewGoroutineMulti()
+	var runCronFiber = robin.NewGoroutineSingle()
 	runCronFiber.Start()
 	_ = robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
 	//<-quitSemaphore
@@ -44,11 +44,11 @@ func main() {
 	robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
 
 	// Use a new cron executor
-	newCronDelay := robin.NewDelaySchedulerExecutor()
+	newCronDelay := robin.NewCronDelay()
 	newCronDelay.Delay(2000).Do(runCron, "newDelayCron Delay 2000 in Ms")
 
 	// Use a new cron executor
-	newCronScheduler := robin.NewSchedulerExecutor()
+	newCronScheduler := robin.NewEveryCron()
 	newCronScheduler.Every(1).Hours().Do(runCron, "newCronScheduler Hours")
 	newCronScheduler.Every(1).Minutes().Do(runCron, "newCronScheduler Minutes")
 	<-quitSemaphore
