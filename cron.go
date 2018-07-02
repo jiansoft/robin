@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-
-
 const (
 	delay unit = iota
 	weeks
@@ -14,6 +12,7 @@ const (
 	hours
 	minutes
 	seconds
+	milliseconds
 )
 
 const (
@@ -58,7 +57,7 @@ type Job struct {
 	unit         unit
 	delayUnit    delayUnit
 	interval     int64
-	nextRunTime  time.Time
+	nextTime     time.Time
 }
 
 func Delay(delayInMs int64) *Job {
@@ -149,7 +148,7 @@ func newEveryJob(weekday time.Weekday) *Job {
 //}
 
 func NewJob(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
-    return new(Job).init(intervel, fiber, delayUnit)
+	return new(Job).init(intervel, fiber, delayUnit)
 }
 
 func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
@@ -209,6 +208,15 @@ func (c *Job) Seconds() *Job {
 	return c
 }
 
+func (c *Job) MilliSeconds() *Job {
+	if c.delayUnit == delayNone {
+		c.unit = milliseconds
+	} else {
+		c.delayUnit = delayMilliseconds
+	}
+	return c
+}
+
 func (c *Job) At(hour int, minute int, second int) *Job {
 	c.hour = Abs(c.hour)
 	c.minute = Abs(c.minute)
@@ -228,37 +236,37 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	case delay:
 		switch c.delayUnit {
 		case delayWeeks:
-			c.nextRunTime = now.AddDate(0, 0, 7)
+			c.nextTime = now.AddDate(0, 0, 7)
 		case delayDays:
-			c.nextRunTime = now.AddDate(0, 0, int(c.interval))
+			c.nextTime = now.AddDate(0, 0, int(c.interval))
 		case delayHours:
-			c.nextRunTime = now.Add(time.Duration(c.interval) * time.Hour)
+			c.nextTime = now.Add(time.Duration(c.interval) * time.Hour)
 		case delayMinutes:
-			c.nextRunTime = now.Add(time.Duration(c.interval) * time.Minute)
+			c.nextTime = now.Add(time.Duration(c.interval) * time.Minute)
 		case delaySeconds:
-			c.nextRunTime = now.Add(time.Duration(c.interval) * time.Second)
+			c.nextTime = now.Add(time.Duration(c.interval) * time.Second)
 		case delayMilliseconds:
-			c.nextRunTime = now.Add(time.Duration(c.interval) * time.Millisecond)
+			c.nextTime = now.Add(time.Duration(c.interval) * time.Millisecond)
 		}
 	case weeks:
 		i := (7 - (int(now.Weekday() - c.weekday))) % 7
-		c.nextRunTime = time.Date(now.Year(), now.Month(), now.Day()+int(i), c.hour, c.minute, c.second, 0, c.loc)
-		if c.nextRunTime.Before(now) {
-			c.nextRunTime = c.nextRunTime.AddDate(0, 0, 7)
+		c.nextTime = time.Date(now.Year(), now.Month(), now.Day()+int(i), c.hour, c.minute, c.second, 0, c.loc)
+		if c.nextTime.Before(now) {
+			c.nextTime = c.nextTime.AddDate(0, 0, 7)
 		}
 	case days:
 		if c.second < 0 || c.minute < 0 || c.hour < 0 {
-			c.nextRunTime = now.AddDate(0, 0, 1)
-			c.second = c.nextRunTime.Second()
-			c.minute = c.nextRunTime.Minute()
-			c.hour = c.nextRunTime.Hour()
+			c.nextTime = now.AddDate(0, 0, 1)
+			c.second = c.nextTime.Second()
+			c.minute = c.nextTime.Minute()
+			c.hour = c.nextTime.Hour()
 		} else {
-			c.nextRunTime = time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc)
+			c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc)
 			if c.interval > 1 {
-				c.nextRunTime = c.nextRunTime.AddDate(0, 0, int(c.interval-1))
+				c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval-1))
 			}
-			if c.nextRunTime.Before(now) {
-				c.nextRunTime = c.nextRunTime.AddDate(0, 0, int(c.interval))
+			if c.nextTime.Before(now) {
+				c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval))
 			}
 		}
 	case hours:
@@ -268,54 +276,52 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 		if c.second < 0 {
 			c.second = now.Second()
 		}
-		c.nextRunTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), c.minute, c.second, 0, c.loc)
-		c.nextRunTime.Add(time.Duration(c.interval-1) * time.Hour)
-		if c.nextRunTime.Before(now) {
-			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Hour /*.Duration(60*60*1000000)*/)
+		c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), c.minute, c.second, 0, c.loc)
+		c.nextTime.Add(time.Duration(c.interval-1) * time.Hour)
+		if c.nextTime.Before(now) {
+			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Hour /*.Duration(60*60*1000000)*/)
 		}
 	case minutes:
 		if c.second < 0 {
 			c.second = now.Second()
 		}
-		c.nextRunTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), c.second, 0, c.loc)
-		c.nextRunTime.Add(time.Duration(c.interval-1) * time.Hour)
-		if c.nextRunTime.Before(now) {
-			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Minute /*.Duration(60*60*1000000)*/)
+		c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), c.second, 0, c.loc)
+		c.nextTime.Add(time.Duration(c.interval-1) * time.Hour)
+		if c.nextTime.Before(now) {
+			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Minute /*.Duration(60*60*1000000)*/)
 		}
 	case seconds:
-		c.nextRunTime = now.Add(time.Duration(c.interval) * time.Second)
+		c.nextTime = now.Add(time.Duration(c.interval) * time.Second)
+	case milliseconds:
+		c.nextTime = now.Add(time.Duration(c.interval) * time.Millisecond)
 	}
 
-	firstInMs := int64(c.nextRunTime.Sub(now) / time.Millisecond)
+	firstInMs := int64(c.nextTime.Sub(now) / time.Millisecond)
 	c.taskDisposer = c.fiber.Schedule(firstInMs, c.canDo)
 	return c
 }
 
 func (c *Job) canDo() {
-	now := time.Now()
-	if int64(now.Sub(c.nextRunTime)/time.Millisecond /*1000000*/) >= 0 {
+	if int64(time.Now().Sub(c.nextTime)/time.Millisecond /*1000000*/) >= 0 {
 		c.fiber.EnqueueWithTask(c.task)
 		switch c.unit {
 		case delay:
 			return
 		case weeks:
-			c.nextRunTime = c.nextRunTime.AddDate(0, 0, 7)
+			c.nextTime = c.nextTime.AddDate(0, 0, 7)
 		case days:
-			c.nextRunTime = c.nextRunTime.AddDate(0, 0, int(c.interval))
+			c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval))
 		case hours:
-			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Hour)
+			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Hour)
 		case minutes:
-			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Minute)
+			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Minute)
 		case seconds:
-			c.nextRunTime = c.nextRunTime.Add(time.Duration(c.interval) * time.Second)
+			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Second)
+		case milliseconds:
+			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Millisecond)
 		}
 	}
-
 	c.taskDisposer.Dispose()
-
-	adjustTime := int64(c.nextRunTime.Sub(now) / time.Millisecond /*1000000*/)
-	if adjustTime < 1 {
-		adjustTime = 1
-	}
+	adjustTime := int64(c.nextTime.Sub(time.Now()) / time.Millisecond /*1000000*/)
 	c.taskDisposer = c.fiber.Schedule(adjustTime, c.canDo)
 }
