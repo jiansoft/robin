@@ -60,6 +60,10 @@ type Job struct {
 	nextTime     time.Time
 }
 
+func RightNow() *Job {
+	return Delay(0)
+}
+
 func Delay(delayInMs int64) *Job {
 	return dc.Delay(delayInMs)
 }
@@ -75,7 +79,7 @@ func newDelayJob(delayInMs int64) *Job {
 }
 
 func (c *cronDelay) init() *cronDelay {
-	c.fiber = NewGoroutineMulti()
+	c.fiber = NewGoroutineSingle()
 	c.fiber.Start()
 	return c
 }
@@ -89,7 +93,7 @@ func NewEveryCron() *cronEvery {
 }
 
 func (c *cronEvery) init() *cronEvery {
-	c.fiber = NewGoroutineMulti()
+	c.fiber = NewGoroutineSingle()
 	c.fiber.Start()
 	return c
 }
@@ -230,8 +234,8 @@ func (c *Job) At(hour int, minute int, second int) *Job {
 }
 
 func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
-	c.task = newTask(fun, params...)
 	now := time.Now()
+	c.task = newTask(fun, params...)
 	switch c.unit {
 	case delay:
 		switch c.delayUnit {
