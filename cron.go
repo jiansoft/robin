@@ -79,7 +79,7 @@ func newDelayJob(delayInMs int64) *Job {
 }
 
 func (c *cronDelay) init() *cronDelay {
-	c.fiber = NewGoroutineSingle()
+	c.fiber = NewGoroutineMulti()
 	c.fiber.Start()
 	return c
 }
@@ -93,7 +93,7 @@ func NewEveryCron() *cronEvery {
 }
 
 func (c *cronEvery) init() *cronEvery {
-	c.fiber = NewGoroutineSingle()
+	c.fiber = NewGoroutineMulti()
 	c.fiber.Start()
 	return c
 }
@@ -234,8 +234,8 @@ func (c *Job) At(hour int, minute int, second int) *Job {
 }
 
 func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
-	now := time.Now()
 	c.task = newTask(fun, params...)
+	now := time.Now()
 	switch c.unit {
 	case delay:
 		switch c.delayUnit {
@@ -306,7 +306,8 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 }
 
 func (c *Job) canDo() {
-	if int64(time.Now().Sub(c.nextTime)/time.Millisecond /*1000000*/) >= 0 {
+	diff := int64(time.Now().Sub(c.nextTime)/time.Millisecond /*1000000*/)
+	if diff >= 0 {
 		c.fiber.EnqueueWithTask(c.task)
 		switch c.unit {
 		case delay:
@@ -326,6 +327,7 @@ func (c *Job) canDo() {
 		}
 	}
 	c.taskDisposer.Dispose()
+
 	adjustTime := int64(c.nextTime.Sub(time.Now()) / time.Millisecond /*1000000*/)
 	c.taskDisposer = c.fiber.Schedule(adjustTime, c.canDo)
 }

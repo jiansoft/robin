@@ -142,48 +142,48 @@ func (t *timerTask) schedule() {
 */
 
 func (t *timerTask) schedule() {
-	t.scheduler.Enqueue(t.runFirstSchedule)
+    if t.firstInMs <= 0 {
+        t.doFirstSchedule()
+    } else {
+        t.first = time.NewTimer(time.Duration(t.firstInMs) * time.Millisecond)
+        go func() {
+            select {
+            case <-t.first.C:
+                t.first.Stop()
+                if t.cancelled {
+                    break
+                }
+                t.doFirstSchedule()
+            }
+        }()
+    }
 }
 
-func (t *timerTask) runFirstSchedule() {
-	t.first = time.NewTimer(time.Duration(t.firstInMs) * time.Millisecond)
-	select {
-	case <-t.first.C:
-		if t.cancelled {
-			return
-		}
-
-		t.scheduler.Enqueue(t.execute)
-
-		if nil != t.first {
-			t.first.Stop()
-			t.first = nil
-		}
-
-		if t.intervalInMs <= 0 {
-			t.Dispose()
-			return
-		}
-
-		t.scheduler.Enqueue(t.runIntervalSchedule)
-	}
+func (t *timerTask) doFirstSchedule() {
+    t.executeOnFiber()
+    t.doIntervalSchedule()
 }
 
-func (t *timerTask) runIntervalSchedule() {
-	t.interval = time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
-	for !t.cancelled {
-		//select {
-		//case <-t.interval.C:
-		//	t.scheduler.Enqueue(t.execute)
-		//}
-		<-t.interval.C
-		t.scheduler.Enqueue(t.execute)
-	}
+func (t *timerTask) doIntervalSchedule() {
+    if t.intervalInMs <= 0 {
+        t.Dispose()
+        return
+    }
+    t.interval = time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
+    go func() {
+        for !t.cancelled {
+            select {
+            case <-t.interval.C:
+                t.executeOnFiber()
+            }
+        }
+    }()
 }
 
-func (t timerTask) execute() {
-	if t.cancelled {
-		return
-	}
-	t.task.run()
+func (t timerTask) executeOnFiber() {
+    if t.cancelled {
+        return
+    }
+    t.scheduler.EnqueueWithTask(t.task)
 }
+
