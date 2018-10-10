@@ -1,21 +1,37 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/jiansoft/robin"
 )
 
-var quitSemaphore chan bool
+//var quitSemaphore chan bool
 
 func main() {
-	log.Printf("Start\n")
-
-	RunChannelTest()
-	var runCronFiber = robin.NewGoroutineSingle()
-	runCronFiber.Start()
-	_ = robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
+    //RunChannelTest()
+    var runCronFiber = robin.NewGoroutineSingle()
+    runCronFiber.Start()
+    var runCronFiber2 = robin.NewGoroutineSingle()
+    runCronFiber2.Start()
+    robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
+    robin.Every(1000).MilliSeconds().Do(runCron, "Every(1000).MilliSeconds()")
+    //robin.Every(2).Seconds().Do(runCron, "Every(2).Seconds()")
+    //Every N seconds do once.
+    robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
+    runCronFiber.ScheduleOnInterval(10000,10000 ,func() {
+        log.Printf("runCronFiber 1\n")
+    })
+    runCronFiber2.ScheduleOnInterval(1000,1000 ,func() {
+        //log.Printf("runCronFiber 2\n")
+    })
+    runCronFiber2.ScheduleOnInterval(1000,1000 ,func() {
+        //log.Printf("runCronFiber 3\n")
+    })
+	//fmt.Scanln()
+    //<-quitSemaphore
 	//<-quitSemaphore
 	//Make a cron that will be executed everyday at 15:30:04(HH:mm:ss)
 	b := robin.Every(1).Days().At(15, 30, 4).Do(runCron, "Will be cancel")
@@ -51,7 +67,8 @@ func main() {
 	newCronScheduler := robin.NewEveryCron()
 	newCronScheduler.Every(1).Hours().Do(runCron, "newCronScheduler Hours")
 	newCronScheduler.Every(1).Minutes().Do(runCron, "newCronScheduler Minutes")
-	<-quitSemaphore
+	//<-quitSemaphore
+    fmt.Scanln()
 }
 
 func runCron(s string) {
