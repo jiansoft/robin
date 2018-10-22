@@ -25,6 +25,11 @@ const (
 	delayMilliseconds
 )
 
+const (
+	beforeExecuteTask timeingAfterOrBeforeExecuteTask = iota
+	afterExecuteTask
+)
+
 var dc = NewCronDelay()
 var ec = NewEveryCron()
 
@@ -35,6 +40,7 @@ var ec = NewEveryCron()
 
 type unit int
 type delayUnit int
+type timeingAfterOrBeforeExecuteTask int
 
 type cronDelay struct {
 	fiber Fiber
@@ -58,6 +64,7 @@ type Job struct {
 	delayUnit    delayUnit
 	interval     int64
 	nextTime     time.Time
+	timingMode   timeingAfterOrBeforeExecuteTask
 }
 
 func RightNow() *Job {
@@ -163,6 +170,7 @@ func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 	c.loc = time.Local
 	c.interval = intervel
 	c.delayUnit = delayUnit
+	c.timingMode = beforeExecuteTask
 	c.identifyId = fmt.Sprintf("%p-%p", &c, &fiber)
 	return c
 }
@@ -230,6 +238,22 @@ func (c *Job) At(hour int, minute int, second int) *Job {
 	}
 	c.minute = minute % 60
 	c.second = second % 60
+	return c
+}
+
+// Start timing after the task is executed
+func (c *Job) AfterExecuteTask() *Job {
+	if c.delayUnit == delayNone {
+		c.timingMode = afterExecuteTask
+	}
+	return c
+}
+
+//Start timing before the task is executed
+func (c *Job) BeforeExecuteTask() *Job {
+	if c.delayUnit == delayNone {
+		c.timingMode = beforeExecuteTask
+	}
 	return c
 }
 
@@ -305,10 +329,16 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	return c
 }
 
+// Is the task can be executed
 func (c *Job) canDo() {
-	diff := int64(time.Now().Sub(c.nextTime)/time.Millisecond /*1000000*/)
+	diff := int64(time.Now().Sub(c.nextTime) / time.Millisecond /*1000000*/)
 	if diff >= 0 {
-		c.fiber.EnqueueWithTask(c.task)
+		if c.unit != delay && c.timingMode == beforeExecuteTask {
+			c.fiber.EnqueueWithTask(c.task)
+		} else {
+			d := c.task.Run()
+			c.nextTime = c.nextTime.Add(d)
+		}
 		switch c.unit {
 		case delay:
 			return
@@ -327,7 +357,6 @@ func (c *Job) canDo() {
 		}
 	}
 	c.taskDisposer.Dispose()
-
 	adjustTime := int64(c.nextTime.Sub(time.Now()) / time.Millisecond /*1000000*/)
 	c.taskDisposer = c.fiber.Schedule(adjustTime, c.canDo)
 }

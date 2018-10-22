@@ -11,27 +11,29 @@ import (
 //var quitSemaphore chan bool
 
 func main() {
-    //RunChannelTest()
-    var runCronFiber = robin.NewGoroutineSingle()
-    runCronFiber.Start()
-    var runCronFiber2 = robin.NewGoroutineSingle()
-    runCronFiber2.Start()
-    robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
-    robin.Every(1000).MilliSeconds().Do(runCron, "Every(1000).MilliSeconds()")
-    //robin.Every(2).Seconds().Do(runCron, "Every(2).Seconds()")
-    //Every N seconds do once.
-    robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
-    runCronFiber.ScheduleOnInterval(10000,10000 ,func() {
-        log.Printf("runCronFiber 1\n")
-    })
-    runCronFiber2.ScheduleOnInterval(1000,1000 ,func() {
-        //log.Printf("runCronFiber 2\n")
-    })
-    runCronFiber2.ScheduleOnInterval(1000,1000 ,func() {
-        //log.Printf("runCronFiber 3\n")
-    })
+	//RunChannelTest()
+
+	var runCronFiber = robin.NewGoroutineSingle()
+	runCronFiber.Start()
+	var runCronFiber2 = robin.NewGoroutineSingle()
+	runCronFiber2.Start()
+	robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
+	//robin.Every(1000).MilliSeconds().Do(runCron, "Every(1000).MilliSeconds()")
+	//robin.Every(2).Seconds().Do(runCron, "Every(2).Seconds()")
+	//Every N seconds do once.
+	//robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
+	runCronFiber.ScheduleOnInterval(10000, 10000, func() {
+		//	log.Printf("runCronFiber 1\n")
+	})
+	runCronFiber2.ScheduleOnInterval(1000, 1000, func() {
+		//log.Printf("runCronFiber 2\n")
+	})
+	runCronFiber2.ScheduleOnInterval(1000, 1000, func() {
+		//log.Printf("runCronFiber 3\n")
+	})
+
 	//fmt.Scanln()
-    //<-quitSemaphore
+	//<-quitSemaphore
 	//<-quitSemaphore
 	//Make a cron that will be executed everyday at 15:30:04(HH:mm:ss)
 	b := robin.Every(1).Days().At(15, 30, 4).Do(runCron, "Will be cancel")
@@ -44,6 +46,9 @@ func main() {
 	})
 	minute := 4
 	second := 10
+	robin.Every(int64(second)).Seconds().AfterExecuteTask().Do(runSleepCron,"AfterExecuteTask", second, minute)
+	robin.Every(int64(second)).Seconds().Do(runSleepCron,"BeforeExecuteTask", second, 0)
+
 	//Every friday do once at 11:50:00(HH:mm:ss).
 	robin.EveryFriday().At(14, minute, second).Do(runCron, "Friday")
 
@@ -57,7 +62,7 @@ func main() {
 	robin.Every(1).Minutes().At(0, 0, second).Do(runCron, "Every 1 Minutes")
 
 	//Every N seconds do once.
-	robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
+	robin.Every(100).Seconds().Do(runCron, "Every 10 Seconds")
 
 	// Use a new cron executor
 	newCronDelay := robin.NewCronDelay()
@@ -68,12 +73,18 @@ func main() {
 	newCronScheduler.Every(1).Hours().Do(runCron, "newCronScheduler Hours")
 	newCronScheduler.Every(1).Minutes().Do(runCron, "newCronScheduler Minutes")
 	//<-quitSemaphore
-    fmt.Scanln()
+	fmt.Scanln()
+}
+
+func runSleepCron(s string, second int, sleep int) {
+	log.Printf("%s every %d second and sleep %d  now %v\n",s, second, sleep, time.Now())
+	time.Sleep(time.Duration(sleep) * time.Second)
 }
 
 func runCron(s string) {
 	log.Printf("I am %s CronTest %v\n", s, time.Now())
 }
+
 func runCron1() {
 	log.Printf("康中文測試 %s", time.Now())
 }

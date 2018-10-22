@@ -44,6 +44,13 @@ func (t task) run() {
 	//func(in []reflect.Value) { _ = t.funcCache.Call(in) }(t.paramsCache)
 }
 
+func (t task) Run() time.Duration {
+	s := time.Now()
+	t.run()
+	e := time.Now()
+	return e.Sub(s)
+}
+
 func newPendingTask(task task) *pendingTask {
 	return new(pendingTask).init(task)
 }
@@ -142,48 +149,47 @@ func (t *timerTask) schedule() {
 */
 
 func (t *timerTask) schedule() {
-    if t.firstInMs <= 0 {
-        t.doFirstSchedule()
-    } else {
-        t.first = time.NewTimer(time.Duration(t.firstInMs) * time.Millisecond)
-        go func() {
-            select {
-            case <-t.first.C:
-                t.first.Stop()
-                if t.cancelled {
-                    break
-                }
-                t.doFirstSchedule()
-            }
-        }()
-    }
+	if t.firstInMs <= 0 {
+		t.doFirstSchedule()
+	} else {
+		t.first = time.NewTimer(time.Duration(t.firstInMs) * time.Millisecond)
+		go func() {
+			select {
+			case <-t.first.C:
+				t.first.Stop()
+				if t.cancelled {
+					break
+				}
+				t.doFirstSchedule()
+			}
+		}()
+	}
 }
 
 func (t *timerTask) doFirstSchedule() {
-    t.executeOnFiber()
-    t.doIntervalSchedule()
+	t.executeOnFiber()
+	t.doIntervalSchedule()
 }
 
 func (t *timerTask) doIntervalSchedule() {
-    if t.intervalInMs <= 0 {
-        t.Dispose()
-        return
-    }
-    t.interval = time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
-    go func() {
-        for !t.cancelled {
-            select {
-            case <-t.interval.C:
-                t.executeOnFiber()
-            }
-        }
-    }()
+	if t.intervalInMs <= 0 {
+		t.Dispose()
+		return
+	}
+	t.interval = time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
+	go func() {
+		for !t.cancelled {
+			select {
+			case <-t.interval.C:
+				t.executeOnFiber()
+			}
+		}
+	}()
 }
 
 func (t timerTask) executeOnFiber() {
-    if t.cancelled {
-        return
-    }
-    t.scheduler.EnqueueWithTask(t.task)
+	if t.cancelled {
+		return
+	}
+	t.scheduler.EnqueueWithTask(t.task)
 }
-
