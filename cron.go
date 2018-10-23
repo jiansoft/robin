@@ -26,7 +26,7 @@ const (
 )
 
 const (
-	beforeExecuteTask timeingAfterOrBeforeExecuteTask = iota
+	beforeExecuteTask timingAfterOrBeforeExecuteTask = iota
 	afterExecuteTask
 )
 
@@ -40,7 +40,7 @@ var ec = NewEveryCron()
 
 type unit int
 type delayUnit int
-type timeingAfterOrBeforeExecuteTask int
+type timingAfterOrBeforeExecuteTask int
 
 type cronDelay struct {
 	fiber Fiber
@@ -64,7 +64,7 @@ type Job struct {
 	delayUnit    delayUnit
 	interval     int64
 	nextTime     time.Time
-	timingMode   timeingAfterOrBeforeExecuteTask
+	timingMode   timingAfterOrBeforeExecuteTask
 }
 
 func RightNow() *Job {
