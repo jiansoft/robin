@@ -333,7 +333,7 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 func (c *Job) canDo() {
 	diff := int64(time.Now().Sub(c.nextTime) / time.Millisecond /*1000000*/)
 	if diff >= 0 {
-		if c.unit != delay && c.timingMode == beforeExecuteTask {
+		if c.unit == delay || c.timingMode == beforeExecuteTask {
 			c.fiber.EnqueueWithTask(c.task)
 		} else {
 			d := c.task.Run()
