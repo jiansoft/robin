@@ -46,8 +46,8 @@ func main() {
 	})
 	minute := 4
 	second := 10
-	robin.Every(int64(second)).Seconds().AfterExecuteTask().Do(runSleepCron,"AfterExecuteTask", second, minute)
-	robin.Every(int64(second)).Seconds().Do(runSleepCron,"BeforeExecuteTask", second, 0)
+	robin.Every(int64(second)).Seconds().AfterExecuteTask().Do(runSleepCron, "AfterExecuteTask", second, minute)
+	robin.Every(int64(second)).Seconds().Do(runSleepCron, "BeforeExecuteTask", second, 0)
 
 	//Every friday do once at 11:50:00(HH:mm:ss).
 	robin.EveryFriday().At(14, minute, second).Do(runCron, "Friday")
@@ -77,7 +77,7 @@ func main() {
 }
 
 func runSleepCron(s string, second int, sleep int) {
-	log.Printf("%s every %d second and sleep %d  now %v\n",s, second, sleep, time.Now())
+	log.Printf("%s every %d second and sleep %d  now %v\n", s, second, sleep, time.Now())
 	time.Sleep(time.Duration(sleep) * time.Second)
 }
 
