@@ -1,5 +1,6 @@
 # robin
-
+-------
+[![Go Report Card](https://goreportcard.com/badge/github.com/jiansoft/robin)](https://goreportcard.com/report/github.com/jiansoft/robin)
 
 ### Features
 
