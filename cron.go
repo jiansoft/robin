@@ -67,14 +67,17 @@ type Job struct {
 	timingMode   timingAfterOrBeforeExecuteTask
 }
 
+// The job executes immediately.
 func RightNow() *Job {
 	return Delay(0)
 }
 
+// The job executes will delay N Milliseconds.
 func Delay(delayInMs int64) *Job {
 	return dc.Delay(delayInMs)
 }
 
+// NewCronDelay Constructors
 func NewCronDelay() *cronDelay {
 	return new(cronDelay).init()
 }
@@ -91,10 +94,12 @@ func (c *cronDelay) init() *cronDelay {
 	return c
 }
 
+// The job executes will delay N Milliseconds.
 func (c *cronDelay) Delay(delayInMs int64) *Job {
 	return newDelayJob(delayInMs)
 }
 
+// EveryCron Constructors
 func NewEveryCron() *cronEvery {
 	return new(cronEvery).init()
 }
@@ -105,38 +110,47 @@ func (c *cronEvery) init() *cronEvery {
 	return c
 }
 
+// The job will execute every Sunday .
 func EverySunday() *Job {
 	return newEveryJob(time.Sunday)
 }
 
+// The job will execute every Monday
 func EveryMonday() *Job {
 	return newEveryJob(time.Monday)
 }
 
+// The job will execute every Tuesday
 func EveryTuesday() *Job {
 	return newEveryJob(time.Tuesday)
 }
 
+// The job will execute every Wednesday
 func EveryWednesday() *Job {
 	return newEveryJob(time.Wednesday)
 }
 
+// The job will execute every Thursday
 func EveryThursday() *Job {
 	return newEveryJob(time.Thursday)
 }
 
+// The job will execute every Friday
 func EveryFriday() *Job {
 	return newEveryJob(time.Friday)
 }
 
+// The job will execute every Saturday
 func EverySaturday() *Job {
 	return newEveryJob(time.Saturday)
 }
 
+// The job will execute every N unit(ex hour、minute、second、milliseconds etc..).
 func Every(interval int64) *Job {
 	return ec.Every(interval)
 }
 
+// The job will execute every N unit(ex hour、minute、second、milliseconds etc..).
 func (c *cronEvery) Every(interval int64) *Job {
 	return NewJob(interval, c.fiber, delayNone)
 }
@@ -158,6 +172,7 @@ func newEveryJob(weekday time.Weekday) *Job {
 //	return c
 //}
 
+// Job Constructors
 func NewJob(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 	return new(Job).init(intervel, fiber, delayUnit)
 }
@@ -175,15 +190,18 @@ func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 	return c
 }
 
+// Job's Dispose
 func (c *Job) Dispose() {
 	c.taskDisposer.Dispose()
 	c.fiber = nil
 }
 
+// Job's Identify
 func (c Job) Identify() string {
 	return c.identifyId
 }
 
+// Time unit of execution
 func (c *Job) Days() *Job {
 	if c.delayUnit == delayNone {
 		c.unit = days
@@ -193,6 +211,7 @@ func (c *Job) Days() *Job {
 	return c
 }
 
+// Time unit of execution
 func (c *Job) Hours() *Job {
 	if c.delayUnit == delayNone {
 		c.unit = hours
@@ -202,6 +221,7 @@ func (c *Job) Hours() *Job {
 	return c
 }
 
+// Time unit of execution
 func (c *Job) Minutes() *Job {
 	if c.delayUnit == delayNone {
 		c.unit = minutes
@@ -211,6 +231,7 @@ func (c *Job) Minutes() *Job {
 	return c
 }
 
+// Time unit of execution
 func (c *Job) Seconds() *Job {
 	if c.delayUnit == delayNone {
 		c.unit = seconds
@@ -220,6 +241,7 @@ func (c *Job) Seconds() *Job {
 	return c
 }
 
+// Time unit of execution
 func (c *Job) MilliSeconds() *Job {
 	if c.delayUnit == delayNone {
 		c.unit = milliseconds
@@ -229,6 +251,7 @@ func (c *Job) MilliSeconds() *Job {
 	return c
 }
 
+// The time specified at execution time
 func (c *Job) At(hour int, minute int, second int) *Job {
 	c.hour = Abs(c.hour)
 	c.minute = Abs(c.minute)
@@ -249,7 +272,7 @@ func (c *Job) AfterExecuteTask() *Job {
 	return c
 }
 
-//Start timing before the task is executed
+// Start timing before the task is executed
 func (c *Job) BeforeExecuteTask() *Job {
 	if c.delayUnit == delayNone {
 		c.timingMode = beforeExecuteTask
@@ -257,25 +280,30 @@ func (c *Job) BeforeExecuteTask() *Job {
 	return c
 }
 
+func (c *Job) setDelayNextTime(now time.Time) {
+	switch c.delayUnit {
+	case delayWeeks:
+		c.nextTime = now.AddDate(0, 0, 7)
+	case delayDays:
+		c.nextTime = now.AddDate(0, 0, int(c.interval))
+	case delayHours:
+		c.nextTime = now.Add(time.Duration(c.interval) * time.Hour)
+	case delayMinutes:
+		c.nextTime = now.Add(time.Duration(c.interval) * time.Minute)
+	case delaySeconds:
+		c.nextTime = now.Add(time.Duration(c.interval) * time.Second)
+	case delayMilliseconds:
+		c.nextTime = now.Add(time.Duration(c.interval) * time.Millisecond)
+	}
+}
+
+// What job needs to execute?
 func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	c.task = newTask(fun, params...)
 	now := time.Now()
 	switch c.unit {
 	case delay:
-		switch c.delayUnit {
-		case delayWeeks:
-			c.nextTime = now.AddDate(0, 0, 7)
-		case delayDays:
-			c.nextTime = now.AddDate(0, 0, int(c.interval))
-		case delayHours:
-			c.nextTime = now.Add(time.Duration(c.interval) * time.Hour)
-		case delayMinutes:
-			c.nextTime = now.Add(time.Duration(c.interval) * time.Minute)
-		case delaySeconds:
-			c.nextTime = now.Add(time.Duration(c.interval) * time.Second)
-		case delayMilliseconds:
-			c.nextTime = now.Add(time.Duration(c.interval) * time.Millisecond)
-		}
+		c.setDelayNextTime(now)
 	case weeks:
 		i := (7 - (int(now.Weekday() - c.weekday))) % 7
 		c.nextTime = time.Date(now.Year(), now.Month(), now.Day()+int(i), c.hour, c.minute, c.second, 0, c.loc)
@@ -329,7 +357,7 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	return c
 }
 
-// Is the task can be executed
+// Is the job can be executed
 func (c *Job) canDo() {
 	diff := int64(time.Now().Sub(c.nextTime) / time.Millisecond /*1000000*/)
 	if diff >= 0 {

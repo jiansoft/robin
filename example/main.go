@@ -17,6 +17,9 @@ func main() {
 	runCronFiber.Start()
 	var runCronFiber2 = robin.NewGoroutineSingle()
 	runCronFiber2.Start()
+	for i := 1; i < 100; i++ {
+		robin.Delay(int64(i*200)).Do(runCron, "For delay ")
+	}
 	robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
 	//robin.Every(1000).MilliSeconds().Do(runCron, "Every(1000).MilliSeconds()")
 	//robin.Every(2).Seconds().Do(runCron, "Every(2).Seconds()")
