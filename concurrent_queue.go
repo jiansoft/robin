@@ -17,7 +17,7 @@ func (c *ConcurrentQueue) init() *ConcurrentQueue {
 	return c
 }
 
-// ConcurrentQueue Constructors
+// NewConcurrentQueue ConcurrentQueue Constructors
 func NewConcurrentQueue() *ConcurrentQueue {
 	return new(ConcurrentQueue).init()
 }

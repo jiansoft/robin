@@ -280,7 +280,8 @@ func (c *Job) BeforeExecuteTask() *Job {
 	return c
 }
 
-func (c *Job) setDelayNextTime(now time.Time) {
+// firstTimeSetDelayNextTime
+func (c *Job) firstTimeSetDelayNextTime(now time.Time) {
 	switch c.delayUnit {
 	case delayWeeks:
 		c.nextTime = now.AddDate(0, 0, 7)
@@ -297,55 +298,75 @@ func (c *Job) setDelayNextTime(now time.Time) {
 	}
 }
 
+// firstTimeSetWeeksNextTime
+func (c *Job) firstTimeSetWeeksNextTime(now time.Time) {
+	i := (7 - (int(now.Weekday() - c.weekday))) % 7
+	c.nextTime = time.Date(now.Year(), now.Month(), now.Day()+int(i), c.hour, c.minute, c.second, 0, c.loc)
+	if c.nextTime.Before(now) {
+		c.nextTime = c.nextTime.AddDate(0, 0, 7)
+	}
+}
+
+// firstTimeSetDaysNextTime
+func (c *Job) firstTimeSetDaysNextTime(now time.Time) {
+	if c.second < 0 || c.minute < 0 || c.hour < 0 {
+		c.nextTime = now.AddDate(0, 0, 1)
+		c.second = c.nextTime.Second()
+		c.minute = c.nextTime.Minute()
+		c.hour = c.nextTime.Hour()
+	} else {
+		c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc)
+		if c.interval > 1 {
+			c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval-1))
+		}
+		if c.nextTime.Before(now) {
+			c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval))
+		}
+	}
+}
+
+// firstTimeSetHoursNextTime
+func (c *Job) firstTimeSetHoursNextTime(now time.Time) {
+	if c.minute < 0 {
+		c.minute = now.Minute()
+	}
+	if c.second < 0 {
+		c.second = now.Second()
+	}
+	c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), c.minute, c.second, 0, c.loc)
+	c.nextTime.Add(time.Duration(c.interval-1) * time.Hour)
+	if c.nextTime.Before(now) {
+		c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Hour /*.Duration(60*60*1000000)*/)
+	}
+}
+
+// firstTimeSetMinutesNextTime
+func (c *Job) firstTimeSetMinutesNextTime(now time.Time) {
+	if c.second < 0 {
+		c.second = now.Second()
+	}
+	c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), c.second, 0, c.loc)
+	c.nextTime.Add(time.Duration(c.interval-1) * time.Hour)
+	if c.nextTime.Before(now) {
+		c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Minute /*.Duration(60*60*1000000)*/)
+	}
+}
+
 // What job needs to execute?
 func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	c.task = newTask(fun, params...)
 	now := time.Now()
 	switch c.unit {
 	case delay:
-		c.setDelayNextTime(now)
+		c.firstTimeSetDelayNextTime(now)
 	case weeks:
-		i := (7 - (int(now.Weekday() - c.weekday))) % 7
-		c.nextTime = time.Date(now.Year(), now.Month(), now.Day()+int(i), c.hour, c.minute, c.second, 0, c.loc)
-		if c.nextTime.Before(now) {
-			c.nextTime = c.nextTime.AddDate(0, 0, 7)
-		}
+		c.firstTimeSetWeeksNextTime(now)
 	case days:
-		if c.second < 0 || c.minute < 0 || c.hour < 0 {
-			c.nextTime = now.AddDate(0, 0, 1)
-			c.second = c.nextTime.Second()
-			c.minute = c.nextTime.Minute()
-			c.hour = c.nextTime.Hour()
-		} else {
-			c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc)
-			if c.interval > 1 {
-				c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval-1))
-			}
-			if c.nextTime.Before(now) {
-				c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval))
-			}
-		}
+		c.firstTimeSetDaysNextTime(now)
 	case hours:
-		if c.minute < 0 {
-			c.minute = now.Minute()
-		}
-		if c.second < 0 {
-			c.second = now.Second()
-		}
-		c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), c.minute, c.second, 0, c.loc)
-		c.nextTime.Add(time.Duration(c.interval-1) * time.Hour)
-		if c.nextTime.Before(now) {
-			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Hour /*.Duration(60*60*1000000)*/)
-		}
+		c.firstTimeSetHoursNextTime(now)
 	case minutes:
-		if c.second < 0 {
-			c.second = now.Second()
-		}
-		c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), c.second, 0, c.loc)
-		c.nextTime.Add(time.Duration(c.interval-1) * time.Hour)
-		if c.nextTime.Before(now) {
-			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Minute /*.Duration(60*60*1000000)*/)
-		}
+		c.firstTimeSetMinutesNextTime(now)
 	case seconds:
 		c.nextTime = now.Add(time.Duration(c.interval) * time.Second)
 	case milliseconds:
