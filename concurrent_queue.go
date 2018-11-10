@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// A "thread" safe string to anything container.
+// ConcurrentQueue A "thread" safe string to anything container.
 type ConcurrentQueue struct {
 	lock      *sync.Mutex
 	container *list.List
@@ -22,14 +22,14 @@ func NewConcurrentQueue() *ConcurrentQueue {
 	return new(ConcurrentQueue).init()
 }
 
-// Adds an object to the end of the ConcurrentQueue.
+// Enqueue Adds an object to the end of the ConcurrentQueue.
 func (c *ConcurrentQueue) Enqueue(item interface{}) {
 	c.lock.Lock()
 	c.container.PushBack(item)
 	c.lock.Unlock()
 }
 
-// Tries to return an interface{} from the beginning of the ConcurrentQueue without removing it.
+// TryPeek Tries to return an interface{} from the beginning of the ConcurrentQueue without removing it.
 func (c *ConcurrentQueue) TryPeek() (interface{}, bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -40,7 +40,7 @@ func (c *ConcurrentQueue) TryPeek() (interface{}, bool) {
 	return lastItem.Value, true
 }
 
-// Tries to remove and return the interface{} at the beginning of the concurrent queue.
+// TryDequeue Tries to remove and return the interface{} at the beginning of the concurrent queue.
 func (c *ConcurrentQueue) TryDequeue() (interface{}, bool) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -52,7 +52,7 @@ func (c *ConcurrentQueue) TryDequeue() (interface{}, bool) {
 	return item, true
 }
 
-// Gets the number of elements contained in the ConcurrentQueue.
+// Count Gets the number of elements contained in the ConcurrentQueue.
 func (c ConcurrentQueue) Count() int {
 	c.lock.Lock()
 	defer c.lock.Unlock()
