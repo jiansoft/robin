@@ -92,8 +92,14 @@ func (t *timerTask) init(scheduler SchedulerRegistry, task task, firstInMs int64
 
 func (t *timerTask) Dispose() {
 	t.cancelled = true
-	t.first.Stop()
-	t.interval.Stop()
+
+	if nil != t.first {
+		t.first.Stop()
+	}
+
+	if nil != t.interval {
+		t.interval.Stop()
+	}
 
 	if nil != t.scheduler {
 		t.scheduler.Remove(t)
