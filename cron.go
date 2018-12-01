@@ -405,6 +405,7 @@ func (c *Job) canDo() {
 			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Millisecond)
 		}
 	}
+
 	c.taskDisposer.Dispose()
 	adjustTime := int64(c.nextTime.Sub(time.Now()) / time.Millisecond /*1000000*/)
 	c.taskDisposer = c.fiber.Schedule(adjustTime, c.canDo)

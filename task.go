@@ -92,15 +92,8 @@ func (t *timerTask) init(scheduler SchedulerRegistry, task task, firstInMs int64
 
 func (t *timerTask) Dispose() {
 	t.cancelled = true
-	if nil != t.first {
-		t.first.Stop()
-		t.first = nil
-	}
-
-	if nil != t.interval {
-		t.interval.Stop()
-		t.interval = nil
-	}
+	t.first.Stop()
+	t.interval.Stop()
 
 	if nil != t.scheduler {
 		t.scheduler.Remove(t)
@@ -112,58 +105,23 @@ func (t timerTask) Identify() string {
 	return t.identifyId
 }
 
-/*
-func (t *timerTask) schedule() {
-    timeInMs := t.firstInMs
-    if timeInMs <= 0 {
-        t.scheduler.EnqueueWithTask(t.task)
-        if t.intervalInMs <= 0 {
-            t.Dispose()
-            return
-        }
-        timeInMs = t.intervalInMs
-        t.firstRan = true
-    }
-    t.interval = time.NewTicker(time.Duration(timeInMs) * time.Millisecond)
-    go func() {
-        for !t.cancelled {
-            select {
-            case <-t.interval.C:
-                if t.cancelled {
-                    break
-                }
-                t.scheduler.EnqueueWithTask(t.task)
-                if t.intervalInMs <= 0 {
-                    t.Dispose()
-                    break
-                }
-                if t.firstRan {
-                    continue
-                }
-                t.interval = time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
-                t.firstRan = true
-            }
-        }
-    }()
-}
-*/
-
 func (t *timerTask) schedule() {
 	if t.firstInMs <= 0 {
 		t.doFirstSchedule()
-	} else {
-		t.first = time.NewTimer(time.Duration(t.firstInMs) * time.Millisecond)
-		go func() {
-			select {
-			case <-t.first.C:
-				t.first.Stop()
-				if t.cancelled {
-					break
-				}
-				t.doFirstSchedule()
-			}
-		}()
+		return
 	}
+
+	t.first = time.NewTimer(time.Duration(t.firstInMs) * time.Millisecond)
+	go func() {
+		select {
+		case <-t.first.C:
+			t.first.Stop()
+			if t.cancelled {
+				break
+			}
+			t.doFirstSchedule()
+		}
+	}()
 }
 
 func (t *timerTask) doFirstSchedule() {
@@ -179,10 +137,12 @@ func (t *timerTask) doIntervalSchedule() {
 	t.interval = time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
 	go func() {
 		for !t.cancelled {
-			select {
+			/*select {
 			case <-t.interval.C:
 				t.executeOnFiber()
-			}
+			}*/
+			<-t.interval.C
+			t.executeOnFiber()
 		}
 	}()
 }

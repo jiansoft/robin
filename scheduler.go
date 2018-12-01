@@ -56,7 +56,12 @@ func (s *Scheduler) Schedule(firstInMs int64, taskFun interface{}, params ...int
 
 func (s *Scheduler) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	pending := newTimerTask(s, newTask(taskFun, params...), firstInMs, regularInMs)
-	s.addPending(pending)
+	//s.addPending(pending)
+	if s.isDispose {
+		return
+	}
+	pending.schedule()
+	s.disposabler.Add(pending)
 	return pending
 }
 
@@ -89,10 +94,3 @@ func (s *Scheduler) Dispose() {
 	s.disposabler.Dispose()
 }
 
-func (s *Scheduler) addPending(pending *timerTask) {
-	if s.isDispose {
-		return
-	}
-	s.disposabler.Add(pending)
-	pending.schedule()
-}
