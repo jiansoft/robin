@@ -26,7 +26,7 @@ func main() {
 	//Every N seconds do once.
 	//robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
 	runCronFiber.ScheduleOnInterval(10000, 10000, func() {
-		//	log.Printf("runCronFiber 1\n")
+			log.Printf("runCronFiber 1\n")
 	})
 	runCronFiber2.ScheduleOnInterval(1000, 1000, func() {
 		//log.Printf("runCronFiber 2\n")

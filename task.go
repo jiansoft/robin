@@ -93,14 +93,6 @@ func (t *timerTask) init(scheduler SchedulerRegistry, task task, firstInMs int64
 func (t *timerTask) Dispose() {
 	t.cancelled = true
 
-	if nil != t.first {
-		t.first.Stop()
-	}
-
-	if nil != t.interval {
-		t.interval.Stop()
-	}
-
 	if nil != t.scheduler {
 		t.scheduler.Remove(t)
 		t.scheduler = nil
@@ -121,12 +113,12 @@ func (t *timerTask) schedule() {
 	go func() {
 		select {
 		case <-t.first.C:
-			t.first.Stop()
 			if t.cancelled {
 				break
 			}
 			t.doFirstSchedule()
 		}
+		t.first = nil
 	}()
 }
 
@@ -150,6 +142,8 @@ func (t *timerTask) doIntervalSchedule() {
 			<-t.interval.C
 			t.executeOnFiber()
 		}
+		t.interval.Stop()
+		t.interval = nil
 	}()
 }
 
