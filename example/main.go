@@ -17,16 +17,19 @@ func main() {
 	runCronFiber.Start()
 	var runCronFiber2 = robin.NewGoroutineSingle()
 	runCronFiber2.Start()
-	for i := 1; i < 100; i++ {
-		robin.Delay(int64(i*200)).Do(runCron, "For delay ")
-	}
+
+	runCronFiber.Schedule(0, func() {
+		log.Printf("just test\n")
+		//	a.Dispose()
+	})
+
 	robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
 	//robin.Every(1000).MilliSeconds().Do(runCron, "Every(1000).MilliSeconds()")
 	//robin.Every(2).Seconds().Do(runCron, "Every(2).Seconds()")
 	//Every N seconds do once.
 	//robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
 	runCronFiber.ScheduleOnInterval(10000, 10000, func() {
-			log.Printf("runCronFiber 1\n")
+		log.Printf("runCronFiber 1\n")
 	})
 	runCronFiber2.ScheduleOnInterval(1000, 1000, func() {
 		//log.Printf("runCronFiber 2\n")

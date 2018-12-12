@@ -12,23 +12,6 @@ type task struct {
 	paramsCache []reflect.Value
 }
 
-type pendingTask struct {
-	identifyId string
-	task       task
-	cancelled  bool
-}
-
-type timerTask struct {
-	identifyId   string
-	scheduler    SchedulerRegistry
-	firstInMs    int64
-	intervalInMs int64
-	first        *time.Timer
-	interval     *time.Ticker
-	task         task
-	cancelled    bool
-}
-
 func newTask(t interface{}, p ...interface{}) task {
 	task := task{doFunc: t}
 	task.funcCache = reflect.ValueOf(t)
@@ -51,30 +34,21 @@ func (t task) Run() time.Duration {
 	return e.Sub(s)
 }
 
-func newPendingTask(task task) *pendingTask {
-	return new(pendingTask).init(task)
-}
+/*func (t *task) Dispose() {
+	t.doFunc = nil
+	t.paramsCache = t.paramsCache[:0]
+	t.paramsCache = nil
+}*/
 
-func (p *pendingTask) init(task task) *pendingTask {
-	p.task = task
-	p.cancelled = false
-	p.identifyId = fmt.Sprintf("%p-%p", &p, &task)
-	return p
-}
-
-func (p *pendingTask) Dispose() {
-	p.cancelled = true
-}
-
-func (p *pendingTask) Identify() string {
-	return p.identifyId
-}
-
-func (p pendingTask) execute() {
-	if p.cancelled {
-		return
-	}
-	p.task.run()
+type timerTask struct {
+	identifyId   string
+	scheduler    SchedulerRegistry
+	firstInMs    int64
+	intervalInMs int64
+	first        *time.Timer
+	interval     *time.Ticker
+	task         task
+	cancelled    bool
 }
 
 func newTimerTask(fiber SchedulerRegistry, task task, firstInMs int64, intervalInMs int64) *timerTask {
