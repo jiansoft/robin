@@ -54,7 +54,7 @@ type Job struct {
 	fiber        Fiber
 	identifyId   string
 	loc          *time.Location
-	task         task
+	task         Task
 	taskDisposer Disposable
 	weekday      time.Weekday
 	hour         int
@@ -110,47 +110,47 @@ func (c *cronEvery) init() *cronEvery {
 	return c
 }
 
-// The job will execute every Sunday .
+// EverySunday The job will execute every Sunday .
 func EverySunday() *Job {
 	return newEveryJob(time.Sunday)
 }
 
-// The job will execute every Monday
+// EveryMonday The job will execute every Monday
 func EveryMonday() *Job {
 	return newEveryJob(time.Monday)
 }
 
-// The job will execute every Tuesday
+// EveryTuesday The job will execute every Tuesday
 func EveryTuesday() *Job {
 	return newEveryJob(time.Tuesday)
 }
 
-// The job will execute every Wednesday
+// EveryWednesday The job will execute every Wednesday
 func EveryWednesday() *Job {
 	return newEveryJob(time.Wednesday)
 }
 
-// The job will execute every Thursday
+// EveryThursday The job will execute every Thursday
 func EveryThursday() *Job {
 	return newEveryJob(time.Thursday)
 }
 
-// The job will execute every Friday
+// EveryFriday The job will execute every Friday
 func EveryFriday() *Job {
 	return newEveryJob(time.Friday)
 }
 
-// The job will execute every Saturday
+// EverySaturday The job will execute every Saturday
 func EverySaturday() *Job {
 	return newEveryJob(time.Saturday)
 }
 
-// The job will execute every N unit(ex hour、minute、second、milliseconds etc..).
+// Every The job will execute every N unit(ex hour、minute、second、milliseconds etc..).
 func Every(interval int64) *Job {
 	return ec.Every(interval)
 }
 
-// The job will execute every N unit(ex hour、minute、second、milliseconds etc..).
+// Every The job will execute every N unit(ex hour、minute、second、milliseconds etc..).
 func (c *cronEvery) Every(interval int64) *Job {
 	return NewJob(interval, c.fiber, delayNone)
 }
@@ -172,7 +172,7 @@ func newEveryJob(weekday time.Weekday) *Job {
 //	return c
 //}
 
-// Job Constructors
+// return Job Constructors
 func NewJob(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 	return new(Job).init(intervel, fiber, delayUnit)
 }
@@ -190,18 +190,18 @@ func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 	return c
 }
 
-// Job's Dispose
+// Dispose Job's Dispose
 func (c *Job) Dispose() {
 	c.taskDisposer.Dispose()
 	c.fiber = nil
 }
 
-// Job's Identify
+// Identify Job's Identify
 func (c Job) Identify() string {
 	return c.identifyId
 }
 
-// Time unit of execution
+// Days sTime unit of execution
 func (c *Job) Days() *Job {
 	if c.delayUnit == delayNone {
 		c.unit = days
@@ -211,7 +211,7 @@ func (c *Job) Days() *Job {
 	return c
 }
 
-// Time unit of execution
+// Hours Time unit of execution
 func (c *Job) Hours() *Job {
 	if c.delayUnit == delayNone {
 		c.unit = hours
@@ -221,7 +221,7 @@ func (c *Job) Hours() *Job {
 	return c
 }
 
-// Time unit of execution
+// Minutes Time unit of execution
 func (c *Job) Minutes() *Job {
 	if c.delayUnit == delayNone {
 		c.unit = minutes
@@ -231,7 +231,7 @@ func (c *Job) Minutes() *Job {
 	return c
 }
 
-// Time unit of execution
+// Seconds Time unit of execution
 func (c *Job) Seconds() *Job {
 	if c.delayUnit == delayNone {
 		c.unit = seconds
@@ -241,7 +241,7 @@ func (c *Job) Seconds() *Job {
 	return c
 }
 
-// Time unit of execution
+// MilliSeconds Time unit of execution
 func (c *Job) MilliSeconds() *Job {
 	if c.delayUnit == delayNone {
 		c.unit = milliseconds
@@ -251,7 +251,7 @@ func (c *Job) MilliSeconds() *Job {
 	return c
 }
 
-// The time specified at execution time
+// At sThe time specified at execution time
 func (c *Job) At(hour int, minute int, second int) *Job {
 	c.hour = Abs(c.hour)
 	c.minute = Abs(c.minute)
@@ -264,7 +264,7 @@ func (c *Job) At(hour int, minute int, second int) *Job {
 	return c
 }
 
-// Start timing after the task is executed
+// AfterExecuteTask Start timing after the Task is executed
 func (c *Job) AfterExecuteTask() *Job {
 	if c.delayUnit == delayNone {
 		c.timingMode = afterExecuteTask
@@ -272,7 +272,7 @@ func (c *Job) AfterExecuteTask() *Job {
 	return c
 }
 
-// Start timing before the task is executed
+// BeforeExecuteTask Start timing before the Task is executed
 func (c *Job) BeforeExecuteTask() *Job {
 	if c.delayUnit == delayNone {
 		c.timingMode = beforeExecuteTask
@@ -352,7 +352,7 @@ func (c *Job) firstTimeSetMinutesNextTime(now time.Time) {
 	}
 }
 
-// What job needs to execute?
+// Do What job needs to execute?
 func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	c.task = newTask(fun, params...)
 	now := time.Now()

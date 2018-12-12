@@ -7,17 +7,17 @@ import (
 type channelSubscription struct {
 	identifyId string
 	fiber      Fiber
-	receiver   task
+	receiver   Task
 }
 
-func (c *channelSubscription) init(fiber Fiber, task task) *channelSubscription {
+func (c *channelSubscription) init(fiber Fiber, task Task) *channelSubscription {
 	c.fiber = fiber
 	c.receiver = task
 	c.identifyId = fmt.Sprintf("%p-%p", &c, &task)
 	return c
 }
 
-func NewChannelSubscription(fiber Fiber, task task) *channelSubscription {
+func NewChannelSubscription(fiber Fiber, task Task) *channelSubscription {
 	return new(channelSubscription).init(fiber, task)
 }
 

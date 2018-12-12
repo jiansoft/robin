@@ -7,11 +7,11 @@ import (
 type unsubscriber struct {
 	identifyId string
 	channel    *channel
-	receiver   task
+	receiver   Task
 	fiber      SubscriptionRegistry
 }
 
-func (u *unsubscriber) init(receiver task, channel *channel, fiber SubscriptionRegistry) *unsubscriber {
+func (u *unsubscriber) init(receiver Task, channel *channel, fiber SubscriptionRegistry) *unsubscriber {
 	u.identifyId = fmt.Sprintf("%p-%p", &u, &u.channel)
 	u.fiber = fiber
 	u.receiver = receiver
@@ -19,7 +19,7 @@ func (u *unsubscriber) init(receiver task, channel *channel, fiber SubscriptionR
 	return u
 }
 
-func NewUnsubscriber(receiver task, channel *channel, fiber SubscriptionRegistry) *unsubscriber {
+func NewUnsubscriber(receiver Task, channel *channel, fiber SubscriptionRegistry) *unsubscriber {
 	return new(unsubscriber).init(receiver, channel, fiber)
 }
 

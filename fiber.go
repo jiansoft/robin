@@ -15,7 +15,7 @@ type Fiber interface {
 	Stop()
 	Dispose()
 	Enqueue(taskFun interface{}, params ...interface{})
-	EnqueueWithTask(task task)
+	EnqueueWithTask(task Task)
 	Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
 	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
 }
@@ -78,7 +78,7 @@ func (g *GoroutineMulti) Enqueue(taskFun interface{}, params ...interface{}) {
 	g.EnqueueWithTask(newTask(taskFun, params...))
 }
 
-func (g *GoroutineMulti) EnqueueWithTask(task task) {
+func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 	if g.executionState != running {
 		return
 	}
@@ -122,10 +122,10 @@ func (g *GoroutineMulti) flush() {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	if g.queue.Count() > 0 {
-		//It has new task enqueue when clear tasks
+		//It has new Task enqueue when clear tasks
 		go g.flush()
 	} else {
-		//task is empty
+		//Task is empty
 		g.flushPending = false
 	}
 }
@@ -181,7 +181,7 @@ func (g *GoroutineSingle) Enqueue(taskFun interface{}, params ...interface{}) {
 	g.EnqueueWithTask(newTask(taskFun, params...))
 }
 
-func (g *GoroutineSingle) EnqueueWithTask(task task) {
+func (g *GoroutineSingle) EnqueueWithTask(task Task) {
 	if g.executionState != running {
 		return
 	}
@@ -220,7 +220,7 @@ func (g *GoroutineSingle) executeNextBatch() bool {
 	return ok
 }
 
-func (g *GoroutineSingle) dequeueAll() ([]task, bool) {
+func (g *GoroutineSingle) dequeueAll() ([]Task, bool) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	if !g.readyToDequeue() {

@@ -6,14 +6,15 @@ import (
 	"time"
 )
 
-type task struct {
+//Task a struct
+type Task struct {
 	doFunc      interface{}
 	funcCache   reflect.Value
 	paramsCache []reflect.Value
 }
 
-func newTask(t interface{}, p ...interface{}) task {
-	task := task{doFunc: t}
+func newTask(t interface{}, p ...interface{}) Task {
+	task := Task{doFunc: t}
 	task.funcCache = reflect.ValueOf(t)
 	task.paramsCache = make([]reflect.Value, len(p))
 	for k, param := range p {
@@ -22,45 +23,46 @@ func newTask(t interface{}, p ...interface{}) task {
 	return task
 }
 
-func (t task) run() {
+func (t Task) run() {
 	t.funcCache.Call(t.paramsCache)
 	//func(in []reflect.Value) { _ = t.funcCache.Call(in) }(t.paramsCache)
 }
 
-func (t task) Run() time.Duration {
+// Run run the function
+func (t Task) Run() time.Duration {
 	s := time.Now()
 	t.run()
 	e := time.Now()
 	return e.Sub(s)
 }
 
-/*func (t *task) Dispose() {
+/*func (t *Task) Dispose() {
 	t.doFunc = nil
 	t.paramsCache = t.paramsCache[:0]
 	t.paramsCache = nil
 }*/
 
 type timerTask struct {
-	identifyId   string
+	identifyID   string
 	scheduler    SchedulerRegistry
 	firstInMs    int64
 	intervalInMs int64
 	first        *time.Timer
 	interval     *time.Ticker
-	task         task
+	task         Task
 	cancelled    bool
 }
 
-func newTimerTask(fiber SchedulerRegistry, task task, firstInMs int64, intervalInMs int64) *timerTask {
+func newTimerTask(fiber SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
 	return new(timerTask).init(fiber, task, firstInMs, intervalInMs)
 }
 
-func (t *timerTask) init(scheduler SchedulerRegistry, task task, firstInMs int64, intervalInMs int64) *timerTask {
+func (t *timerTask) init(scheduler SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
 	t.scheduler = scheduler
 	t.task = task
 	t.firstInMs = firstInMs
 	t.intervalInMs = intervalInMs
-	t.identifyId = fmt.Sprintf("%p-%p", &t, &task)
+	t.identifyID = fmt.Sprintf("%p-%p", &t, &task)
 	return t
 }
 
@@ -74,7 +76,7 @@ func (t *timerTask) Dispose() {
 }
 
 func (t timerTask) Identify() string {
-	return t.identifyId
+	return t.identifyID
 }
 
 func (t *timerTask) schedule() {

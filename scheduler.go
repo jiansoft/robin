@@ -10,7 +10,7 @@ type IScheduler interface {
 
 type SchedulerRegistry interface {
 	Enqueue(taskFun interface{}, params ...interface{})
-	EnqueueWithTask(task task)
+	EnqueueWithTask(task Task)
 	Remove(d Disposable)
 }
 
@@ -24,7 +24,7 @@ type SubscriptionRegistry interface {
 
 type ExecutionContext interface {
 	Enqueue(taskFun interface{}, params ...interface{})
-	EnqueueWithTask(task task)
+	EnqueueWithTask(task Task)
 }
 
 type Scheduler struct {
@@ -71,7 +71,7 @@ func (s *Scheduler) Enqueue(taskFun interface{}, params ...interface{}) {
 	s.EnqueueWithTask(newTask(taskFun, params...))
 }
 
-func (s *Scheduler) EnqueueWithTask(task task) {
+func (s *Scheduler) EnqueueWithTask(task Task) {
 	s.fiber.EnqueueWithTask(task)
 }
 
