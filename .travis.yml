@@ -11,6 +11,9 @@ go:
 before_install:
   - go get -u -v ./...
 
+script:
+  - go test -coverprofile=coverage.txt -covermode=atomic
+
 matrix:
   fast_finish: true
   include:
