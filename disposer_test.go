@@ -17,9 +17,7 @@ func TestDisposer_init(t *testing.T) {
 		name   string
 		fields fields
 		want   *Disposer
-	}{
-		// TODO: Add test cases.
-	}
+	}{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Disposer{
@@ -37,9 +35,7 @@ func TestNewDisposer(t *testing.T) {
 	tests := []struct {
 		name string
 		want *Disposer
-	}{
-		// TODO: Add test cases.
-	}
+	}{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := NewDisposer(); !reflect.DeepEqual(got, tt.want) {
@@ -62,7 +58,7 @@ func TestDisposer_Add(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		{"TestAdd", fields{Map: sync.Map{}, Mutex: sync.Mutex{}}, args{disposable: RightNow().Do(func() { t.Logf("Do func") })}},
+		{"TestAdd", fields{Map: sync.Map{}, Mutex: sync.Mutex{}}, args{disposable: RightNow().Do(func() {})}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -98,7 +94,7 @@ func TestDisposer_Remove(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		{"TestRemove", fields{Map: sync.Map{}, Mutex: sync.Mutex{}}, args{disposable: RightNow().Do(func() { t.Logf("Do func") })}},
+		{"TestRemove", fields{Map: sync.Map{}, Mutex: sync.Mutex{}}, args{disposable: RightNow().Do(func() {})}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -137,7 +133,7 @@ func TestDisposer_Count(t *testing.T) {
 				Mutex: tt.fields.Mutex,
 				Map:   tt.fields.Map,
 			}
-			d.Add(RightNow().Do(func() { t.Logf("Do func") }))
+			d.Add(RightNow().Do(func() {}))
 
 			if got := d.Count(); got != tt.want {
 				t.Errorf("Disposer.Count() = %v, want %v", got, tt.want)
@@ -163,9 +159,9 @@ func TestDisposer_Dispose(t *testing.T) {
 				Mutex: tt.fields.Mutex,
 				Map:   tt.fields.Map,
 			}
-			d.Add(RightNow().Do(func() { t.Logf("Do func") }))
-			d.Add(RightNow().Do(func() { t.Logf("Do func") }))
-			d.Add(RightNow().Do(func() { t.Logf("Do func") }))
+			d.Add(RightNow().Do(func() {}))
+			d.Add(RightNow().Do(func() {}))
+			d.Add(RightNow().Do(func() {}))
 			t.Logf("before dispose has count:%v", d.Count())
 			d.Dispose()
 			t.Logf("after dispose has count:%v", d.Count())
@@ -192,9 +188,9 @@ func TestDisposer_Random(t *testing.T) {
 			}
 			for i := 0; i < 100000; i++ {
 				RightNow().Do(func() {
-					d.Add(RightNow().Do(func() {  }))
-					d.Add(RightNow().Do(func() {  }))
-					d.Add(RightNow().Do(func() {  }))
+					d.Add(RightNow().Do(func() {}))
+					d.Add(RightNow().Do(func() {}))
+					d.Add(RightNow().Do(func() {}))
 					//t.Logf("%v add now has count:%v", ii,d.Count())
 				})
 				RightNow().Do(func() {
