@@ -8,6 +8,12 @@ go:
   - 1.11.x
   - master
 
+before_install:
+  - go get -u -v ./...
+
+script:
+  - go test -race -coverprofile=coverage.txt -covermode=atomic
+  
 matrix:
   fast_finish: true
   include:
