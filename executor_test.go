@@ -53,7 +53,6 @@ func Test_defaultExecutor_ExecuteTasksWithGoroutine(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.d.ExecuteTasksWithGoroutine(tt.args.tasks)
 			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
-
 			select {
 			case <-timeout.C:
 			}

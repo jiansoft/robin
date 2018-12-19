@@ -15,13 +15,12 @@ type taskQueue interface {
 type DefaultQueue struct {
 	paddingTasks []Task
 	toDoTasks    []Task
-	lock         *sync.Mutex
+	lock         sync.Mutex
 }
 
 func (d *DefaultQueue) init() *DefaultQueue {
 	d.toDoTasks = []Task{}
 	d.paddingTasks = []Task{}
-	d.lock = new(sync.Mutex)
 	return d
 }
 
