@@ -83,6 +83,8 @@ func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 		return
 	}
 	g.queue.Enqueue(task)
+	g.lock.Lock()
+	defer g.lock.Unlock()
 	if g.flushPending {
 		return
 	}

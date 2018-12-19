@@ -37,7 +37,7 @@ func (d *Disposer) Remove(disposable Disposable) {
 func (d *Disposer) Count() int {
 	d.Lock()
 	defer d.Unlock()
-	count:=0
+	count := 0
 	d.Range(func(k, v interface{}) bool {
 		count++
 		return true

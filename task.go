@@ -71,7 +71,6 @@ func (t *timerTask) Dispose() {
 
 	if nil != t.scheduler {
 		t.scheduler.Remove(t)
-		t.scheduler = nil
 	}
 }
 
