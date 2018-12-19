@@ -47,29 +47,36 @@ func TestNewDefaultQueue(t *testing.T) {
 }
 
 func TestDefaultQueue_Dispose(t *testing.T) {
-	type fields struct {
-		paddingTasks []Task
-		toDoTasks    []Task
-		lock         sync.Mutex
+	type args struct {
+		task Task
 	}
+	params := []args{
+		{newTask(func(s string) { t.Logf("s:%v", s) }, "Enqueue 1")},
+		{newTask(func(s string) { t.Logf("s:%v", s) }, "Enqueue 2")},
+		{newTask(func(s string) { t.Logf("s:%v", s) }, "Enqueue 3")}}
+
 	tests := []struct {
-		name   string
-		fields fields
-	}{}
+		name string
+		args []args
+		want int
+	}{
+		{"TestDispose", params, 3},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &DefaultQueue{
-				paddingTasks: tt.fields.paddingTasks,
-				toDoTasks:    tt.fields.toDoTasks,
-				lock:         tt.fields.lock,
+			d := NewDefaultQueue()
+			for _, ttt := range tt.args {
+				d.Enqueue(ttt.task)
 			}
+			assert.Equal(t, tt.want, d.Count(), "they should be equal")
 			d.Dispose()
+			assert.Equal(t, 0, len(d.paddingTasks), "they should be equal")
+			assert.Equal(t, 0, len(d.toDoTasks), "they should be equal")
 		})
 	}
 }
 
 func TestDefaultQueue_Enqueue(t *testing.T) {
-
 	type args struct {
 		task Task
 	}

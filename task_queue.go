@@ -31,8 +31,8 @@ func NewDefaultQueue() *DefaultQueue {
 
 // Dispose dispose DefaultQueue
 func (d *DefaultQueue) Dispose() {
-	d.paddingTasks = nil
-	d.toDoTasks = nil
+	d.paddingTasks = d.paddingTasks[:0]
+	d.toDoTasks = d.paddingTasks[:0]
 }
 
 // Enqueue put a task into queue
