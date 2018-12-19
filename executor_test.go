@@ -29,7 +29,7 @@ func Test_defaultExecutor_ExecuteTasks(t *testing.T) {
 		d    defaultExecutor
 		args args
 	}{
-		{"Test", defaultExecutor{}, args{tasks: []Task{newTask(func(s string) { t.Logf("s:%v", s) }, "ExecuteTasks")}}},
+		{"TestExecuteTasks", defaultExecutor{}, args{tasks: []Task{newTask(func(s string) { t.Logf("s:%v", s) }, "ExecuteTasks")}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -47,7 +47,7 @@ func Test_defaultExecutor_ExecuteTasksWithGoroutine(t *testing.T) {
 		d    defaultExecutor
 		args args
 	}{
-		{"Test", defaultExecutor{}, args{tasks: []Task{newTask(func(s string) { t.Logf("s:%v", s) }, "ExecuteTasksWithGoroutine")}}},
+		{"TestExecuteTasksWithGoroutine", defaultExecutor{}, args{tasks: []Task{newTask(func(s string) { t.Logf("s:%v", s) }, "ExecuteTasksWithGoroutine")}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
