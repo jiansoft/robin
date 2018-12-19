@@ -4,6 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/jiansoft/robin)](https://goreportcard.com/report/github.com/jiansoft/robin)
 [![Build Status](https://travis-ci.org/jiansoft/robin.svg?branch=master)](https://travis-ci.org/jiansoft/robin)
 [![codecov](https://codecov.io/gh/jiansoft/robin/branch/master/graph/badge.svg)](https://codecov.io/gh/jiansoft/robin)
+
 ### Features
 
 Fiber  
@@ -76,3 +77,6 @@ Copyright (c) 2017
 Released under the MIT license:
 
 - [www.opensource.org/licenses/MIT](http://www.opensource.org/licenses/MIT)
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fjiansoft%2Frobin.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fjiansoft%2Frobin?ref=badge_large)
