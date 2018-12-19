@@ -193,7 +193,7 @@ func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 // Dispose Job's Dispose
 func (c *Job) Dispose() {
 	c.taskDisposer.Dispose()
-	c.fiber = nil
+	//c.fiber = nil
 }
 
 // Identify Job's Identify

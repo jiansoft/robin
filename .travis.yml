@@ -1,17 +1,26 @@
-sudo: false
 language: go
+sudo: false
 
 os:
   - linux
-  - osx
 
-go:  
-  - 1.8.x
+go:
   - 1.9.x
   - 1.10.x
   - 1.11.x
-  - tip
+  - master
+
+before_install:
+  - go get -u -v ./...
+
+script:
+  - go test -coverprofile=coverage.txt -covermode=atomic
 
 matrix:
-  allow_failures:
-    - go: tip
+  fast_finish: true
+  include:
+    - go: 1.11.x
+      env: GO111MODULE=on
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
