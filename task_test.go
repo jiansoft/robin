@@ -158,33 +158,26 @@ func Test_timerTask_init(t *testing.T) {
 }
 
 func Test_timerTask_Dispose(t *testing.T) {
-	type fields struct {
-		identifyID   string
-		scheduler    SchedulerRegistry
-		firstInMs    int64
-		intervalInMs int64
-		first        *time.Timer
-		interval     *time.Ticker
-		task         Task
-		cancelled    bool
-	}
+	runCount := 0
+	g := NewGoroutineMulti()
+	g.Start()
 	tests := []struct {
 		name   string
-		fields fields
-	}{}
+		fields *timerTask
+	}{
+		{"TestDispose", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			runCount++
+			t.Logf("count:%v s:%v",runCount, s)
+		}, time.Now().UnixNano()), 10, 10)},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := &timerTask{
-				identifyID:   tt.fields.identifyID,
-				scheduler:    tt.fields.scheduler,
-				firstInMs:    tt.fields.firstInMs,
-				intervalInMs: tt.fields.intervalInMs,
-				first:        tt.fields.first,
-				interval:     tt.fields.interval,
-				task:         tt.fields.task,
-				cancelled:    tt.fields.cancelled,
+			tt.fields.schedule()
+			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
+			select {
+			case <-timeout.C:
 			}
-			ta.Dispose()
+			tt.fields.Dispose()
 		})
 	}
 }
