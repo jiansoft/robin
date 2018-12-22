@@ -37,7 +37,7 @@ func TestTask_run(t *testing.T) {
 		name string
 		args []args
 	}{
-		{"TestRun", params},
+		{"Test_Task_run", params},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestTask_Run(t *testing.T) {
 		name string
 		args []args
 	}{
-		{"TestRun", params},
+		{"Test_Task_Run", params},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -165,9 +165,9 @@ func Test_timerTask_Dispose(t *testing.T) {
 		name   string
 		fields *timerTask
 	}{
-		{"TestDispose", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+		{"Test_timerTask_Dispose", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
 			runCount++
-			t.Logf("count:%v s:%v",runCount, s)
+			t.Logf("count:%v s:%v", runCount, s)
 		}, time.Now().UnixNano()), 10, 10)},
 	}
 	for _, tt := range tests {
@@ -183,164 +183,124 @@ func Test_timerTask_Dispose(t *testing.T) {
 }
 
 func Test_timerTask_Identify(t *testing.T) {
-	type fields struct {
-		identifyID   string
-		scheduler    SchedulerRegistry
-		firstInMs    int64
-		intervalInMs int64
-		first        *time.Timer
-		interval     *time.Ticker
-		task         Task
-		cancelled    bool
-	}
+	g := NewGoroutineMulti()
+	g.Start()
 	tests := []struct {
 		name   string
-		fields fields
-		want   string
-	}{}
+		fields *timerTask
+	}{
+		{"Test_timerTask_Identify", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) { t.Logf("s:%v", s) }, time.Now().UnixNano()), 10, 10)},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := timerTask{
-				identifyID:   tt.fields.identifyID,
-				scheduler:    tt.fields.scheduler,
-				firstInMs:    tt.fields.firstInMs,
-				intervalInMs: tt.fields.intervalInMs,
-				first:        tt.fields.first,
-				interval:     tt.fields.interval,
-				task:         tt.fields.task,
-				cancelled:    tt.fields.cancelled,
+			if got := tt.fields.Identify(); got == "" {
+				t.Errorf("timerTask.Identify() = %v", got)
 			}
-			if got := ta.Identify(); got != tt.want {
-				t.Errorf("timerTask.Identify() = %v, want %v", got, tt.want)
-			}
+			t.Logf("timerTask.Identify() = %v", tt.fields.Identify())
 		})
 	}
 }
 
 func Test_timerTask_schedule(t *testing.T) {
-	type fields struct {
-		identifyID   string
-		scheduler    SchedulerRegistry
-		firstInMs    int64
-		intervalInMs int64
-		first        *time.Timer
-		interval     *time.Ticker
-		task         Task
-		cancelled    bool
-	}
+	runCount := 0
+	g := NewGoroutineMulti()
+	g.Start()
 	tests := []struct {
 		name   string
-		fields fields
-	}{}
+		fields *timerTask
+	}{
+		{"Test_timerTask_schedule", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			runCount++
+			t.Logf("count:%v s:%v", runCount, s)
+		}, time.Now().UnixNano()), 10, 10)},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := &timerTask{
-				identifyID:   tt.fields.identifyID,
-				scheduler:    tt.fields.scheduler,
-				firstInMs:    tt.fields.firstInMs,
-				intervalInMs: tt.fields.intervalInMs,
-				first:        tt.fields.first,
-				interval:     tt.fields.interval,
-				task:         tt.fields.task,
-				cancelled:    tt.fields.cancelled,
+			tt.fields.schedule()
+			for true {
+				if runCount >= 10 {
+					tt.fields.Dispose()
+					return
+				}
 			}
-			ta.schedule()
 		})
 	}
 }
 
 func Test_timerTask_doFirstSchedule(t *testing.T) {
-	type fields struct {
-		identifyID   string
-		scheduler    SchedulerRegistry
-		firstInMs    int64
-		intervalInMs int64
-		first        *time.Timer
-		interval     *time.Ticker
-		task         Task
-		cancelled    bool
-	}
+	g := NewGoroutineMulti()
+	g.Start()
 	tests := []struct {
 		name   string
-		fields fields
-	}{}
+		fields *timerTask
+	}{
+		{"Test_timerTask_doFirstSchedule", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			t.Logf("s:%v", s)
+		}, time.Now().UnixNano()), 10, 0)},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := &timerTask{
-				identifyID:   tt.fields.identifyID,
-				scheduler:    tt.fields.scheduler,
-				firstInMs:    tt.fields.firstInMs,
-				intervalInMs: tt.fields.intervalInMs,
-				first:        tt.fields.first,
-				interval:     tt.fields.interval,
-				task:         tt.fields.task,
-				cancelled:    tt.fields.cancelled,
+			tt.fields.doFirstSchedule()
+			timeout := time.NewTimer(time.Duration(10) * time.Millisecond)
+			select {
+			case <-timeout.C:
 			}
-			ta.doFirstSchedule()
 		})
 	}
 }
 
 func Test_timerTask_doIntervalSchedule(t *testing.T) {
-	type fields struct {
-		identifyID   string
-		scheduler    SchedulerRegistry
-		firstInMs    int64
-		intervalInMs int64
-		first        *time.Timer
-		interval     *time.Ticker
-		task         Task
-		cancelled    bool
-	}
+	runCount := 0
+	g := NewGoroutineMulti()
+	g.Start()
 	tests := []struct {
 		name   string
-		fields fields
-	}{}
+		fields *timerTask
+	}{
+		{"Test_timerTask_doIntervalSchedule_1", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			runCount++
+			t.Logf("Schedule_1 count:%v s:%v", runCount, s)
+		}, time.Now().UnixNano()), 0, 0)},
+		{"Test_timerTask_doIntervalSchedule_2", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			runCount++
+			t.Logf("Schedule_2 count:%v s:%v", runCount, s)
+		}, time.Now().UnixNano()), 0, 10)},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := &timerTask{
-				identifyID:   tt.fields.identifyID,
-				scheduler:    tt.fields.scheduler,
-				firstInMs:    tt.fields.firstInMs,
-				intervalInMs: tt.fields.intervalInMs,
-				first:        tt.fields.first,
-				interval:     tt.fields.interval,
-				task:         tt.fields.task,
-				cancelled:    tt.fields.cancelled,
+			tt.fields.doIntervalSchedule()
+			timeout := time.NewTimer(time.Duration(101) * time.Millisecond)
+			select {
+			case <-timeout.C:
 			}
-			ta.doIntervalSchedule()
 		})
 	}
 }
 
 func Test_timerTask_executeOnFiber(t *testing.T) {
-	type fields struct {
-		identifyID   string
-		scheduler    SchedulerRegistry
-		firstInMs    int64
-		intervalInMs int64
-		first        *time.Timer
-		interval     *time.Ticker
-		task         Task
-		cancelled    bool
-	}
+	runCount := 0
+	g := NewGoroutineMulti()
+	g.Start()
 	tests := []struct {
 		name   string
-		fields fields
-	}{}
+		fields *timerTask
+	}{
+		{"Test_timerTask_executeOnFiber_1", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			runCount++
+			t.Logf("executeOnFiber_1 count:%v s:%v", runCount, s)
+		}, time.Now().UnixNano()), 0, 0)},
+		{"Test_timerTask_executeOnFiber_2", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			runCount++
+			t.Logf("executeOnFiber_2 count:%v s:%v", runCount, s)
+		}, time.Now().UnixNano()), 0, 0)},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ta := timerTask{
-				identifyID:   tt.fields.identifyID,
-				scheduler:    tt.fields.scheduler,
-				firstInMs:    tt.fields.firstInMs,
-				intervalInMs: tt.fields.intervalInMs,
-				first:        tt.fields.first,
-				interval:     tt.fields.interval,
-				task:         tt.fields.task,
-				cancelled:    tt.fields.cancelled,
+			tt.fields.executeOnFiber()
+			timeout := time.NewTimer(time.Duration(101) * time.Millisecond)
+			select {
+			case <-timeout.C:
 			}
-			ta.executeOnFiber()
 		})
 	}
 }
