@@ -220,10 +220,18 @@ func Test_timerTask_schedule(t *testing.T) {
 		{"Test_timerTask_schedule_3", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
 			runCount++
 			t.Logf("schedule_3 count:%v s:%v", runCount, s)
-		}, time.Now().UnixNano()), 10, 10)},
+		}, time.Now().UnixNano()), 10, 20)},
+		{"Test_timerTask_schedule_4", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			runCount++
+			t.Logf("schedule_4 count:%v s:%v", runCount, s)
+		}, time.Now().UnixNano()), 20, 20)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.name == "Test_timerTask_schedule_4" {
+				tt.fields.cancelled = true
+			}
+
 			tt.fields.schedule()
 			for true {
 				if tt.name == "Test_timerTask_schedule_1" && runCount >= 10 {
@@ -240,6 +248,13 @@ func Test_timerTask_schedule(t *testing.T) {
 				if tt.name == "Test_timerTask_schedule_3" && runCount >= 30 {
 					tt.fields.cancelled = true
 					runCount++
+				}
+				if tt.name == "Test_timerTask_schedule_4" {
+					timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
+					select {
+					case <-timeout.C:
+					}
+					return
 				}
 			}
 		})
