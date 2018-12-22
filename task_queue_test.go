@@ -2,49 +2,8 @@ package robin
 
 import (
 	"github.com/stretchr/testify/assert"
-	"reflect"
-	"sync"
 	"testing"
 )
-
-func TestDefaultQueue_init(t *testing.T) {
-	type fields struct {
-		paddingTasks []Task
-		toDoTasks    []Task
-		lock         sync.Mutex
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   *DefaultQueue
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			d := &DefaultQueue{
-				paddingTasks: tt.fields.paddingTasks,
-				toDoTasks:    tt.fields.toDoTasks,
-				lock:         tt.fields.lock,
-			}
-			if got := d.init(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("DefaultQueue.init() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNewDefaultQueue(t *testing.T) {
-	tests := []struct {
-		name string
-		want *DefaultQueue
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewDefaultQueue(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewDefaultQueue() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestDefaultQueue_Dispose(t *testing.T) {
 	type args struct {

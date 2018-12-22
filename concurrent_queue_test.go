@@ -1,49 +1,10 @@
 package robin
 
 import (
-	"container/list"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 )
-
-func TestConcurrentQueue_init(t *testing.T) {
-	type fields struct {
-		lock      sync.Mutex
-		container *list.List
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   *ConcurrentQueue
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &ConcurrentQueue{
-				lock:      tt.fields.lock,
-				container: tt.fields.container,
-			}
-			if got := c.init(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ConcurrentQueue.init() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNewConcurrentQueue(t *testing.T) {
-	tests := []struct {
-		name string
-		want *ConcurrentQueue
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewConcurrentQueue(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewConcurrentQueue() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestConcurrentQueue_Enqueue(t *testing.T) {
 	concurrentQueue := NewConcurrentQueue()
