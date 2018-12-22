@@ -11,9 +11,9 @@ func TestAbs(t *testing.T) {
 		args args
 		want int
 	}{
-		{"Test_Abs_1",args{ a:1},1},
-		{"Test_Abs_2",args{ a:-1},1},
-		{"Test_Abs_3",args{ a:-123},123},
+		{"Test_Abs_1", args{a: 1}, 1},
+		{"Test_Abs_2", args{a: -1}, 1},
+		{"Test_Abs_3", args{a: -123}, 123},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
