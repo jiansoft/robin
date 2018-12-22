@@ -209,18 +209,37 @@ func Test_timerTask_schedule(t *testing.T) {
 		name   string
 		fields *timerTask
 	}{
-		{"Test_timerTask_schedule", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+		{"Test_timerTask_schedule_1", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
 			runCount++
-			t.Logf("count:%v s:%v", runCount, s)
+			t.Logf("schedule_1 count:%v s:%v", runCount, s)
+		}, time.Now().UnixNano()), 0, 5)},
+		{"Test_timerTask_schedule_2", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			runCount++
+			t.Logf("schedule_2 count:%v s:%v", runCount, s)
+		}, time.Now().UnixNano()), 5, 10)},
+		{"Test_timerTask_schedule_3", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			runCount++
+			t.Logf("schedule_3 count:%v s:%v", runCount, s)
 		}, time.Now().UnixNano()), 10, 10)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fields.schedule()
 			for true {
-				if runCount >= 10 {
+				if tt.name == "Test_timerTask_schedule_1" && runCount >= 10 {
 					tt.fields.Dispose()
 					return
+				}
+				if tt.name == "Test_timerTask_schedule_2" && runCount >= 20 {
+					tt.fields.Dispose()
+					return
+				}
+				if tt.name == "Test_timerTask_schedule_3" && runCount >= 31 {
+					return
+				}
+				if tt.name == "Test_timerTask_schedule_3" && runCount >= 30 {
+					tt.fields.cancelled = true
+					runCount++
 				}
 			}
 		})
