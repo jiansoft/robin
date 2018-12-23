@@ -25,7 +25,7 @@ type GoroutineMulti struct {
 	scheduler      IScheduler
 	executor       executor
 	executionState executionState
-	lock           *sync.Mutex
+	lock           sync.Mutex
 	subscriptions  *Disposer
 	flushPending   bool
 }
@@ -35,7 +35,7 @@ type GoroutineSingle struct {
 	scheduler      IScheduler
 	executor       executor
 	executionState executionState
-	lock           *sync.Mutex
+	lock           sync.Mutex
 	cond           *sync.Cond
 	subscriptions  *Disposer
 }
@@ -46,7 +46,6 @@ func (g *GoroutineMulti) init() *GoroutineMulti {
 	g.scheduler = NewScheduler(g)
 	g.executor = newDefaultExecutor()
 	g.subscriptions = NewDisposer()
-	g.lock = new(sync.Mutex)
 	return g
 }
 
@@ -138,8 +137,7 @@ func (g *GoroutineSingle) init() *GoroutineSingle {
 	g.subscriptions = NewDisposer()
 	g.scheduler = NewScheduler(g)
 	g.executor = newDefaultExecutor()
-	g.lock = new(sync.Mutex)
-	g.cond = sync.NewCond(g.lock)
+	g.cond = sync.NewCond(&g.lock)
 	return g
 }
 
@@ -179,23 +177,31 @@ func (g *GoroutineSingle) Dispose() {
 	g.queue.Dispose()
 }
 
+// EnqueueWrap from parameters taskFun and params
+// to a task and into to the queue waiting for executing.
 func (g *GoroutineSingle) Enqueue(taskFun interface{}, params ...interface{}) {
 	g.EnqueueWithTask(newTask(taskFun, params...))
 }
 
+// EnqueueWithTask enqueue the parameter task
+// into the queue waiting for executing.
 func (g *GoroutineSingle) EnqueueWithTask(task Task) {
 	if g.executionState != running {
 		return
 	}
 	g.queue.Enqueue(task)
-	//喚醒等待中的 Goroutine
+	//Wake up the waiting goroutine
 	g.cond.Broadcast()
 }
 
+// Schedule execute the task once at the specified time
+// that depends on parameter firstInMs.
 func (g GoroutineSingle) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.Schedule(firstInMs, taskFun, params...)
 }
 
+// Schedule execute the task once at the specified time
+// that depends on parameters both firstInMs and regularInMs.
 func (g GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)
 }
