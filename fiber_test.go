@@ -1,58 +1,9 @@
 package robin
 
 import (
-	"reflect"
-	"sync"
 	"testing"
 	"time"
 )
-
-func TestGoroutineMulti_init(t *testing.T) {
-	type fields struct {
-		queue          taskQueue
-		scheduler      IScheduler
-		executor       executor
-		executionState executionState
-		lock           sync.Mutex
-		subscriptions  *Disposer
-		flushPending   bool
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   *GoroutineMulti
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g := &GoroutineMulti{
-				queue:          tt.fields.queue,
-				scheduler:      tt.fields.scheduler,
-				executor:       tt.fields.executor,
-				executionState: tt.fields.executionState,
-				lock:           tt.fields.lock,
-				subscriptions:  tt.fields.subscriptions,
-				flushPending:   tt.fields.flushPending,
-			}
-			if got := g.init(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GoroutineMulti.init() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNewGoroutineMulti(t *testing.T) {
-	tests := []struct {
-		name string
-		want *GoroutineMulti
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewGoroutineMulti(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewGoroutineMulti() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestGoroutineMulti_Start(t *testing.T) {
 	tests := []struct {
@@ -124,21 +75,33 @@ func TestGoroutineMulti_Enqueue(t *testing.T) {
 func TestGoroutineMulti_EnqueueWithTask(t *testing.T) {
 	g := NewGoroutineMulti()
 	g.Start()
+	testCount := 0
 	tests := []struct {
 		name  string
-		fiber Fiber
+		fiber *GoroutineMulti
 		args  Task
+		want  int32
 	}{
-		{"Test_GoroutineMulti_EnqueueWithTask", g, newTask(func(s string) { t.Logf("s:%v", s) }, "Test 1")},
+		{"Test_GoroutineMulti_EnqueueWithTask",
+			g,
+			newTask(func(s string) {
+				t.Logf("s:%v", s)
+				testCount++
+			}, "Test 1"),
+			2},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fiber.EnqueueWithTask(tt.args)
-			tt.fiber.EnqueueWithTask(newTask(func(s string) { t.Logf("s:%v", s) }, "Test 2"))
+			tt.fiber.EnqueueWithTask(newTask(tt.args.doFunc, "Test 2"))
+			tt.fiber.executionState = stopped
 			tt.fiber.EnqueueWithTask(newTask(func(s string) { t.Logf("s:%v", s) }, "Test 3"))
-			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
+			timeout := time.NewTimer(time.Duration(30) * time.Millisecond)
 			select {
 			case <-timeout.C:
+			}
+			if tt.want != int32(testCount) {
+				t.Errorf("%s test count %v, want %v", tt.name, testCount, tt.want)
 			}
 		})
 	}
@@ -186,7 +149,7 @@ func TestGoroutineMulti_ScheduleOnInterval(t *testing.T) {
 		args      Task
 		firstMs   int64
 		regularMs int64
-		want1     int32
+		want      int32
 	}{
 		{"Test_GoroutineMulti_ScheduleOnInterval",
 			g,
@@ -217,186 +180,34 @@ func TestGoroutineMulti_ScheduleOnInterval(t *testing.T) {
 				gotD.Dispose()
 			}
 
-			if tt.want1 != int32(test1Count) {
-				t.Errorf("test 1 count %v, want %v", test1Count, tt.want1)
+			if tt.want != int32(test1Count) {
+				t.Errorf("test 1 count %v, want %v", test1Count, tt.want)
 			}
 		})
 	}
 }
 
-func TestGoroutineMulti_RegisterSubscription(t *testing.T) {
-	type fields struct {
-		queue          taskQueue
-		scheduler      IScheduler
-		executor       executor
-		executionState executionState
-		lock           sync.Mutex
-		subscriptions  *Disposer
-		flushPending   bool
-	}
-	type args struct {
-		toAdd Disposable
-	}
+func TestGoroutineMulti_Subscription(t *testing.T) {
+	g := NewGoroutineMulti()
+	g.Start()
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{}
+		name  string
+		fiber *GoroutineMulti
+		want  int
+		want1 int
+	}{
+		{"Test_GoroutineMulti_Subscription", g, 1, 0},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := &GoroutineMulti{
-				queue:          tt.fields.queue,
-				scheduler:      tt.fields.scheduler,
-				executor:       tt.fields.executor,
-				executionState: tt.fields.executionState,
-				lock:           tt.fields.lock,
-				subscriptions:  tt.fields.subscriptions,
-				flushPending:   tt.fields.flushPending,
+			d := tt.fiber.Schedule(1000, func() {})
+			tt.fiber.RegisterSubscription(d)
+			if tt.want != tt.fiber.NumSubscriptions() {
+				t.Errorf("%s test count %v, want %v", tt.name, tt.fiber.NumSubscriptions(), tt.want)
 			}
-			g.RegisterSubscription(tt.args.toAdd)
-		})
-	}
-}
-
-func TestGoroutineMulti_DeregisterSubscription(t *testing.T) {
-	type fields struct {
-		queue          taskQueue
-		scheduler      IScheduler
-		executor       executor
-		executionState executionState
-		lock           sync.Mutex
-		subscriptions  *Disposer
-		flushPending   bool
-	}
-	type args struct {
-		toRemove Disposable
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g := &GoroutineMulti{
-				queue:          tt.fields.queue,
-				scheduler:      tt.fields.scheduler,
-				executor:       tt.fields.executor,
-				executionState: tt.fields.executionState,
-				lock:           tt.fields.lock,
-				subscriptions:  tt.fields.subscriptions,
-				flushPending:   tt.fields.flushPending,
-			}
-			g.DeregisterSubscription(tt.args.toRemove)
-		})
-	}
-}
-
-func TestGoroutineMulti_NumSubscriptions(t *testing.T) {
-	type fields struct {
-		queue          taskQueue
-		scheduler      IScheduler
-		executor       executor
-		executionState executionState
-		lock           sync.Mutex
-		subscriptions  *Disposer
-		flushPending   bool
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   int
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g := GoroutineMulti{
-				queue:          tt.fields.queue,
-				scheduler:      tt.fields.scheduler,
-				executor:       tt.fields.executor,
-				executionState: tt.fields.executionState,
-				lock:           tt.fields.lock,
-				subscriptions:  tt.fields.subscriptions,
-				flushPending:   tt.fields.flushPending,
-			}
-			if got := g.NumSubscriptions(); got != tt.want {
-				t.Errorf("GoroutineMulti.NumSubscriptions() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestGoroutineMulti_flush(t *testing.T) {
-	type fields struct {
-		queue          taskQueue
-		scheduler      IScheduler
-		executor       executor
-		executionState executionState
-		lock           sync.Mutex
-		subscriptions  *Disposer
-		flushPending   bool
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g := &GoroutineMulti{
-				queue:          tt.fields.queue,
-				scheduler:      tt.fields.scheduler,
-				executor:       tt.fields.executor,
-				executionState: tt.fields.executionState,
-				lock:           tt.fields.lock,
-				subscriptions:  tt.fields.subscriptions,
-				flushPending:   tt.fields.flushPending,
-			}
-			g.flush()
-		})
-	}
-}
-
-func TestGoroutineSingle_init(t *testing.T) {
-	type fields struct {
-		queue          taskQueue
-		scheduler      IScheduler
-		executor       executor
-		executionState executionState
-		lock           sync.Mutex
-		cond           *sync.Cond
-		subscriptions  *Disposer
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   *GoroutineSingle
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g := &GoroutineSingle{
-				queue:          tt.fields.queue,
-				scheduler:      tt.fields.scheduler,
-				executor:       tt.fields.executor,
-				executionState: tt.fields.executionState,
-				lock:           tt.fields.lock,
-				cond:           tt.fields.cond,
-				subscriptions:  tt.fields.subscriptions,
-			}
-			if got := g.init(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GoroutineSingle.init() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNewGoroutineSingle(t *testing.T) {
-	tests := []struct {
-		name string
-		want *GoroutineSingle
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewGoroutineSingle(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewGoroutineSingle() = %v, want %v", got, tt.want)
+			tt.fiber.DeregisterSubscription(d)
+			if tt.want1 != tt.fiber.NumSubscriptions() {
+				t.Errorf("%s test count %v, want %v", tt.name, tt.fiber.NumSubscriptions(), tt.want1)
 			}
 		})
 	}
@@ -481,6 +292,7 @@ func TestGoroutineSingle_EnqueueWithTask(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//if g.executionState != running {
 			tt.fiber.EnqueueWithTask(tt.args)
 			tt.fiber.EnqueueWithTask(newTask(func(s string) { t.Logf("s:%v", s) }, "Test 2"))
 			tt.fiber.EnqueueWithTask(newTask(func(s string) { t.Logf("s:%v", s) }, "Test 3"))
@@ -571,137 +383,28 @@ func TestGoroutineSingle_ScheduleOnInterval(t *testing.T) {
 	}
 }
 
-func TestGoroutineSingle_RegisterSubscription(t *testing.T) {
-	type fields struct {
-		queue          taskQueue
-		scheduler      IScheduler
-		executor       executor
-		executionState executionState
-		lock           sync.Mutex
-		cond           *sync.Cond
-		subscriptions  *Disposer
-	}
-	type args struct {
-		toAdd Disposable
-	}
+func TestGoroutineSingle_Subscription(t *testing.T) {
+	g := NewGoroutineSingle()
+	g.Start()
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{}
+		name  string
+		fiber *GoroutineSingle
+		want  int
+		want1 int
+	}{
+		{"Test_GoroutineSingle_Subscription", g, 1, 0},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			g := &GoroutineSingle{
-				queue:          tt.fields.queue,
-				scheduler:      tt.fields.scheduler,
-				executor:       tt.fields.executor,
-				executionState: tt.fields.executionState,
-				lock:           tt.fields.lock,
-				cond:           tt.fields.cond,
-				subscriptions:  tt.fields.subscriptions,
+			d := tt.fiber.Schedule(1000, func() {})
+			tt.fiber.RegisterSubscription(d)
+			if tt.want != tt.fiber.NumSubscriptions() {
+				t.Errorf("%s test count %v, want %v", tt.name, tt.fiber.NumSubscriptions(), tt.want)
 			}
-			g.RegisterSubscription(tt.args.toAdd)
-		})
-	}
-}
-
-func TestGoroutineSingle_DeregisterSubscription(t *testing.T) {
-	type fields struct {
-		queue          taskQueue
-		scheduler      IScheduler
-		executor       executor
-		executionState executionState
-		lock           sync.Mutex
-		cond           *sync.Cond
-		subscriptions  *Disposer
-	}
-	type args struct {
-		toRemove Disposable
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g := &GoroutineSingle{
-				queue:          tt.fields.queue,
-				scheduler:      tt.fields.scheduler,
-				executor:       tt.fields.executor,
-				executionState: tt.fields.executionState,
-				lock:           tt.fields.lock,
-				cond:           tt.fields.cond,
-				subscriptions:  tt.fields.subscriptions,
+			tt.fiber.DeregisterSubscription(d)
+			if tt.want1 != tt.fiber.NumSubscriptions() {
+				t.Errorf("%s test count %v, want %v", tt.name, tt.fiber.NumSubscriptions(), tt.want1)
 			}
-			g.DeregisterSubscription(tt.args.toRemove)
-		})
-	}
-}
-
-func TestGoroutineSingle_NumSubscriptions(t *testing.T) {
-	type fields struct {
-		queue          taskQueue
-		scheduler      IScheduler
-		executor       executor
-		executionState executionState
-		lock           sync.Mutex
-		cond           *sync.Cond
-		subscriptions  *Disposer
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   int
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g := &GoroutineSingle{
-				queue:          tt.fields.queue,
-				scheduler:      tt.fields.scheduler,
-				executor:       tt.fields.executor,
-				executionState: tt.fields.executionState,
-				lock:           tt.fields.lock,
-				cond:           tt.fields.cond,
-				subscriptions:  tt.fields.subscriptions,
-			}
-			if got := g.NumSubscriptions(); got != tt.want {
-				t.Errorf("GoroutineSingle.NumSubscriptions() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestGoroutineSingle_executeNextBatch(t *testing.T) {
-	type fields struct {
-		queue          taskQueue
-		scheduler      IScheduler
-		executor       executor
-		executionState executionState
-		lock           sync.Mutex
-		cond           *sync.Cond
-		subscriptions  *Disposer
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   bool
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g := &GoroutineSingle{
-				queue:          tt.fields.queue,
-				scheduler:      tt.fields.scheduler,
-				executor:       tt.fields.executor,
-				executionState: tt.fields.executionState,
-				lock:           tt.fields.lock,
-				cond:           tt.fields.cond,
-				subscriptions:  tt.fields.subscriptions,
-			}
-			if got := g.executeNextBatch(); got != tt.want {
-				t.Errorf("GoroutineSingle.executeNextBatch() = %v, want %v", got, tt.want)
-			}
-
 		})
 	}
 }
@@ -731,39 +434,6 @@ func TestGoroutineSingle_dequeueAll(t *testing.T) {
 			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
 			select {
 			case <-timeout.C:
-			}
-		})
-	}
-}
-
-func TestGoroutineSingle_readyToDequeue(t *testing.T) {
-	type fields struct {
-		queue          taskQueue
-		scheduler      IScheduler
-		executor       executor
-		executionState executionState
-		lock           sync.Mutex
-		cond           *sync.Cond
-		subscriptions  *Disposer
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   bool
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			g := &GoroutineSingle{
-				queue:          tt.fields.queue,
-				scheduler:      tt.fields.scheduler,
-				executor:       tt.fields.executor,
-				executionState: tt.fields.executionState,
-				lock:           tt.fields.lock,
-				cond:           tt.fields.cond,
-				subscriptions:  tt.fields.subscriptions,
-			}
-			if got := g.readyToDequeue(); got != tt.want {
-				t.Errorf("GoroutineSingle.readyToDequeue() = %v, want %v", got, tt.want)
 			}
 		})
 	}
