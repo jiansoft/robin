@@ -160,28 +160,28 @@ func TestGoroutineMulti_ScheduleOnInterval(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 1")
-			gotD := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 2")
-			switch gotD.(type) {
+			gotD1 := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 1")
+			gotD2 := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 2")
+			switch gotD2.(type) {
 			case Disposable:
 			default:
-				t.Errorf("GoroutineMulti.ScheduleOnInterval() = %v, want Disposable", gotD)
+				t.Errorf("GoroutineMulti.ScheduleOnInterval() = %v, want Disposable", gotD2)
 			}
 
 			timeout := time.NewTimer(time.Duration(80) * time.Millisecond)
 			select {
 			case <-timeout.C:
-				gotD.Dispose()
+				gotD2.Dispose()
 			}
 			timeout.Stop()
 			timeout.Reset(time.Duration(100) * time.Millisecond)
 			select {
 			case <-timeout.C:
-				gotD.Dispose()
+				gotD1.Dispose()
 			}
 
 			if tt.want != int32(test1Count) {
-				t.Errorf("test 1 count %v, want %v", test1Count, tt.want)
+				t.Errorf("%s test 1 count %v, want %v", tt.name, test1Count, tt.want)
 			}
 		})
 	}
