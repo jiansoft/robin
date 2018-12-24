@@ -2,53 +2,14 @@ package robin
 
 import (
 	"github.com/stretchr/testify/assert"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
 )
 
-func TestDisposer_init(t *testing.T) {
-	type fields struct {
-		Mutex sync.Mutex
-		Map   sync.Map
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   *Disposer
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			d := &Disposer{
-				Mutex: tt.fields.Mutex,
-				Map:   tt.fields.Map,
-			}
-			if got := d.init(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Disposer.init() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNewDisposer(t *testing.T) {
-	tests := []struct {
-		name string
-		want *Disposer
-	}{}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewDisposer(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewDisposer() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestDisposer_Add(t *testing.T) {
 	type fields struct {
-		Mutex sync.Mutex
-		Map   sync.Map
+		Mutex *sync.Mutex
 	}
 	type args struct {
 		disposable Disposable
@@ -58,13 +19,13 @@ func TestDisposer_Add(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		{"TestAdd", fields{Map: sync.Map{}, Mutex: sync.Mutex{}}, args{disposable: RightNow().Do(func() {})}},
+		{"TestAdd", fields{Mutex: &sync.Mutex{}}, args{disposable: RightNow().Do(func() {})}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Disposer{
-				Mutex: tt.fields.Mutex,
-				Map:   tt.fields.Map,
+				lock: tt.fields.Mutex,
+				Map:  sync.Map{},
 			}
 			d.Add(tt.args.disposable)
 			d.Add(tt.args.disposable)
@@ -83,8 +44,7 @@ func TestDisposer_Add(t *testing.T) {
 
 func TestDisposer_Remove(t *testing.T) {
 	type fields struct {
-		Mutex sync.Mutex
-		Map   sync.Map
+		Mutex *sync.Mutex
 	}
 	type args struct {
 		disposable Disposable
@@ -94,13 +54,13 @@ func TestDisposer_Remove(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		{"TestRemove", fields{Map: sync.Map{}, Mutex: sync.Mutex{}}, args{disposable: RightNow().Do(func() {})}},
+		{"TestRemove", fields{Mutex: &sync.Mutex{}}, args{disposable: RightNow().Do(func() {})}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Disposer{
-				Mutex: tt.fields.Mutex,
-				Map:   tt.fields.Map,
+				lock: tt.fields.Mutex,
+				Map:  sync.Map{},
 			}
 
 			d.Add(tt.args.disposable)
@@ -117,21 +77,20 @@ func TestDisposer_Remove(t *testing.T) {
 
 func TestDisposer_Count(t *testing.T) {
 	type fields struct {
-		Mutex sync.Mutex
-		Map   sync.Map
+		Mutex *sync.Mutex
 	}
 	tests := []struct {
 		name   string
 		fields fields
 		want   int
 	}{
-		{"TestCount", fields{Map: sync.Map{}, Mutex: sync.Mutex{}}, 1},
+		{"TestCount", fields{Mutex: &sync.Mutex{}}, 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Disposer{
-				Mutex: tt.fields.Mutex,
-				Map:   tt.fields.Map,
+				lock: tt.fields.Mutex,
+				Map:  sync.Map{},
 			}
 			d.Add(RightNow().Do(func() {}))
 
@@ -144,20 +103,19 @@ func TestDisposer_Count(t *testing.T) {
 
 func TestDisposer_Dispose(t *testing.T) {
 	type fields struct {
-		Mutex sync.Mutex
-		Map   sync.Map
+		Mutex *sync.Mutex
 	}
 	tests := []struct {
 		name   string
 		fields fields
 	}{
-		{"TestDispose", fields{Map: sync.Map{}, Mutex: sync.Mutex{}}},
+		{"TestDispose", fields{Mutex: &sync.Mutex{}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Disposer{
-				Mutex: tt.fields.Mutex,
-				Map:   tt.fields.Map,
+				lock: tt.fields.Mutex,
+				Map:  sync.Map{},
 			}
 			d.Add(RightNow().Do(func() {}))
 			d.Add(RightNow().Do(func() {}))
@@ -171,20 +129,19 @@ func TestDisposer_Dispose(t *testing.T) {
 
 func TestDisposer_Random(t *testing.T) {
 	type fields struct {
-		Mutex sync.Mutex
-		Map   sync.Map
+		Mutex *sync.Mutex
 	}
 	tests := []struct {
 		name   string
 		fields fields
 	}{
-		{"TestDispose", fields{Map: sync.Map{}, Mutex: sync.Mutex{}}},
+		{"TestDispose", fields{Mutex: &sync.Mutex{}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Disposer{
-				Mutex: tt.fields.Mutex,
-				Map:   tt.fields.Map,
+				lock: tt.fields.Mutex,
+				Map:  sync.Map{},
 			}
 			for i := 0; i < 100000; i++ {
 				RightNow().Do(func() {
