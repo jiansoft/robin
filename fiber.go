@@ -25,7 +25,7 @@ type GoroutineMulti struct {
 	scheduler      IScheduler
 	executor       executor
 	executionState executionState
-	lock           sync.Mutex
+	lock           *sync.Mutex
 	subscriptions  *Disposer
 	flushPending   bool
 }
@@ -35,7 +35,7 @@ type GoroutineSingle struct {
 	scheduler      IScheduler
 	executor       executor
 	executionState executionState
-	lock           sync.Mutex
+	lock           *sync.Mutex
 	cond           *sync.Cond
 	subscriptions  *Disposer
 }
@@ -46,6 +46,7 @@ func (g *GoroutineMulti) init() *GoroutineMulti {
 	g.scheduler = NewScheduler(g)
 	g.executor = newDefaultExecutor()
 	g.subscriptions = NewDisposer()
+	g.lock = new(sync.Mutex)
 	return g
 }
 
@@ -137,7 +138,8 @@ func (g *GoroutineSingle) init() *GoroutineSingle {
 	g.subscriptions = NewDisposer()
 	g.scheduler = NewScheduler(g)
 	g.executor = newDefaultExecutor()
-	g.cond = sync.NewCond(&g.lock)
+	g.lock = new(sync.Mutex)
+	g.cond = sync.NewCond(g.lock)
 	return g
 }
 
