@@ -7,13 +7,13 @@ import (
 
 // ConcurrentQueue A "thread" safe string to anything container.
 type ConcurrentQueue struct {
-	lock      sync.Mutex
+	lock      *sync.Mutex
 	container *list.List
 }
 
 func (c *ConcurrentQueue) init() *ConcurrentQueue {
 	c.container = list.New()
-	//c.lock = new(sync.Mutex)
+	c.lock = new(sync.Mutex)
 	return c
 }
 
