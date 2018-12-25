@@ -26,8 +26,8 @@ func TestEverySeries(t *testing.T) {
 			minutes := Every(1).Minutes().Do(func(s string) { t.Logf("s:%v", s) }, "Minutes")
 			hours := Every(2).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "Hours")
 			days := Every(1).Days().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Days")
-			Every(1).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 			rightNow := RightNow().Do(func(s string) { t.Logf("s:%v", s) }, "RightNow")
+
 			after := Every(60).MilliSeconds().AfterExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "After")
 			before := Every(60).MilliSeconds().BeforeExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "Before")
 
@@ -49,9 +49,22 @@ func TestEverySeries(t *testing.T) {
 			hours.Dispose()
 			days.Dispose()
 			rightNow.Dispose()
-
 			after.Dispose()
 			before.Dispose()
+
+			Every(2).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Days")
+			Every(2).Days().At(0, 1, 2).Do(func(s string) { t.Logf("s:%v", s) }, "Days")
+
+			Every(2).Seconds().At(time.Now().Hour(), time.Now().Minute(), time.Now().Second()+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Seconds")
+			Every(2).Minutes().At(time.Now().Hour(), time.Now().Minute(), time.Now().Second()+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Minutes")
+			Every(2).Hours().At(time.Now().Hour(), time.Now().Minute(), time.Now().Second()+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Hours")
+			Every(2).Days().At(time.Now().Hour(), time.Now().Minute(), time.Now().Second()+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Days")
+
+			timeout.Reset(time.Duration(2000) * time.Millisecond)
+			select {
+			case <-timeout.C:
+			}
+
 		})
 	}
 }

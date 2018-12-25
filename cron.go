@@ -17,7 +17,7 @@ const (
 
 const (
 	delayNone delayUnit = iota
-	delayWeeks
+	//delayWeeks
 	delayDays
 	delayHours
 	delayMinutes
@@ -283,8 +283,8 @@ func (c *Job) BeforeExecuteTask() *Job {
 // firstTimeSetDelayNextTime
 func (c *Job) firstTimeSetDelayNextTime(now time.Time) {
 	switch c.delayUnit {
-	case delayWeeks:
-		c.nextTime = now.AddDate(0, 0, 7)
+	/*case delayWeeks:
+	c.nextTime = now.AddDate(0, 0, 7)*/
 	case delayDays:
 		c.nextTime = now.AddDate(0, 0, int(c.interval))
 	case delayHours:
