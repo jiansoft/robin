@@ -55,12 +55,47 @@ func TestEverySeries(t *testing.T) {
 			Every(2).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 			Every(2).Days().At(0, 1, 2).Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 
-			Every(2).Seconds().At(time.Now().Hour(), time.Now().Minute(), time.Now().Second()+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Seconds")
-			Every(2).Minutes().At(time.Now().Hour(), time.Now().Minute(), time.Now().Second()+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Minutes")
-			Every(2).Hours().At(time.Now().Hour(), time.Now().Minute(), time.Now().Second()+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Hours")
-			Every(2).Days().At(time.Now().Hour(), time.Now().Minute(), time.Now().Second()+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Days")
+			hh := time.Now().Hour()
+			mm := time.Now().Minute()
+			ss := time.Now().Second()
+			t.Logf("now:%v:%v:%v", hh, mm, ss)
+			Every(1).Seconds().Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Seconds")
+			Every(2).Seconds().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 2 Seconds")
 
-			timeout.Reset(time.Duration(2000) * time.Millisecond)
+			Every(1).Minutes().Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Minutes")
+			Every(1).Minutes().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Minutes")
+			Every(2).Minutes().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 2 Minutes")
+
+			Every(1).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Hours")
+			Every(1).Hours().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Hours")
+			Every(2).Hours().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 2 Hours")
+
+			Every(1).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Days")
+			Every(1).Days().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Days")
+			Every(2).Days().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 2 Days")
+
+			EveryMonday().Do(func(s string) { t.Logf("s:%v", s) }, "Monday")
+			EveryMonday().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Monday")
+
+			EveryTuesday().Do(func(s string) { t.Logf("s:%v", s) }, "Tuesday")
+			EveryTuesday().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Tuesday")
+
+			EveryWednesday().Do(func(s string) { t.Logf("s:%v", s) }, "Wednesday")
+			EveryWednesday().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Wednesday")
+
+			EveryThursday().Do(func(s string) { t.Logf("s:%v", s) }, "Thursday")
+			EveryThursday().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Thursday")
+
+			EveryFriday().Do(func(s string) { t.Logf("s:%v", s) }, "Friday")
+			EveryFriday().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Friday")
+
+			EverySaturday().Do(func(s string) { t.Logf("s:%v", s) }, "Saturday")
+			EverySaturday().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Saturday")
+
+			EverySunday().Do(func(s string) { t.Logf("s:%v", s) }, "Sunday")
+			EverySunday().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Sunday")
+
+			timeout.Reset(time.Duration(1500) * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}
