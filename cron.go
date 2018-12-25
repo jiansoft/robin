@@ -352,7 +352,7 @@ func (c *Job) firstTimeSetMinutesNextTime(now time.Time) {
 	}
 }
 
-// Do What job needs to execute?
+// Do some job needs to execute.
 func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	c.task = newTask(fun, params...)
 	now := time.Now()
@@ -385,7 +385,11 @@ func (c *Job) canDo() {
 		if c.unit == delay || c.timingMode == beforeExecuteTask {
 			c.fiber.EnqueueWithTask(c.task)
 		} else {
-			d := c.task.Run()
+			//d := c.task.Run()
+			s := time.Now()
+			c.task.run()
+			e := time.Now()
+			d := e.Sub(s)
 			c.nextTime = c.nextTime.Add(d)
 		}
 		switch c.unit {

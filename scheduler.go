@@ -59,6 +59,7 @@ func (s *Scheduler) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskF
 	}
 	if firstInMs <= 0 {
 		pending.executeOnFiber()
+		pending.Dispose()
 	} else {
 		pending.schedule()
 		s.disposabler.Add(pending)

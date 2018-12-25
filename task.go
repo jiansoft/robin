@@ -3,7 +3,18 @@ package robin
 import (
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
+)
+
+var (
+	taskPool = sync.Pool{
+		New: func() interface{} { return Task{} },
+	}
+
+	timerTaskPool = sync.Pool{
+		New: func() interface{} { return new(timerTask) },
+	}
 )
 
 //Task a struct
@@ -14,7 +25,10 @@ type Task struct {
 }
 
 func newTask(t interface{}, p ...interface{}) Task {
-	task := Task{doFunc: t}
+	tmp := taskPool.Get()
+	task := tmp.(Task)
+	task.doFunc = t
+	//task := Task{doFunc: t}
 	task.funcCache = reflect.ValueOf(t)
 	task.paramsCache = make([]reflect.Value, len(p))
 	for k, param := range p {
@@ -28,19 +42,17 @@ func (t Task) run() {
 	//func(in []reflect.Value) { _ = t.funcCache.Call(in) }(t.paramsCache)
 }
 
-// Run run the function
+/*// Run run the function
 func (t Task) Run() time.Duration {
 	s := time.Now()
 	t.run()
 	e := time.Now()
 	return e.Sub(s)
-}
-
-/*func (t *Task) Dispose() {
-	t.doFunc = nil
-	t.paramsCache = t.paramsCache[:0]
-	t.paramsCache = nil
 }*/
+
+func (t Task) release() {
+	taskPool.Put(t)
+}
 
 type timerTask struct {
 	identifyID   string
@@ -54,7 +66,8 @@ type timerTask struct {
 }
 
 func newTimerTask(fiber SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
-	return new(timerTask).init(fiber, task, firstInMs, intervalInMs)
+	timerTask := timerTaskPool.Get().(*timerTask)
+	return timerTask.init(fiber, task, firstInMs, intervalInMs)
 }
 
 func (t *timerTask) init(scheduler SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
@@ -63,15 +76,22 @@ func (t *timerTask) init(scheduler SchedulerRegistry, task Task, firstInMs int64
 	t.firstInMs = firstInMs
 	t.intervalInMs = intervalInMs
 	t.identifyID = fmt.Sprintf("%p-%p", &t, &task)
+	t.cancelled = false
 	return t
 }
 
 func (t *timerTask) Dispose() {
+	if t.cancelled {
+		return
+	}
 	t.cancelled = true
 
 	if nil != t.scheduler {
 		t.scheduler.Remove(t)
 	}
+
+	t.task.release()
+	timerTaskPool.Put(t)
 }
 
 func (t timerTask) Identify() string {
@@ -93,7 +113,6 @@ func (t *timerTask) schedule() {
 			}
 			t.doFirstSchedule()
 		}
-		t.first = nil
 	}()
 }
 
