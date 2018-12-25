@@ -27,8 +27,6 @@ func TestEverySeries(t *testing.T) {
 			hours := Every(1).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "Hours")
 			days := Every(1).Days().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 			rightNow := RightNow().Do(func(s string) { t.Logf("s:%v", s) }, "RightNow")
-			delay := Delay(50).Do(func(s string) { t.Logf("s:%v", s) }, "Delay")
-
 			after := Every(1).Seconds().AfterExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "After")
 			before := Every(1).Seconds().BeforeExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "Before")
 
@@ -50,10 +48,33 @@ func TestEverySeries(t *testing.T) {
 			hours.Dispose()
 			days.Dispose()
 			rightNow.Dispose()
-			delay.Dispose()
 
 			after.Dispose()
 			before.Dispose()
+		})
+	}
+}
+
+func TestDelaySeries(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{"Test_DelaySeries"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			Delay(50).MilliSeconds().Do(func(s string) { t.Logf("s:%v", s) }, "MilliSeconds")
+			Delay(50).Seconds().Do(func(s string) { t.Logf("s:%v", s) }, "Seconds")
+			Delay(50).Minutes().Do(func(s string) { t.Logf("s:%v", s) }, "Minutes")
+			Delay(50).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "Hours")
+			Delay(50).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Days")
+
+			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
+			select {
+			case <-timeout.C:
+			}
+
 		})
 	}
 }
