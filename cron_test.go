@@ -24,11 +24,12 @@ func TestEverySeries(t *testing.T) {
 			milliSeconds := Every(55).MilliSeconds().Do(func(s string) { t.Logf("s:%v", s) }, "MilliSeconds")
 			seconds := Every(1).Seconds().Do(func(s string) { t.Logf("s:%v", s) }, "Seconds")
 			minutes := Every(1).Minutes().Do(func(s string) { t.Logf("s:%v", s) }, "Minutes")
-			hours := Every(1).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "Hours")
+			hours := Every(2).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "Hours")
 			days := Every(1).Days().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Days")
+			Every(1).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 			rightNow := RightNow().Do(func(s string) { t.Logf("s:%v", s) }, "RightNow")
-			after := Every(1).Seconds().AfterExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "After")
-			before := Every(1).Seconds().BeforeExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "Before")
+			after := Every(60).MilliSeconds().AfterExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "After")
+			before := Every(60).MilliSeconds().BeforeExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "Before")
 
 			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
 			select {
