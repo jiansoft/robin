@@ -364,13 +364,13 @@ func TestGoroutineSingle_ScheduleOnInterval(t *testing.T) {
 				t.Errorf("GoroutineSingle.ScheduleOnInterval() = %v, want Disposable", gotD)
 			}
 
-			timeout := time.NewTimer(time.Duration(80) * time.Millisecond)
+			timeout := time.NewTimer(time.Duration(60) * time.Millisecond)
 			select {
 			case <-timeout.C:
 				gotD.Dispose()
 			}
 			timeout.Stop()
-			timeout.Reset(time.Duration(100) * time.Millisecond)
+			timeout.Reset(time.Duration(120) * time.Millisecond)
 			select {
 			case <-timeout.C:
 				gotD.Dispose()
