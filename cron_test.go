@@ -108,18 +108,31 @@ func TestDelaySeries(t *testing.T) {
 	tests := []struct {
 		name string
 	}{
-		{"Test_DelaySeries"},
+		{"Test_DelaySeries_1"},
+		{"Test_DelaySeries_2"},
+		{"Test_DelaySeries_3"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			Delay(50).MilliSeconds().Do(func(s string) { t.Logf("s:%v", s) }, "MilliSeconds")
+			RightNow().Do(func(s string) { t.Logf("s:%v", s) }, "RightNow")
+			Delay(5).MilliSeconds().Do(func(s string) { t.Logf("s:%v", s) }, "MilliSeconds")
 			Delay(50).Seconds().Do(func(s string) { t.Logf("s:%v", s) }, "Seconds")
 			Delay(50).Minutes().Do(func(s string) { t.Logf("s:%v", s) }, "Minutes")
 			Delay(50).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "Hours")
 			Delay(50).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 
-			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
+			Delay(10).MilliSeconds().Do(func(s string) {
+				t.Logf("s:%v", s)
+				Delay(20).MilliSeconds().Do(func(s string) {
+					t.Logf("s:%v", s)
+					Delay(30).MilliSeconds().Do(func(s string) {
+						t.Logf("s:%v", s)
+						Delay(40).MilliSeconds().Do(func(s string) { t.Logf("s:%v", s) }, "MilliSeconds 40")
+					}, "MilliSeconds 30")
+				}, "MilliSeconds 20")
+			}, "MilliSeconds 10")
+
+			timeout := time.NewTimer(time.Duration(120) * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}

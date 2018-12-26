@@ -2,6 +2,7 @@ package robin
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -16,6 +17,11 @@ const (
 )
 
 const (
+	beforeExecuteTask timingAfterOrBeforeExecuteTask = iota
+	afterExecuteTask
+)
+
+const (
 	delayNone delayUnit = iota
 	//delayWeeks
 	delayDays
@@ -25,18 +31,15 @@ const (
 	delayMilliseconds
 )
 
-const (
-	beforeExecuteTask timingAfterOrBeforeExecuteTask = iota
-	afterExecuteTask
+var (
+	jobPool = sync.Pool{
+		New: func() interface{} {
+			return new(Job)
+		},
+	}
+	dc = newCronDelay()
+	ec = newEveryCron()
 )
-
-var dc = NewCronDelay()
-var ec = NewEveryCron()
-
-//var schedulerExecutor = NewSchedulerExecutor()
-//type jobSchedulerExecutor struct {
-//	fiber *GoroutineMulti
-//}
 
 type unit int
 type delayUnit int
@@ -77,8 +80,8 @@ func Delay(delayInMs int64) *Job {
 	return dc.Delay(delayInMs)
 }
 
-// NewCronDelay Constructors
-func NewCronDelay() *cronDelay {
+// newCronDelay Constructors
+func newCronDelay() *cronDelay {
 	return new(cronDelay).init()
 }
 
@@ -100,7 +103,7 @@ func (c *cronDelay) Delay(delayInMs int64) *Job {
 }
 
 // EveryCron Constructors
-func NewEveryCron() *cronEvery {
+func newEveryCron() *cronEvery {
 	return new(cronEvery).init()
 }
 
@@ -162,19 +165,9 @@ func newEveryJob(weekday time.Weekday) *Job {
 	return c
 }
 
-//func NewSchedulerExecutor() *jobSchedulerExecutor {
-//	return new(jobSchedulerExecutor).init()
-//}
-//
-//func (c *jobSchedulerExecutor) init() *jobSchedulerExecutor {
-//	c.fiber = NewGoroutineMulti()
-//	c.fiber.Start()
-//	return c
-//}
-
 // return Job Constructors
 func NewJob(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
-	return new(Job).init(intervel, fiber, delayUnit)
+	return jobPool.Get().(*Job).init(intervel, fiber, delayUnit)
 }
 
 func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
@@ -186,14 +179,14 @@ func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 	c.interval = intervel
 	c.delayUnit = delayUnit
 	c.timingMode = beforeExecuteTask
-	c.identifyId = fmt.Sprintf("%p-%p", &c, &fiber)
+	c.identifyId = fmt.Sprintf("%p-%p-%d", &c, &fiber, time.Now().UnixNano())
 	return c
 }
 
 // Dispose Job's Dispose
 func (c *Job) Dispose() {
 	c.taskDisposer.Dispose()
-	//c.fiber = nil
+	jobPool.Put(c)
 }
 
 // Identify Job's Identify
@@ -385,7 +378,6 @@ func (c *Job) canDo() {
 		if c.unit == delay || c.timingMode == beforeExecuteTask {
 			c.fiber.EnqueueWithTask(c.task)
 		} else {
-			//d := c.task.Run()
 			s := time.Now()
 			c.task.run()
 			e := time.Now()
@@ -394,6 +386,7 @@ func (c *Job) canDo() {
 		}
 		switch c.unit {
 		case delay:
+			jobPool.Put(c)
 			return
 		case weeks:
 			c.nextTime = c.nextTime.AddDate(0, 0, 7)

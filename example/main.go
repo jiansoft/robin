@@ -70,16 +70,7 @@ func main() {
 	//Every N seconds do once.
 	robin.Every(100).Seconds().Do(runCron, "Every 10 Seconds")
 
-	// Use a new cron executor
-	newCronDelay := robin.NewCronDelay()
-	newCronDelay.Delay(2000).Do(runCron, "newDelayCron Delay 2000 in Ms")
-
-	// Use a new cron executor
-	newCronScheduler := robin.NewEveryCron()
-	newCronScheduler.Every(1).Hours().Do(runCron, "newCronScheduler Hours")
-	newCronScheduler.Every(1).Minutes().Do(runCron, "newCronScheduler Minutes")
-	//<-quitSemaphore
-	fmt.Scanln()
+	_, _ = fmt.Scanln()
 }
 
 func runSleepCron(s string, second int, sleep int) {
