@@ -121,22 +121,44 @@ func TestDelaySeries(t *testing.T) {
 			Delay(50).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "Hours")
 			Delay(50).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 
-			Delay(10).MilliSeconds().Do(func(s string) {
-				t.Logf("s:%v", s)
-				Delay(20).MilliSeconds().Do(func(s string) {
-					t.Logf("s:%v", s)
-					Delay(30).MilliSeconds().Do(func(s string) {
-						t.Logf("s:%v", s)
-						Delay(40).MilliSeconds().Do(func(s string) { t.Logf("s:%v", s) }, "MilliSeconds 40")
-					}, "MilliSeconds 30")
-				}, "MilliSeconds 20")
-			}, "MilliSeconds 10")
+			unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
+			Delay(10).MilliSeconds().Do(func(s string, pervUnixMillisecond int64) {
+				unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
+				diffTime := unixMillisecond - pervUnixMillisecond
+				t.Logf("s:%v diff:%d", s, diffTime)
+				if 10 < diffTime {
+					t.Errorf("delay time got = %v, want >= 10", unixMillisecond)
+				}
+				Delay(20).MilliSeconds().Do(func(s string, pervUnixMillisecond int64) {
+					unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
+					diffTime := unixMillisecond - pervUnixMillisecond
+					t.Logf("s:%v diff:%d", s, diffTime)
+					if 20 < diffTime {
+						t.Errorf("delay time got = %v, want >= 20", unixMillisecond)
+					}
+					Delay(30).MilliSeconds().Do(func(s string, pervUnixMillisecond int64) {
+						unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
+						diffTime := unixMillisecond - pervUnixMillisecond
+						t.Logf("s:%v diff:%d", s, diffTime)
+						if 30 < diffTime {
+							t.Errorf("delay time got = %v, want >= 30", unixMillisecond)
+						}
+						Delay(40).MilliSeconds().Do(func(s string, pervUnixMillisecond int64) {
+							unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
+							diffTime := unixMillisecond - pervUnixMillisecond
+							t.Logf("s:%v diff:%d", s, diffTime)
+							if 40 < diffTime {
+								t.Errorf("delay time got = %v, want >= 40", unixMillisecond)
+							}
+						}, "MilliSeconds 40", unixMillisecond)
+					}, "MilliSeconds 30", unixMillisecond)
+				}, "MilliSeconds 20", unixMillisecond)
+			}, "MilliSeconds 10", unixMillisecond)
 
 			timeout := time.NewTimer(time.Duration(120) * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}
-
 		})
 	}
 }
