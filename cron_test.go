@@ -126,28 +126,28 @@ func TestDelaySeries(t *testing.T) {
 				unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
 				diffTime := unixMillisecond - pervUnixMillisecond
 				t.Logf("s:%v diff:%d", s, diffTime)
-				if 10 < diffTime {
+				if diffTime < 10 {
 					t.Errorf("delay time got = %v, want >= 10", diffTime)
 				}
 				Delay(20).MilliSeconds().Do(func(s string, pervUnixMillisecond int64) {
 					unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
 					diffTime := unixMillisecond - pervUnixMillisecond
 					t.Logf("s:%v diff:%d", s, diffTime)
-					if 20 < diffTime {
+					if diffTime < 20 {
 						t.Errorf("delay time got = %v, want >= 20", diffTime)
 					}
 					Delay(30).MilliSeconds().Do(func(s string, pervUnixMillisecond int64) {
 						unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
 						diffTime := unixMillisecond - pervUnixMillisecond
 						t.Logf("s:%v diff:%d", s, diffTime)
-						if 30 < diffTime {
+						if diffTime < 30 {
 							t.Errorf("delay time got = %v, want >= 30", diffTime)
 						}
 						Delay(40).MilliSeconds().Do(func(s string, pervUnixMillisecond int64) {
 							unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
 							diffTime := unixMillisecond - pervUnixMillisecond
 							t.Logf("s:%v diff:%d", s, diffTime)
-							if 40 < diffTime {
+							if diffTime < 40 {
 								t.Errorf("delay time got = %v, want >= 40", diffTime)
 							}
 						}, "MilliSeconds 40", unixMillisecond)
