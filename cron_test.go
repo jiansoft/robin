@@ -13,6 +13,7 @@ func TestEverySeries(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			monday := EveryMonday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Monday")
 			tuesday := EveryTuesday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Tuesday")
 			wednesday := EveryWednesday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Wednesday")
@@ -70,6 +71,8 @@ func TestEverySeries(t *testing.T) {
 			Every(1).Hours().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Hours")
 			Every(2).Hours().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 2 Hours")
 
+			Everyday().Do(func(s string) { t.Logf("s:%v", s) }, "Everyday")
+			Everyday().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Everyday")
 			Every(1).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Days")
 			Every(1).Days().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Days")
 			Every(2).Days().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 2 Days")

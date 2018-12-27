@@ -148,6 +148,11 @@ func EverySaturday() *Job {
 	return newEveryJob(time.Saturday)
 }
 
+// Everyday The job will execute every day
+func Everyday() *Job {
+	return ec.Every(1).Days()
+}
+
 // Every The job will execute every N unit(ex hour、minute、second、milliseconds etc..).
 func Every(interval int64) *Job {
 	return ec.Every(interval)
