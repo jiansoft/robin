@@ -299,7 +299,8 @@ func (c *Job) firstTimeSetDelayNextTime(now time.Time) {
 // firstTimeSetWeeksNextTime
 func (c *Job) firstTimeSetWeeksNextTime(now time.Time) {
 	i := (7 - (int(now.Weekday() - c.weekday))) % 7
-	c.nextTime = time.Date(now.Year(), now.Month(), now.Day()+int(i), c.hour, c.minute, c.second, 0, c.loc)
+	c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc)
+	c.nextTime = c.nextTime.AddDate(0, 0, int(i))
 	if c.nextTime.Before(now) {
 		c.nextTime = c.nextTime.AddDate(0, 0, 7)
 	}
