@@ -57,13 +57,17 @@ func (s *Scheduler) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskF
 	if s.isDispose {
 		return pending
 	}
-	if firstInMs <= 0 {
-		pending.executeOnFiber()
-		pending.Dispose()
-	} else {
-		pending.schedule()
+	pending.schedule()
+	if firstInMs > 0 {
 		s.disposabler.Add(pending)
 	}
+	/*if firstInMs <= 0 {
+		//pending.executeOnFiber()
+		//pending.Dispose()
+	} else {
+		//pending.schedule()
+		s.disposabler.Add(pending)
+	}*/
 	return pending
 }
 

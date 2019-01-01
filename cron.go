@@ -37,8 +37,9 @@ var (
 			return new(Job)
 		},
 	}
-	dc = newCronDelay()
-	ec = newEveryCron()
+	dc   = newCronDelay()
+	ec   = newEveryCron()
+	lock = sync.Mutex{}
 )
 
 type unit int
@@ -373,7 +374,9 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	}
 
 	firstInMs := int64(c.nextTime.Sub(now) / time.Millisecond)
+	lock.Lock()
 	c.taskDisposer = c.fiber.Schedule(firstInMs, c.canDo)
+	lock.Unlock()
 	return c
 }
 
@@ -409,7 +412,8 @@ func (c *Job) canDo() {
 		}
 	}
 
-	c.taskDisposer.Dispose()
 	adjustTime := int64(c.nextTime.Sub(time.Now()) / time.Millisecond /*1000000*/)
+	lock.Lock()
 	c.taskDisposer = c.fiber.Schedule(adjustTime, c.canDo)
+	lock.Unlock()
 }
