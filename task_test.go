@@ -223,7 +223,7 @@ func Test_timerTask_doIntervalSchedule(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fields.doIntervalSchedule()
-			timeout := time.NewTimer(time.Duration(101) * time.Millisecond)
+			timeout := time.NewTimer(time.Duration(105) * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}

@@ -42,14 +42,6 @@ func (t Task) run() {
 	//func(in []reflect.Value) { _ = t.funcCache.Call(in) }(t.paramsCache)
 }
 
-/*// Run run the function
-func (t Task) Run() time.Duration {
-	s := time.Now()
-	t.run()
-	e := time.Now()
-	return e.Sub(s)
-}*/
-
 func (t Task) release() {
 	taskPool.Put(t)
 }

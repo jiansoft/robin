@@ -61,10 +61,23 @@ func TestGoroutineMulti_Enqueue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			for ii := 0; ii <= 10; ii++ {
+				tt.fiber.Schedule(10, func() {
+					for i := 0; i <= 10000; i++ {
+						tt.fiber.Enqueue(
+							func(s int) {
+								if s == 5000 {
+									t.Logf("For:%v", s)
+								}
+							}, i)
+					}
+				})
+			}
+
 			tt.fiber.Enqueue(tt.args, "Test 1")
 			tt.fiber.Enqueue(func(s string) { t.Logf("s:%v", s) }, "Test 2")
 			tt.fiber.Enqueue(func(s string) { t.Logf("s:%v", s) }, "Test 3")
-			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
+			timeout := time.NewTimer(time.Duration(1000) * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}
@@ -116,10 +129,23 @@ func TestGoroutineMulti_Schedule(t *testing.T) {
 		args    Task
 		firstMs int64
 	}{
-		{"Test_GoroutineMulti_Schedule", g, newTask(func(s string) { t.Logf("s:%v", s) }), 50},
+		{"Test_GoroutineMulti_Schedule", g, newTask(func(s string) { t.Logf("s:%v", s) }), 20},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			for ii := 0; ii <= 10; ii++ {
+				tt.fiber.Enqueue(func(ii int) {
+					for i := 0; i <= 1000; i++ {
+						tt.fiber.Schedule(
+							tt.firstMs,
+							func(i int, ii int) {
+								if i == 1000 {
+									t.Logf("For i:%v ii:%v", i, ii)
+								}
+							}, i, ii)
+					}
+				}, ii)
+			}
 			tt.fiber.Schedule(tt.firstMs, tt.args.doFunc, "Test 1")
 			tt.fiber.Schedule(tt.firstMs, tt.args.doFunc, "Test 2")
 			tt.fiber.Schedule(tt.firstMs, tt.args.doFunc, "Test 3")
@@ -131,7 +157,7 @@ func TestGoroutineMulti_Schedule(t *testing.T) {
 			}
 			gotD.Dispose()
 
-			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
+			timeout := time.NewTimer(time.Duration(1200) * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}

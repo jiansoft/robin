@@ -115,17 +115,17 @@ func (g GoroutineMulti) NumSubscriptions() int {
 }
 
 func (g *GoroutineMulti) flush() {
+	g.lock.Lock()
+	defer g.lock.Unlock()
 	toDoTasks, ok := g.queue.DequeueAll()
 	if !ok {
 		g.flushPending = false
 		return
 	}
 	g.executor.ExecuteTasksWithGoroutine(toDoTasks)
-	g.lock.Lock()
-	defer g.lock.Unlock()
 	if g.queue.Count() > 0 {
 		//It has new Task enqueue when clear tasks
-		go g.flush()
+		g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
 	} else {
 		//Task is empty
 		g.flushPending = false

@@ -78,7 +78,8 @@ func (s *Scheduler) EnqueueWithTask(task Task) {
 
 //Implement SchedulerRegistry.Remove
 func (s *Scheduler) Remove(d Disposable) {
-	s.fiber.Enqueue(s.disposabler.Remove, d)
+	s.disposabler.Remove(d)
+	//s.fiber.Enqueue(s.disposabler.Remove, d)
 }
 
 func (s *Scheduler) Start() {
