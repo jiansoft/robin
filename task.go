@@ -152,11 +152,11 @@ func (t *timerTask) setCancelled(r bool) {
 	t.lock.Unlock()
 }
 
-func (t *timerTask) setIdentifyID(r string) {
+/*func (t *timerTask) setIdentifyID(r string) {
 	t.lock.Lock()
 	t.identifyID = r
 	t.lock.Unlock()
-}
+}*/
 
 func (t *timerTask) getInterval() int64 {
 	t.lock.Lock()
