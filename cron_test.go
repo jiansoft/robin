@@ -13,7 +13,6 @@ func TestEverySeries(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			monday := EveryMonday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Monday")
 			tuesday := EveryTuesday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Tuesday")
 			wednesday := EveryWednesday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Wednesday")
@@ -52,7 +51,8 @@ func TestEverySeries(t *testing.T) {
 			rightNow.Dispose()
 			after.Dispose()
 			before.Dispose()
-
+			t.Logf("after:%v", after.Identify())
+			t.Logf("before:%v", before.Identify())
 			Every(2).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 			Every(2).Days().At(0, 1, 2).Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 

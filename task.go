@@ -14,9 +14,7 @@ var (
 
 	timerTaskPool = sync.Pool{
 		New: func() interface{} {
-			t := new(timerTask)
-			t.lock = &sync.Mutex{}
-			return t // new(timerTask)
+			return &timerTask{lock: sync.Mutex{}} // new(timerTask)
 		},
 	}
 )
@@ -29,10 +27,8 @@ type Task struct {
 }
 
 func newTask(t interface{}, p ...interface{}) Task {
-	tmp := taskPool.Get()
-	task := tmp.(Task)
+	task := taskPool.Get().(Task)
 	task.doFunc = t
-	//task := Task{doFunc: t}
 	task.funcCache = reflect.ValueOf(t)
 	task.paramsCache = make([]reflect.Value, len(p))
 	for k, param := range p {
@@ -55,11 +51,9 @@ type timerTask struct {
 	scheduler    SchedulerRegistry
 	firstInMs    int64
 	intervalInMs int64
-	//first        *time.Timer
-	//interval     *time.Ticker
-	task      Task
-	cancelled bool
-	lock      *sync.Mutex
+	task         Task
+	cancelled    bool
+	lock         sync.Mutex
 }
 
 func newTimerTask(fiber SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
@@ -73,10 +67,11 @@ func (t *timerTask) init(scheduler SchedulerRegistry, task Task, firstInMs int64
 	t.task = task
 	t.firstInMs = firstInMs
 	t.intervalInMs = intervalInMs
-	//t.identifyID = fmt.Sprintf("%p-%p", &t, &task)
+	t.identifyID = fmt.Sprintf("%p-%p", &t, &task)
+	t.cancelled = false
 	t.lock.Unlock()
-	t.setIdentifyID(fmt.Sprintf("%p-%p", &t, &task))
-	t.setCancelled(false)
+	//t.setIdentifyID(fmt.Sprintf("%p-%p", &t, &task))
+	//t.setCancelled(false)
 	return t
 }
 
@@ -85,16 +80,13 @@ func (t *timerTask) Dispose() {
 		return
 	}
 	t.setCancelled(true)
-	/*t.lock.Lock()
-	defer t.lock.Unlock()*/
 
 	if nil != t.scheduler {
 		t.scheduler.Remove(t)
 	}
 
 	t.task.release()
-
-	timerTaskPool.Put(t)
+	t.release()
 }
 
 func (t *timerTask) Identify() string {
@@ -117,19 +109,17 @@ func (t *timerTask) schedule() {
 	}()
 }
 
-func(t *timerTask) doFirstSchedule() {
+func (t *timerTask) doFirstSchedule() {
 	t.executeOnFiber()
 	t.doIntervalSchedule()
 }
 
 func (t *timerTask) doIntervalSchedule() {
-	if t.intervalInMs <= 0 {
+	if t.getInterval() <= 0 {
 		t.Dispose()
 		return
 	}
-	//t.lock.Lock()
-	interval := time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
-	//t.lock.Unlock()
+	interval := time.NewTicker(time.Duration(t.getInterval()) * time.Millisecond)
 	go func() {
 		for !t.getCancelled() {
 			/*select {
@@ -166,4 +156,20 @@ func (t *timerTask) setIdentifyID(r string) {
 	t.lock.Lock()
 	t.identifyID = r
 	t.lock.Unlock()
+}
+
+func (t *timerTask) getInterval() int64 {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	return t.intervalInMs
+}
+
+/*func (t *timerTask) setInterval(r int64) {
+    t.lock.Lock()
+    t.intervalInMs = r
+    t.lock.Unlock()
+}*/
+
+func (t *timerTask) release() {
+	timerTaskPool.Put(t)
 }

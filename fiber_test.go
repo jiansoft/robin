@@ -195,7 +195,7 @@ func TestGoroutineMulti_ScheduleOnInterval(t *testing.T) {
 				lock.Lock()
 				test1Count++
 				lock.Unlock()
-			}), 50, 50, 4},
+			}), 50, 100, 3},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -213,7 +213,7 @@ func TestGoroutineMulti_ScheduleOnInterval(t *testing.T) {
 				gotD2.Dispose()
 			}
 			timeout.Stop()
-			timeout.Reset(time.Duration(120) * time.Millisecond)
+			timeout.Reset(time.Duration(125) * time.Millisecond)
 			select {
 			case <-timeout.C:
 				gotD1.Dispose()
@@ -388,7 +388,7 @@ func TestGoroutineSingle_ScheduleOnInterval(t *testing.T) {
 		args      Task
 		firstMs   int64
 		regularMs int64
-		want1     int32
+		want      int32
 	}{
 		{"Test_GoroutineSingle_ScheduleOnInterval",
 			g,
@@ -397,33 +397,33 @@ func TestGoroutineSingle_ScheduleOnInterval(t *testing.T) {
 				lock.Lock()
 				test1Count++
 				lock.Unlock()
-			}), 50, 50, 4},
+			}), 50, 100, 3},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotA :=tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 1")
-			gotD := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 2")
-			switch gotD.(type) {
+			gotD1 := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 1")
+			gotD2 := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 2")
+			switch gotD2.(type) {
 			case Disposable:
 			default:
-				t.Errorf("GoroutineSingle.ScheduleOnInterval() = %v, want Disposable", gotD)
+				t.Errorf("GoroutineSingle.ScheduleOnInterval() = %v, want Disposable", gotD2)
 			}
 
 			timeout := time.NewTimer(time.Duration(65) * time.Millisecond)
 			select {
 			case <-timeout.C:
-				gotD.Dispose()
+				gotD2.Dispose()
 			}
 			timeout.Stop()
-			timeout.Reset(time.Duration(120) * time.Millisecond)
+			timeout.Reset(time.Duration(125) * time.Millisecond)
 			select {
 			case <-timeout.C:
-				gotA.Dispose()
+				gotD1.Dispose()
 			}
 			lock.Lock()
 			defer lock.Unlock()
-			if tt.want1 != int32(test1Count) {
-				t.Errorf("test 1 count %v, want %v", test1Count, tt.want1)
+			if tt.want != int32(test1Count) {
+				t.Errorf("test 1 count %v, want %v", test1Count, tt.want)
 			}
 		})
 	}

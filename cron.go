@@ -34,12 +34,12 @@ const (
 var (
 	jobPool = sync.Pool{
 		New: func() interface{} {
-			return new(Job)
+			return &Job{lock: sync.Mutex{}}
 		},
 	}
-	dc   = newCronDelay()
-	ec   = newEveryCron()
-	lock = sync.Mutex{}
+	dc = newCronDelay()
+	ec = newEveryCron()
+	//lock = sync.Mutex{}
 )
 
 type unit int
@@ -69,6 +69,7 @@ type Job struct {
 	interval     int64
 	nextTime     time.Time
 	timingMode   timingAfterOrBeforeExecuteTask
+	lock         sync.Mutex
 }
 
 // The job executes immediately.
@@ -179,6 +180,7 @@ func NewJob(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 }
 
 func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
+	c.lock.Lock()
 	c.hour = -1
 	c.minute = -1
 	c.second = -1
@@ -187,16 +189,17 @@ func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 	c.interval = intervel
 	c.delayUnit = delayUnit
 	c.timingMode = beforeExecuteTask
-	c.identifyId = fmt.Sprintf("%p-%p-%d", &c, &fiber, time.Now().UnixNano())
+	c.identifyId = fmt.Sprintf("%p-%p", &c, &fiber)
+	c.lock.Unlock()
 	return c
 }
 
 // Dispose Job's Dispose
 func (c *Job) Dispose() {
-	lock.Lock()
+	c.lock.Lock()
 	c.taskDisposer.Dispose()
 	jobPool.Put(c)
-	lock.Unlock()
+	c.lock.Unlock()
 }
 
 // Identify Job's Identify
@@ -294,19 +297,19 @@ func (c *Job) firstTimeSetDelayNextTime(now time.Time) {
 	/*case delayWeeks:
 	c.nextTime = now.AddDate(0, 0, 7)*/
 	case delayDays:
-		c.setNextTime(now.AddDate(0, 0, int(c.interval)))
+		c.setNextTime(now.AddDate(0, 0, int(c.getInterval())))
 		//c.nextTime = now.AddDate(0, 0, int(c.interval))
 	case delayHours:
-		c.setNextTime(now.Add(time.Duration(c.interval) * time.Hour))
+		c.setNextTime(now.Add(time.Duration(c.getInterval()) * time.Hour))
 		//c.nextTime = now.Add(time.Duration(c.interval) * time.Hour)
 	case delayMinutes:
-		c.setNextTime(now.Add(time.Duration(c.interval) * time.Minute))
+		c.setNextTime(now.Add(time.Duration(c.getInterval()) * time.Minute))
 		//c.nextTime = now.Add(time.Duration(c.interval) * time.Minute)
 	case delaySeconds:
-		c.setNextTime(now.Add(time.Duration(c.interval) * time.Second))
+		c.setNextTime(now.Add(time.Duration(c.getInterval()) * time.Second))
 		//c.nextTime = now.Add(time.Duration(c.interval) * time.Second)
 	case delayMilliseconds:
-		c.setNextTime(now.Add(time.Duration(c.interval) * time.Millisecond))
+		c.setNextTime(now.Add(time.Duration(c.getInterval()) * time.Millisecond))
 		//c.nextTime = now.Add(time.Duration(c.interval) * time.Millisecond)
 	}
 }
@@ -314,7 +317,7 @@ func (c *Job) firstTimeSetDelayNextTime(now time.Time) {
 // firstTimeSetWeeksNextTime
 func (c *Job) firstTimeSetWeeksNextTime(now time.Time) {
 	i := (7 - (int(now.Weekday() - c.weekday))) % 7
-	tmp:= time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc).AddDate(0, 0, int(i))
+	tmp := time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc).AddDate(0, 0, int(i))
 	c.setNextTime(tmp)
 	//c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc)
 	//c.nextTime = c.nextTime.AddDate(0, 0, int(i))
@@ -419,23 +422,23 @@ func (c *Job) canDo() {
 			c.setNextTime(tmp)
 			//c.nextTime = c.nextTime.AddDate(0, 0, 7)
 		case days:
-			tmp := c.getNextTime().AddDate(0, 0, int(c.interval))
+			tmp := c.getNextTime().AddDate(0, 0, int(c.getInterval()))
 			c.setNextTime(tmp)
 			//c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval))
 		case hours:
-			tmp := c.getNextTime().Add(time.Duration(c.interval) * time.Hour)
+			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Hour)
 			c.setNextTime(tmp)
 			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Hour)
 		case minutes:
-			tmp := c.getNextTime().Add(time.Duration(c.interval) * time.Minute)
+			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Minute)
 			c.setNextTime(tmp)
 			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Minute)
 		case seconds:
-			tmp := c.getNextTime().Add(time.Duration(c.interval) * time.Second)
+			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Second)
 			c.setNextTime(tmp)
 			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Second)
 		case milliseconds:
-			tmp := c.getNextTime().Add(time.Duration(c.interval) * time.Millisecond)
+			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Millisecond)
 			c.setNextTime(tmp)
 			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Millisecond)
 		}
@@ -449,31 +452,37 @@ func (c *Job) canDo() {
 }
 
 func (c *Job) setTaskDisposer(adjustTime int64) {
-	lock.Lock()
+	c.lock.Lock()
 	c.taskDisposer = c.fiber.Schedule(adjustTime, c.canDo)
-	lock.Unlock()
+	c.lock.Unlock()
 }
 
 func (c *Job) setNextTime(nextTime time.Time) {
-	lock.Lock()
+	c.lock.Lock()
 	c.nextTime = nextTime
-	lock.Unlock()
+	c.lock.Unlock()
 }
 
 func (c *Job) getNextTime() time.Time {
-	lock.Lock()
-	defer lock.Unlock()
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	return c.nextTime
 }
 
 func (c *Job) setUnit(unit unit) {
-	lock.Lock()
+	c.lock.Lock()
 	c.unit = unit
-	lock.Unlock()
+	c.lock.Unlock()
 }
 
 func (c *Job) getUnit() unit {
-	lock.Lock()
-	defer lock.Unlock()
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	return c.unit
+}
+
+func (c *Job) getInterval() int64 {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return c.interval
 }
