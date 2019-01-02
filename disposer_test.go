@@ -8,6 +8,8 @@ import (
 )
 
 func TestDisposer_Add(t *testing.T) {
+	g := NewGoroutineSingle()
+	g.Start()
 	type fields struct {
 		Mutex *sync.Mutex
 	}
@@ -19,7 +21,7 @@ func TestDisposer_Add(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		{"TestAdd", fields{Mutex: &sync.Mutex{}}, args{disposable: RightNow().Do(func() {})}},
+		{"TestAdd", fields{Mutex: &sync.Mutex{}}, args{disposable: newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -27,6 +29,7 @@ func TestDisposer_Add(t *testing.T) {
 				lock: tt.fields.Mutex,
 				Map:  sync.Map{},
 			}
+			//newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
 			d.Add(tt.args.disposable)
 			d.Add(tt.args.disposable)
 			d.Add(tt.args.disposable)
@@ -43,29 +46,23 @@ func TestDisposer_Add(t *testing.T) {
 }
 
 func TestDisposer_Remove(t *testing.T) {
-	type fields struct {
-		Mutex *sync.Mutex
-	}
-	type args struct {
-		disposable Disposable
-	}
+	g := NewGoroutineSingle()
+	g.Start()
 	tests := []struct {
 		name   string
-		fields fields
-		args   args
 	}{
-		{"TestRemove", fields{Mutex: &sync.Mutex{}}, args{disposable: RightNow().Do(func() {})}},
+		{"TestRemove"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Disposer{
-				lock: tt.fields.Mutex,
+				lock: &sync.Mutex{},
 				Map:  sync.Map{},
 			}
-
-			d.Add(tt.args.disposable)
+			pending := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+			d.Add(pending)
 			t.Logf("now disposer has count:%v", d.Count())
-			d.Remove(tt.args.disposable)
+			d.Remove(pending)
 			if d.Count() == 0 {
 				t.Logf("Success count:%v", d.Count())
 			} else {
@@ -76,23 +73,19 @@ func TestDisposer_Remove(t *testing.T) {
 }
 
 func TestDisposer_Count(t *testing.T) {
-	type fields struct {
-		Mutex *sync.Mutex
-	}
+	g := NewGoroutineSingle()
+	g.Start()
 	tests := []struct {
 		name   string
-		fields fields
 		want   int
 	}{
-		{"TestCount", fields{Mutex: &sync.Mutex{}}, 1},
+		{"TestCount", 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Disposer{
-				lock: tt.fields.Mutex,
-				Map:  sync.Map{},
-			}
-			d.Add(RightNow().Do(func() {}))
+			d := NewDisposer()
+			pending := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+			d.Add(pending)
 
 			if got := d.Count(); got != tt.want {
 				t.Errorf("Disposer.Count() = %v, want %v", got, tt.want)
@@ -102,6 +95,8 @@ func TestDisposer_Count(t *testing.T) {
 }
 
 func TestDisposer_Dispose(t *testing.T) {
+	g := NewGoroutineSingle()
+	g.Start()
 	type fields struct {
 		Mutex *sync.Mutex
 	}
@@ -117,9 +112,12 @@ func TestDisposer_Dispose(t *testing.T) {
 				lock: tt.fields.Mutex,
 				Map:  sync.Map{},
 			}
-			d.Add(RightNow().Do(func() {}))
-			d.Add(RightNow().Do(func() {}))
-			d.Add(RightNow().Do(func() {}))
+			pending1 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+			pending2 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+			pending3 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+			d.Add(pending1)
+			d.Add(pending2)
+			d.Add(pending3)
 			t.Logf("before dispose has count:%v", d.Count())
 			d.Dispose()
 			t.Logf("after dispose has count:%v", d.Count())
@@ -128,6 +126,8 @@ func TestDisposer_Dispose(t *testing.T) {
 }
 
 func TestDisposer_Random(t *testing.T) {
+	g := NewGoroutineSingle()
+	g.Start()
 	type fields struct {
 		Mutex *sync.Mutex
 	}
@@ -143,11 +143,14 @@ func TestDisposer_Random(t *testing.T) {
 				lock: tt.fields.Mutex,
 				Map:  sync.Map{},
 			}
-			for i := 0; i < 100000; i++ {
+			for i := 0; i < 10; i++ {
 				RightNow().Do(func() {
-					d.Add(RightNow().Do(func() {}))
-					d.Add(RightNow().Do(func() {}))
-					d.Add(RightNow().Do(func() {}))
+					pending1 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+					pending2 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+					pending3 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+					d.Add(pending1)
+					d.Add(pending2)
+					d.Add(pending3)
 					//t.Logf("%v add now has count:%v", ii,d.Count())
 				})
 				RightNow().Do(func() {

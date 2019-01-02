@@ -68,26 +68,25 @@ func newTimerTask(fiber SchedulerRegistry, task Task, firstInMs int64, intervalI
 }
 
 func (t *timerTask) init(scheduler SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
-	//t.lock.Lock()
+	t.lock.Lock()
 	t.scheduler = scheduler
 	t.task = task
 	t.firstInMs = firstInMs
 	t.intervalInMs = intervalInMs
-	//t.lock.Unlock()
-	t.identifyID = fmt.Sprintf("%p-%p", &t, &task)
-	//t.setIdentifyID(fmt.Sprintf("%p-%p", &t, &task))
+	//t.identifyID = fmt.Sprintf("%p-%p", &t, &task)
+	t.lock.Unlock()
+	t.setIdentifyID(fmt.Sprintf("%p-%p", &t, &task))
 	t.setCancelled(false)
 	return t
 }
 
 func (t *timerTask) Dispose() {
-	if t.cancelled {
+	if t.getCancelled() {
 		return
 	}
 	t.setCancelled(true)
-	//t.lock.Lock()
-	//defer t.lock.Unlock()
-	//t.cancelled = true
+	/*t.lock.Lock()
+	defer t.lock.Unlock()*/
 
 	if nil != t.scheduler {
 		t.scheduler.Remove(t)
@@ -109,9 +108,7 @@ func (t *timerTask) schedule() {
 		t.doFirstSchedule()
 		return
 	}
-	//t.lock.Lock()
 	first := time.NewTimer(time.Duration(t.firstInMs) * time.Millisecond)
-	//t.lock.Unlock()
 	go func() {
 		select {
 		case <-first.C:
@@ -120,7 +117,7 @@ func (t *timerTask) schedule() {
 	}()
 }
 
-func (t *timerTask) doFirstSchedule() {
+func(t *timerTask) doFirstSchedule() {
 	t.executeOnFiber()
 	t.doIntervalSchedule()
 }
@@ -134,7 +131,7 @@ func (t *timerTask) doIntervalSchedule() {
 	interval := time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
 	//t.lock.Unlock()
 	go func() {
-		for !t.cancelled {
+		for !t.getCancelled() {
 			/*select {
 			case <-t.interval.C:
 				t.executeOnFiber()
@@ -146,18 +143,18 @@ func (t *timerTask) doIntervalSchedule() {
 	}()
 }
 
-func (t timerTask) executeOnFiber() {
-	if t.cancelled {
+func (t *timerTask) executeOnFiber() {
+	if t.getCancelled() {
 		return
 	}
 	t.scheduler.EnqueueWithTask(t.task)
 }
 
-/*func (t timerTask) isCancelled() bool {
+func (t *timerTask) getCancelled() bool {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	return t.cancelled
-}*/
+}
 
 func (t *timerTask) setCancelled(r bool) {
 	t.lock.Lock()
@@ -165,9 +162,8 @@ func (t *timerTask) setCancelled(r bool) {
 	t.lock.Unlock()
 }
 
-/*func (t *timerTask) setIdentifyID(id string ) {
+func (t *timerTask) setIdentifyID(r string) {
 	t.lock.Lock()
-	t.identifyID = id
+	t.identifyID = r
 	t.lock.Unlock()
 }
-*/

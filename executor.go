@@ -21,7 +21,6 @@ func (d defaultExecutor) ExecuteTasks(tasks []Task) {
 
 func (d defaultExecutor) ExecuteTasksWithGoroutine(tasks []Task) {
 	for _, task := range tasks {
-		//go task.run()
 		d.ExecuteTaskWithGoroutine(task)
 	}
 }

@@ -88,7 +88,8 @@ func newCronDelay() *cronDelay {
 
 func newDelayJob(delayInMs int64) *Job {
 	c := NewJob(delayInMs, dc.fiber, delayMilliseconds)
-	c.unit = delay
+	c.setUnit(delay)
+	//c.unit = delay
 	return c
 }
 
@@ -166,7 +167,8 @@ func (c *cronEvery) Every(interval int64) *Job {
 
 func newEveryJob(weekday time.Weekday) *Job {
 	c := NewJob(1, ec.fiber, delayNone)
-	c.unit = weeks
+	c.setUnit(weeks)
+	//c.unit = weeks
 	c.weekday = weekday
 	return c
 }
@@ -191,8 +193,10 @@ func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 
 // Dispose Job's Dispose
 func (c *Job) Dispose() {
+	lock.Lock()
 	c.taskDisposer.Dispose()
 	jobPool.Put(c)
+	lock.Unlock()
 }
 
 // Identify Job's Identify
@@ -203,7 +207,8 @@ func (c Job) Identify() string {
 // Days sTime unit of execution
 func (c *Job) Days() *Job {
 	if c.delayUnit == delayNone {
-		c.unit = days
+		c.setUnit(days)
+		//c.unit = days
 	} else {
 		c.delayUnit = delayDays
 	}
@@ -213,7 +218,8 @@ func (c *Job) Days() *Job {
 // Hours Time unit of execution
 func (c *Job) Hours() *Job {
 	if c.delayUnit == delayNone {
-		c.unit = hours
+		c.setUnit(hours)
+		//c.unit = hours
 	} else {
 		c.delayUnit = delayHours
 	}
@@ -223,7 +229,8 @@ func (c *Job) Hours() *Job {
 // Minutes Time unit of execution
 func (c *Job) Minutes() *Job {
 	if c.delayUnit == delayNone {
-		c.unit = minutes
+		c.setUnit(minutes)
+		//c.unit = minutes
 	} else {
 		c.delayUnit = delayMinutes
 	}
@@ -233,7 +240,8 @@ func (c *Job) Minutes() *Job {
 // Seconds Time unit of execution
 func (c *Job) Seconds() *Job {
 	if c.delayUnit == delayNone {
-		c.unit = seconds
+		c.setUnit(seconds)
+		//c.unit = seconds
 	} else {
 		c.delayUnit = delaySeconds
 	}
@@ -243,7 +251,8 @@ func (c *Job) Seconds() *Job {
 // MilliSeconds Time unit of execution
 func (c *Job) MilliSeconds() *Job {
 	if c.delayUnit == delayNone {
-		c.unit = milliseconds
+		c.setUnit(milliseconds)
+		//c.unit = milliseconds
 	} else {
 		c.delayUnit = delayMilliseconds
 	}
@@ -255,7 +264,7 @@ func (c *Job) At(hour int, minute int, second int) *Job {
 	c.hour = Abs(c.hour)
 	c.minute = Abs(c.minute)
 	c.second = Abs(c.second)
-	if c.unit != hours {
+	if c.getUnit() != hours {
 		c.hour = hour % 24
 	}
 	c.minute = minute % 60
@@ -285,25 +294,33 @@ func (c *Job) firstTimeSetDelayNextTime(now time.Time) {
 	/*case delayWeeks:
 	c.nextTime = now.AddDate(0, 0, 7)*/
 	case delayDays:
-		c.nextTime = now.AddDate(0, 0, int(c.interval))
+		c.setNextTime(now.AddDate(0, 0, int(c.interval)))
+		//c.nextTime = now.AddDate(0, 0, int(c.interval))
 	case delayHours:
-		c.nextTime = now.Add(time.Duration(c.interval) * time.Hour)
+		c.setNextTime(now.Add(time.Duration(c.interval) * time.Hour))
+		//c.nextTime = now.Add(time.Duration(c.interval) * time.Hour)
 	case delayMinutes:
-		c.nextTime = now.Add(time.Duration(c.interval) * time.Minute)
+		c.setNextTime(now.Add(time.Duration(c.interval) * time.Minute))
+		//c.nextTime = now.Add(time.Duration(c.interval) * time.Minute)
 	case delaySeconds:
-		c.nextTime = now.Add(time.Duration(c.interval) * time.Second)
+		c.setNextTime(now.Add(time.Duration(c.interval) * time.Second))
+		//c.nextTime = now.Add(time.Duration(c.interval) * time.Second)
 	case delayMilliseconds:
-		c.nextTime = now.Add(time.Duration(c.interval) * time.Millisecond)
+		c.setNextTime(now.Add(time.Duration(c.interval) * time.Millisecond))
+		//c.nextTime = now.Add(time.Duration(c.interval) * time.Millisecond)
 	}
 }
 
 // firstTimeSetWeeksNextTime
 func (c *Job) firstTimeSetWeeksNextTime(now time.Time) {
 	i := (7 - (int(now.Weekday() - c.weekday))) % 7
-	c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc)
-	c.nextTime = c.nextTime.AddDate(0, 0, int(i))
-	if c.nextTime.Before(now) {
-		c.nextTime = c.nextTime.AddDate(0, 0, 7)
+	tmp:= time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc).AddDate(0, 0, int(i))
+	c.setNextTime(tmp)
+	//c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc)
+	//c.nextTime = c.nextTime.AddDate(0, 0, int(i))
+	if c.getNextTime().Before(now) {
+		c.setNextTime(c.getNextTime().AddDate(0, 0, 7))
+		//c.nextTime = c.nextTime.AddDate(0, 0, 7)
 	}
 }
 
@@ -356,7 +373,7 @@ func (c *Job) firstTimeSetMinutesNextTime(now time.Time) {
 func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	c.task = newTask(fun, params...)
 	now := time.Now()
-	switch c.unit {
+	switch c.getUnit() {
 	case delay:
 		c.firstTimeSetDelayNextTime(now)
 	case weeks:
@@ -374,46 +391,89 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	}
 
 	firstInMs := int64(c.nextTime.Sub(now) / time.Millisecond)
-	lock.Lock()
-	c.taskDisposer = c.fiber.Schedule(firstInMs, c.canDo)
-	lock.Unlock()
+	c.setTaskDisposer(firstInMs)
 	return c
 }
 
 // Is the job can be executed
 func (c *Job) canDo() {
-	diff := int64(time.Now().Sub(c.nextTime) / time.Millisecond /*1000000*/)
-	if diff >= 0 {
-		if c.unit == delay || c.timingMode == beforeExecuteTask {
+	//diff := int64(time.Now().Sub(c.nextTime) / time.Millisecond /*1000000*/)
+	if /*diff >= 0*/ time.Now().After(c.getNextTime()) {
+		if c.getUnit() == delay || c.timingMode == beforeExecuteTask {
 			c.fiber.EnqueueWithTask(c.task)
 		} else {
 			s := time.Now()
 			c.task.run()
 			e := time.Now()
 			d := e.Sub(s)
-			c.nextTime = c.nextTime.Add(d)
+			tmp := c.getNextTime().Add(d)
+			c.setNextTime(tmp)
+			//c.nextTime = c.nextTime.Add(d)
 		}
-		switch c.unit {
+		switch c.getUnit() {
 		case delay:
 			jobPool.Put(c)
 			return
 		case weeks:
-			c.nextTime = c.nextTime.AddDate(0, 0, 7)
+			tmp := c.getNextTime().AddDate(0, 0, 7)
+			c.setNextTime(tmp)
+			//c.nextTime = c.nextTime.AddDate(0, 0, 7)
 		case days:
-			c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval))
+			tmp := c.getNextTime().AddDate(0, 0, int(c.interval))
+			c.setNextTime(tmp)
+			//c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval))
 		case hours:
-			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Hour)
+			tmp := c.getNextTime().Add(time.Duration(c.interval) * time.Hour)
+			c.setNextTime(tmp)
+			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Hour)
 		case minutes:
-			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Minute)
+			tmp := c.getNextTime().Add(time.Duration(c.interval) * time.Minute)
+			c.setNextTime(tmp)
+			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Minute)
 		case seconds:
-			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Second)
+			tmp := c.getNextTime().Add(time.Duration(c.interval) * time.Second)
+			c.setNextTime(tmp)
+			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Second)
 		case milliseconds:
-			c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Millisecond)
+			tmp := c.getNextTime().Add(time.Duration(c.interval) * time.Millisecond)
+			c.setNextTime(tmp)
+			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Millisecond)
 		}
 	}
 
-	adjustTime := int64(c.nextTime.Sub(time.Now()) / time.Millisecond /*1000000*/)
+	adjustTime := int64(c.getNextTime().Sub(time.Now()) / time.Millisecond /*1000000*/)
+	c.setTaskDisposer(adjustTime)
+	/*lock.Lock()
+	c.taskDisposer = c.fiber.Schedule(adjustTime, c.canDo)
+	lock.Unlock()*/
+}
+
+func (c *Job) setTaskDisposer(adjustTime int64) {
 	lock.Lock()
 	c.taskDisposer = c.fiber.Schedule(adjustTime, c.canDo)
 	lock.Unlock()
+}
+
+func (c *Job) setNextTime(nextTime time.Time) {
+	lock.Lock()
+	c.nextTime = nextTime
+	lock.Unlock()
+}
+
+func (c *Job) getNextTime() time.Time {
+	lock.Lock()
+	defer lock.Unlock()
+	return c.nextTime
+}
+
+func (c *Job) setUnit(unit unit) {
+	lock.Lock()
+	c.unit = unit
+	lock.Unlock()
+}
+
+func (c *Job) getUnit() unit {
+	lock.Lock()
+	defer lock.Unlock()
+	return c.unit
 }

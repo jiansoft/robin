@@ -110,7 +110,7 @@ func (g *GoroutineMulti) DeregisterSubscription(toRemove Disposable) {
 	g.subscriptions.Remove(toRemove)
 }
 
-func (g GoroutineMulti) NumSubscriptions() int {
+func (g *GoroutineMulti) NumSubscriptions() int {
 	return g.subscriptions.Count()
 }
 
@@ -126,6 +126,7 @@ func (g *GoroutineMulti) flush() {
 	if g.queue.Count() > 0 {
 		//It has new Task enqueue when clear tasks
 		g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
+		//go g.flush()
 	} else {
 		//Task is empty
 		g.flushPending = false

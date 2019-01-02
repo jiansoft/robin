@@ -1,11 +1,12 @@
 package robin
 
 import (
+	"sync"
 	"testing"
 	"time"
 )
 
-func TestTask_run(t *testing.T) {
+func Test_Task_run(t *testing.T) {
 	type args struct {
 		task Task
 	}
@@ -78,7 +79,10 @@ func TestTask_Run(t *testing.T) {
 }*/
 
 func Test_timerTask_Dispose(t *testing.T) {
+	lock := sync.Mutex{}
+	lock.Lock()
 	runCount := 0
+	lock.Unlock()
 	g := NewGoroutineMulti()
 	g.Start()
 	tests := []struct {
@@ -86,8 +90,10 @@ func Test_timerTask_Dispose(t *testing.T) {
 		fields *timerTask
 	}{
 		{"Test_timerTask_Dispose", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			lock.Lock()
 			runCount++
 			t.Logf("count:%v s:%v", runCount, s)
+			lock.Unlock()
 		}, time.Now().UnixNano()), 10, 10)},
 	}
 	for _, tt := range tests {
@@ -122,7 +128,10 @@ func Test_timerTask_Identify(t *testing.T) {
 }
 
 func Test_timerTask_schedule(t *testing.T) {
+	lock := sync.Mutex{}
+	lock.Lock()
 	runCount := 0
+	lock.Unlock()
 	g := NewGoroutineMulti()
 	g.Start()
 	tests := []struct {
@@ -130,20 +139,28 @@ func Test_timerTask_schedule(t *testing.T) {
 		fields *timerTask
 	}{
 		{"Test_timerTask_schedule_1", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			lock.Lock()
 			runCount++
 			t.Logf("schedule_1 count:%v s:%v", runCount, s)
+			lock.Unlock()
 		}, time.Now().UnixNano()), 0, 5)},
 		{"Test_timerTask_schedule_2", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			lock.Lock()
 			runCount++
 			t.Logf("schedule_2 count:%v s:%v", runCount, s)
+			lock.Unlock()
 		}, time.Now().UnixNano()), 5, 10)},
 		{"Test_timerTask_schedule_3", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			lock.Lock()
 			runCount++
 			t.Logf("schedule_3 count:%v s:%v", runCount, s)
+			lock.Unlock()
 		}, time.Now().UnixNano()), 10, 20)},
 		{"Test_timerTask_schedule_4", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			lock.Lock()
 			runCount++
 			t.Logf("schedule_4 count:%v s:%v", runCount, s)
+			lock.Unlock()
 		}, time.Now().UnixNano()), 20, 20)},
 	}
 	for _, tt := range tests {
@@ -154,20 +171,25 @@ func Test_timerTask_schedule(t *testing.T) {
 
 			tt.fields.schedule()
 			for true {
-				if tt.name == "Test_timerTask_schedule_1" && runCount >= 10 {
+				lock.Lock()
+				saveRunCount := runCount
+				lock.Unlock()
+				if tt.name == "Test_timerTask_schedule_1" && saveRunCount >= 10 {
 					tt.fields.Dispose()
 					return
 				}
-				if tt.name == "Test_timerTask_schedule_2" && runCount >= 20 {
+				if tt.name == "Test_timerTask_schedule_2" && saveRunCount >= 20 {
 					tt.fields.Dispose()
 					return
 				}
-				if tt.name == "Test_timerTask_schedule_3" && runCount >= 31 {
+				if tt.name == "Test_timerTask_schedule_3" && saveRunCount >= 31 {
 					return
 				}
-				if tt.name == "Test_timerTask_schedule_3" && runCount >= 30 {
-					tt.fields.cancelled = true
+				if tt.name == "Test_timerTask_schedule_3" && saveRunCount >= 30 {
+					lock.Lock()
+					tt.fields.setCancelled(true)
 					runCount++
+					lock.Unlock()
 				}
 				if tt.name == "Test_timerTask_schedule_4" {
 					timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
@@ -194,6 +216,7 @@ func Test_timerTask_doFirstSchedule(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			//tt.fields.doFirstSchedule()
 			tt.fields.doFirstSchedule()
 			timeout := time.NewTimer(time.Duration(10) * time.Millisecond)
 			select {
@@ -204,7 +227,10 @@ func Test_timerTask_doFirstSchedule(t *testing.T) {
 }
 
 func Test_timerTask_doIntervalSchedule(t *testing.T) {
+	lock := sync.Mutex{}
+	lock.Lock()
 	runCount := 0
+	lock.Unlock()
 	g := NewGoroutineMulti()
 	g.Start()
 	tests := []struct {
@@ -212,12 +238,18 @@ func Test_timerTask_doIntervalSchedule(t *testing.T) {
 		fields *timerTask
 	}{
 		{"Test_timerTask_doIntervalSchedule_1", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			lock.Lock()
 			runCount++
+
 			t.Logf("Schedule_1 count:%v s:%v", runCount, s)
+			lock.Unlock()
 		}, time.Now().UnixNano()), 0, 0)},
 		{"Test_timerTask_doIntervalSchedule_2", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			lock.Lock()
 			runCount++
+
 			t.Logf("Schedule_2 count:%v s:%v", runCount, s)
+			lock.Unlock()
 		}, time.Now().UnixNano()), 0, 10)},
 	}
 	for _, tt := range tests {
@@ -232,7 +264,10 @@ func Test_timerTask_doIntervalSchedule(t *testing.T) {
 }
 
 func Test_timerTask_executeOnFiber(t *testing.T) {
+	lock := sync.Mutex{}
+	lock.Lock()
 	runCount := 0
+	lock.Unlock()
 	g := NewGoroutineMulti()
 	g.Start()
 	tests := []struct {
@@ -240,12 +275,16 @@ func Test_timerTask_executeOnFiber(t *testing.T) {
 		fields *timerTask
 	}{
 		{"Test_timerTask_executeOnFiber_1", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			lock.Lock()
 			runCount++
 			t.Logf("executeOnFiber_1 count:%v s:%v", runCount, s)
+			lock.Unlock()
 		}, time.Now().UnixNano()), 0, 0)},
 		{"Test_timerTask_executeOnFiber_2", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) {
+			lock.Lock()
 			runCount++
 			t.Logf("executeOnFiber_2 count:%v s:%v", runCount, s)
+			lock.Unlock()
 		}, time.Now().UnixNano()), 0, 0)},
 	}
 	for _, tt := range tests {

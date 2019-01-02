@@ -1,6 +1,7 @@
 package robin
 
 import (
+	"sync"
 	"testing"
 	"time"
 )
@@ -88,7 +89,10 @@ func TestGoroutineMulti_Enqueue(t *testing.T) {
 func TestGoroutineMulti_EnqueueWithTask(t *testing.T) {
 	g := NewGoroutineMulti()
 	g.Start()
+	lock := sync.Mutex{}
+	lock.Lock()
 	testCount := 0
+	lock.Unlock()
 	tests := []struct {
 		name  string
 		fiber *GoroutineMulti
@@ -99,7 +103,9 @@ func TestGoroutineMulti_EnqueueWithTask(t *testing.T) {
 			g,
 			newTask(func(s string) {
 				t.Logf("s:%v", s)
+				lock.Lock()
 				testCount++
+				lock.Unlock()
 			}, "Test 1"),
 			2},
 	}
@@ -113,6 +119,8 @@ func TestGoroutineMulti_EnqueueWithTask(t *testing.T) {
 			select {
 			case <-timeout.C:
 			}
+			lock.Lock()
+			defer lock.Unlock()
 			if tt.want != int32(testCount) {
 				t.Errorf("%s test count %v, want %v", tt.name, testCount, tt.want)
 			}
@@ -168,7 +176,10 @@ func TestGoroutineMulti_Schedule(t *testing.T) {
 func TestGoroutineMulti_ScheduleOnInterval(t *testing.T) {
 	g := NewGoroutineMulti()
 	g.Start()
+	lock := sync.Mutex{}
+	lock.Lock()
 	test1Count := 0
+	lock.Unlock()
 	tests := []struct {
 		name      string
 		fiber     Fiber
@@ -181,7 +192,9 @@ func TestGoroutineMulti_ScheduleOnInterval(t *testing.T) {
 			g,
 			newTask(func(s string) {
 				t.Logf("s:%v", s)
+				lock.Lock()
 				test1Count++
+				lock.Unlock()
 			}), 50, 50, 4},
 	}
 	for _, tt := range tests {
@@ -194,7 +207,7 @@ func TestGoroutineMulti_ScheduleOnInterval(t *testing.T) {
 				t.Errorf("GoroutineMulti.ScheduleOnInterval() = %v, want Disposable", gotD2)
 			}
 
-			timeout := time.NewTimer(time.Duration(60) * time.Millisecond)
+			timeout := time.NewTimer(time.Duration(65) * time.Millisecond)
 			select {
 			case <-timeout.C:
 				gotD2.Dispose()
@@ -205,10 +218,11 @@ func TestGoroutineMulti_ScheduleOnInterval(t *testing.T) {
 			case <-timeout.C:
 				gotD1.Dispose()
 			}
-
+			lock.Lock()
 			if tt.want != int32(test1Count) {
 				t.Errorf("%s test 1 count %v, want %v", tt.name, test1Count, tt.want)
 			}
+			lock.Unlock()
 		})
 	}
 }
@@ -364,7 +378,10 @@ func TestGoroutineSingle_Schedule(t *testing.T) {
 func TestGoroutineSingle_ScheduleOnInterval(t *testing.T) {
 	g := NewGoroutineSingle()
 	g.Start()
+	lock := sync.Mutex{}
+	lock.Lock()
 	test1Count := 0
+	lock.Unlock()
 	tests := []struct {
 		name      string
 		fiber     Fiber
@@ -377,12 +394,14 @@ func TestGoroutineSingle_ScheduleOnInterval(t *testing.T) {
 			g,
 			newTask(func(s string) {
 				t.Logf("s:%v", s)
+				lock.Lock()
 				test1Count++
+				lock.Unlock()
 			}), 50, 50, 4},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 1")
+			gotA :=tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 1")
 			gotD := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 2")
 			switch gotD.(type) {
 			case Disposable:
@@ -390,7 +409,7 @@ func TestGoroutineSingle_ScheduleOnInterval(t *testing.T) {
 				t.Errorf("GoroutineSingle.ScheduleOnInterval() = %v, want Disposable", gotD)
 			}
 
-			timeout := time.NewTimer(time.Duration(60) * time.Millisecond)
+			timeout := time.NewTimer(time.Duration(65) * time.Millisecond)
 			select {
 			case <-timeout.C:
 				gotD.Dispose()
@@ -399,9 +418,10 @@ func TestGoroutineSingle_ScheduleOnInterval(t *testing.T) {
 			timeout.Reset(time.Duration(120) * time.Millisecond)
 			select {
 			case <-timeout.C:
-				gotD.Dispose()
+				gotA.Dispose()
 			}
-
+			lock.Lock()
+			defer lock.Unlock()
 			if tt.want1 != int32(test1Count) {
 				t.Errorf("test 1 count %v, want %v", test1Count, tt.want1)
 			}
@@ -432,6 +452,7 @@ func TestGoroutineSingle_Subscription(t *testing.T) {
 				t.Errorf("%s test count %v, want %v", tt.name, tt.fiber.NumSubscriptions(), tt.want1)
 			}
 		})
+
 	}
 }
 
