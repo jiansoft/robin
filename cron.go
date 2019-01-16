@@ -55,21 +55,23 @@ type cronEvery struct {
 }
 
 type Job struct {
-	fiber        Fiber
-	identifyId   string
-	loc          *time.Location
-	task         Task
-	taskDisposer Disposable
-	weekday      time.Weekday
-	hour         int
-	minute       int
-	second       int
-	unit         unit
-	delayUnit    delayUnit
-	interval     int64
-	nextTime     time.Time
-	timingMode   timingAfterOrBeforeExecuteTask
-	lock         sync.Mutex
+	fiber                Fiber
+	identifyId           string
+	loc                  *time.Location
+	task                 Task
+	taskDisposer         Disposable
+	weekday              time.Weekday
+	hour                 int
+	minute               int
+	second               int
+	unit                 unit
+	delayUnit            delayUnit
+	interval             int64
+	nextTime             time.Time
+	timingMode           timingAfterOrBeforeExecuteTask
+	lock                 sync.Mutex
+	runTimes             int64
+	maximumNumberOfTimes int64
 }
 
 // The job executes immediately.
@@ -181,6 +183,8 @@ func NewJob(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 
 func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 	c.lock.Lock()
+	c.runTimes = 0
+	c.maximumNumberOfTimes = -1
 	c.hour = -1
 	c.minute = -1
 	c.second = -1
@@ -413,10 +417,18 @@ func (c *Job) canDo() {
 			c.setNextTime(tmp)
 			//c.nextTime = c.nextTime.Add(d)
 		}
-		switch c.getUnit() {
-		case delay:
+
+		c.addRunTimes()
+
+		if (c.maximumNumberOfTimes > 0 && c.runTimes >= c.maximumNumberOfTimes) || c.getUnit() == delay {
 			jobPool.Put(c)
 			return
+		}
+
+		switch c.getUnit() {
+		/*case delay:
+		jobPool.Put(c)
+		return*/
 		case weeks:
 			tmp := c.getNextTime().AddDate(0, 0, 7)
 			c.setNextTime(tmp)
@@ -446,14 +458,11 @@ func (c *Job) canDo() {
 
 	adjustTime := int64(c.getNextTime().Sub(time.Now()) / time.Millisecond /*1000000*/)
 	c.setTaskDisposer(adjustTime)
-	/*lock.Lock()
-	c.taskDisposer = c.fiber.Schedule(adjustTime, c.canDo)
-	lock.Unlock()*/
 }
 
-func (c *Job) setTaskDisposer(adjustTime int64) {
+func (c *Job) setTaskDisposer(firstInMs int64) {
 	c.lock.Lock()
-	c.taskDisposer = c.fiber.Schedule(adjustTime, c.canDo)
+	c.taskDisposer = c.fiber.Schedule(firstInMs, c.canDo)
 	c.lock.Unlock()
 }
 
@@ -485,4 +494,10 @@ func (c *Job) getInterval() int64 {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	return c.interval
+}
+
+func (c *Job) addRunTimes() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.runTimes++
 }
