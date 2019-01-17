@@ -52,7 +52,7 @@ type timerTask struct {
 	firstInMs    int64
 	intervalInMs int64
 	task         Task
-	cancelled    bool
+	disposed     bool
 	lock         sync.Mutex
 }
 
@@ -63,27 +63,24 @@ func newTimerTask(fiber SchedulerRegistry, task Task, firstInMs int64, intervalI
 
 func (t *timerTask) init(scheduler SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
 	t.lock.Lock()
+	defer t.lock.Unlock()
 	t.scheduler = scheduler
 	t.task = task
 	t.firstInMs = firstInMs
 	t.intervalInMs = intervalInMs
 	t.identifyID = fmt.Sprintf("%p-%p", &t, &task)
-	t.cancelled = false
-	t.lock.Unlock()
-	//t.setIdentifyID(fmt.Sprintf("%p-%p", &t, &task))
-	//t.setCancelled(false)
+	t.disposed = false
 	return t
 }
 
 func (t *timerTask) Dispose() {
-	if t.getCancelled() {
+	if t.getDisposed() {
 		return
 	}
-	t.setCancelled(true)
-
-	if nil != t.scheduler {
-		t.scheduler.Remove(t)
-	}
+	t.setDisposed(true)
+	//if nil != t.scheduler {
+	t.scheduler.Remove(t)
+	//}
 
 	t.task.release()
 	t.release()
@@ -121,7 +118,7 @@ func (t *timerTask) doIntervalSchedule() {
 	}
 	interval := time.NewTicker(time.Duration(t.getInterval()) * time.Millisecond)
 	go func() {
-		for !t.getCancelled() {
+		for !t.getDisposed() {
 			/*select {
 			case <-t.interval.C:
 				t.executeOnFiber()
@@ -134,21 +131,21 @@ func (t *timerTask) doIntervalSchedule() {
 }
 
 func (t *timerTask) executeOnFiber() {
-	if t.getCancelled() {
+	if t.getDisposed() {
 		return
 	}
 	t.scheduler.EnqueueWithTask(t.task)
 }
 
-func (t *timerTask) getCancelled() bool {
+func (t *timerTask) getDisposed() bool {
 	t.lock.Lock()
 	defer t.lock.Unlock()
-	return t.cancelled
+	return t.disposed
 }
 
-func (t *timerTask) setCancelled(r bool) {
+func (t *timerTask) setDisposed(r bool) {
 	t.lock.Lock()
-	t.cancelled = r
+	t.disposed = r
 	t.lock.Unlock()
 }
 

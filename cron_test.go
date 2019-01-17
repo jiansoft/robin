@@ -60,6 +60,14 @@ func TestEverySeries(t *testing.T) {
 			mm := time.Now().Minute()
 			ss := time.Now().Second()
 			t.Logf("now:%v:%v:%v", hh, mm, ss)
+			Every(200).MilliSeconds().Times(3).Do(func(s string) { t.Logf("s:%v", s) }, "Every 200 MilliSeconds times 3")
+
+			h := Every(1200).MilliSeconds().Do(func(s string) { t.Logf("s:%v", s) }, "Every 3 Seconds")
+			Every(1).Seconds().Do(func(s string) {
+				t.Logf("s:%v", s)
+				h.Dispose()
+			}, "h.Dispose")
+
 			Every(1).Seconds().Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Seconds")
 			Every(2).Seconds().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 2 Seconds")
 
@@ -112,11 +120,12 @@ func TestDelaySeries(t *testing.T) {
 		name string
 	}{
 		{"Test_DelaySeries_1"},
-		{"Test_DelaySeries_2"},
-		{"Test_DelaySeries_3"},
+		//{"Test_DelaySeries_2"},
+		//{"Test_DelaySeries_3"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			RightNow().Times(3).Do(func(s string) { t.Logf("s:%v", s) }, "RightNow time 3")
 			RightNow().Do(func(s string) { t.Logf("s:%v", s) }, "RightNow")
 			Delay(5).MilliSeconds().Do(func(s string) { t.Logf("s:%v", s) }, "MilliSeconds")
 			Delay(50).Seconds().Do(func(s string) { t.Logf("s:%v", s) }, "Seconds")
@@ -158,7 +167,7 @@ func TestDelaySeries(t *testing.T) {
 				}, "MilliSeconds 20", unixMillisecond)
 			}, "MilliSeconds 10", unixMillisecond)
 
-			timeout := time.NewTimer(time.Duration(120) * time.Millisecond)
+			timeout := time.NewTimer(time.Duration(1200) * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}

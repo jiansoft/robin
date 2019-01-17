@@ -70,6 +70,9 @@ func main() {
 	//Every N seconds do once.
 	robin.Every(100).Seconds().Do(runCron, "Every 10 Seconds")
 
+	robin.Every(1).Seconds().Times(3).Do(runCron, "Every 1 Seconds Times 3")
+	robin.Delay(2000).Times(2).Do(runCron, " Delay 2000 ms Times 2")
+	robin.Delay(2000).Times(3).AfterExecuteTask().Do(CronTestAndSleepASecond, " Delay 2000 ms Times 2 AfterExecuteTask")
 	_, _ = fmt.Scanln()
 }
 
@@ -130,4 +133,12 @@ func RunChannelTest() {
 
 func subscribe(channel int, numSubscribers int, msg string) {
 	log.Printf("通道 %d 訂閱人數 %d 參數: %s %v", channel, numSubscribers, msg, time.Now().Format(time.RFC3339))
+}
+
+func CronTestAndSleepASecond(s string){
+	log.Printf("I am %s CronTest and sleep a second %v\n", s, time.Now())
+	timeout := time.NewTimer(time.Duration(1000) * time.Millisecond)
+	select {
+	case <-timeout.C:
+	}
 }

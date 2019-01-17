@@ -39,7 +39,6 @@ var (
 	}
 	dc = newCronDelay()
 	ec = newEveryCron()
-	//lock = sync.Mutex{}
 )
 
 type unit int
@@ -55,23 +54,24 @@ type cronEvery struct {
 }
 
 type Job struct {
-	fiber                Fiber
-	identifyId           string
-	loc                  *time.Location
-	task                 Task
-	taskDisposer         Disposable
-	weekday              time.Weekday
-	hour                 int
-	minute               int
-	second               int
-	unit                 unit
-	delayUnit            delayUnit
-	interval             int64
-	nextTime             time.Time
-	timingMode           timingAfterOrBeforeExecuteTask
-	lock                 sync.Mutex
-	runTimes             int64
-	maximumNumberOfTimes int64
+	fiber        Fiber
+	identifyId   string
+	loc          *time.Location
+	task         Task
+	taskDisposer Disposable
+	weekday      time.Weekday
+	hour         int
+	minute       int
+	second       int
+	everyUnit    unit
+	delayUnit    delayUnit
+	interval     int64
+	nextTime     time.Time
+	timingMode   timingAfterOrBeforeExecuteTask
+	lock         sync.Mutex
+	runTimes     int64
+	maximumTimes int64
+	disposed     bool
 }
 
 // The job executes immediately.
@@ -91,8 +91,10 @@ func newCronDelay() *cronDelay {
 
 func newDelayJob(delayInMs int64) *Job {
 	c := NewJob(delayInMs, dc.fiber, delayMilliseconds)
-	c.setUnit(delay)
-	//c.unit = delay
+	c.setEveryUnit(delay)
+	// Delay model default just execute once.
+	c.setMaximumTimes(1)
+	//c.everyUnit = delay
 	return c
 }
 
@@ -158,20 +160,20 @@ func Everyday() *Job {
 	return ec.Every(1).Days()
 }
 
-// Every The job will execute every N unit(ex hour、minute、second、milliseconds etc..).
+// Every The job will execute every N everyUnit(ex hour、minute、second、milliseconds etc..).
 func Every(interval int64) *Job {
 	return ec.Every(interval)
 }
 
-// Every The job will execute every N unit(ex hour、minute、second、milliseconds etc..).
+// Every The job will execute every N everyUnit(ex hour、minute、second、milliseconds etc..).
 func (c *cronEvery) Every(interval int64) *Job {
 	return NewJob(interval, c.fiber, delayNone)
 }
 
 func newEveryJob(weekday time.Weekday) *Job {
 	c := NewJob(1, ec.fiber, delayNone)
-	c.setUnit(weeks)
-	//c.unit = weeks
+	c.setEveryUnit(weeks)
+	//c.everyUnit = weeks
 	c.weekday = weekday
 	return c
 }
@@ -183,8 +185,9 @@ func NewJob(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 
 func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 	c.lock.Lock()
+	c.disposed = false
 	c.runTimes = 0
-	c.maximumNumberOfTimes = -1
+	c.maximumTimes = -1
 	c.hour = -1
 	c.minute = -1
 	c.second = -1
@@ -200,10 +203,14 @@ func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 
 // Dispose Job's Dispose
 func (c *Job) Dispose() {
-	c.lock.Lock()
+	// c.lock.Lock()
+	// defer c.lock.Unlock()
+	if c.getDisposed() {
+		return
+	}
+	c.setDisposed(true)
 	c.taskDisposer.Dispose()
 	jobPool.Put(c)
-	c.lock.Unlock()
 }
 
 // Identify Job's Identify
@@ -211,55 +218,55 @@ func (c Job) Identify() string {
 	return c.identifyId
 }
 
-// Days sTime unit of execution
+// Days sTime everyUnit of execution
 func (c *Job) Days() *Job {
 	if c.delayUnit == delayNone {
-		c.setUnit(days)
-		//c.unit = days
+		c.setEveryUnit(days)
+		//c.everyUnit = days
 	} else {
 		c.delayUnit = delayDays
 	}
 	return c
 }
 
-// Hours Time unit of execution
+// Hours Time everyUnit of execution
 func (c *Job) Hours() *Job {
 	if c.delayUnit == delayNone {
-		c.setUnit(hours)
-		//c.unit = hours
+		c.setEveryUnit(hours)
+		//c.everyUnit = hours
 	} else {
 		c.delayUnit = delayHours
 	}
 	return c
 }
 
-// Minutes Time unit of execution
+// Minutes Time everyUnit of execution
 func (c *Job) Minutes() *Job {
 	if c.delayUnit == delayNone {
-		c.setUnit(minutes)
-		//c.unit = minutes
+		c.setEveryUnit(minutes)
+		//c.everyUnit = minutes
 	} else {
 		c.delayUnit = delayMinutes
 	}
 	return c
 }
 
-// Seconds Time unit of execution
+// Seconds Time everyUnit of execution
 func (c *Job) Seconds() *Job {
 	if c.delayUnit == delayNone {
-		c.setUnit(seconds)
-		//c.unit = seconds
+		c.setEveryUnit(seconds)
+		//c.everyUnit = seconds
 	} else {
 		c.delayUnit = delaySeconds
 	}
 	return c
 }
 
-// MilliSeconds Time unit of execution
+// MilliSeconds Time everyUnit of execution
 func (c *Job) MilliSeconds() *Job {
 	if c.delayUnit == delayNone {
-		c.setUnit(milliseconds)
-		//c.unit = milliseconds
+		c.setEveryUnit(milliseconds)
+		//c.everyUnit = milliseconds
 	} else {
 		c.delayUnit = delayMilliseconds
 	}
@@ -271,7 +278,7 @@ func (c *Job) At(hour int, minute int, second int) *Job {
 	c.hour = Abs(c.hour)
 	c.minute = Abs(c.minute)
 	c.second = Abs(c.second)
-	if c.getUnit() != hours {
+	if c.getEveryUnit() != hours {
 		c.hour = hour % 24
 	}
 	c.minute = minute % 60
@@ -281,22 +288,29 @@ func (c *Job) At(hour int, minute int, second int) *Job {
 
 // AfterExecuteTask Start timing after the Task is executed
 func (c *Job) AfterExecuteTask() *Job {
-	if c.delayUnit == delayNone {
-		c.timingMode = afterExecuteTask
-	}
+	//if c.delayUnit == delayNone {
+	c.timingMode = afterExecuteTask
+	//}
 	return c
 }
 
 // BeforeExecuteTask Start timing before the Task is executed
 func (c *Job) BeforeExecuteTask() *Job {
-	if c.delayUnit == delayNone {
-		c.timingMode = beforeExecuteTask
-	}
+	//if c.delayUnit == delayNone {
+	c.timingMode = beforeExecuteTask
+	//}
 	return c
 }
 
-// firstTimeSetDelayNextTime
-func (c *Job) firstTimeSetDelayNextTime(now time.Time) {
+func (c *Job) Times(times int64) *Job {
+	//if c.getDelayUnit() == delayNone {
+	c.setMaximumTimes(times)
+	//}
+	return c
+}
+
+// setDelayNextTime
+func (c *Job) setDelayNextTime(now time.Time) {
 	switch c.delayUnit {
 	/*case delayWeeks:
 	c.nextTime = now.AddDate(0, 0, 7)*/
@@ -380,9 +394,9 @@ func (c *Job) firstTimeSetMinutesNextTime(now time.Time) {
 func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	c.task = newTask(fun, params...)
 	now := time.Now()
-	switch c.getUnit() {
+	switch c.getEveryUnit() {
 	case delay:
-		c.firstTimeSetDelayNextTime(now)
+		c.setDelayNextTime(now)
 	case weeks:
 		c.firstTimeSetWeeksNextTime(now)
 	case days:
@@ -402,11 +416,11 @@ func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	return c
 }
 
-// Is the job can be executed
+// canDo the job can be execute or not
 func (c *Job) canDo() {
-	//diff := int64(time.Now().Sub(c.nextTime) / time.Millisecond /*1000000*/)
-	if /*diff >= 0*/ time.Now().After(c.getNextTime()) {
-		if c.getUnit() == delay || c.timingMode == beforeExecuteTask {
+	diff := int64(time.Now().Sub(c.nextTime) / time.Millisecond /*1000000*/)
+	if diff >= 0 /*time.Now().After(c.getNextTime())*/ {
+		if /*c.getEveryUnit() == delay ||*/ c.timingMode == beforeExecuteTask {
 			c.fiber.EnqueueWithTask(c.task)
 		} else {
 			s := time.Now()
@@ -415,44 +429,38 @@ func (c *Job) canDo() {
 			d := e.Sub(s)
 			tmp := c.getNextTime().Add(d)
 			c.setNextTime(tmp)
-			//c.nextTime = c.nextTime.Add(d)
 		}
 
 		c.addRunTimes()
 
-		if (c.maximumNumberOfTimes > 0 && c.runTimes >= c.maximumNumberOfTimes) || c.getUnit() == delay {
+		if c.getMaximumTimes() > 0 && c.getRunTimes() >= c.getMaximumTimes() /*|| c.getEveryUnit() == delay*/ {
+			c.setDisposed(true)
+			c.task.release()
 			jobPool.Put(c)
 			return
 		}
 
-		switch c.getUnit() {
-		/*case delay:
-		jobPool.Put(c)
-		return*/
+		switch c.getEveryUnit() {
+		case delay:
+			c.setDelayNextTime(time.Now())
 		case weeks:
 			tmp := c.getNextTime().AddDate(0, 0, 7)
 			c.setNextTime(tmp)
-			//c.nextTime = c.nextTime.AddDate(0, 0, 7)
 		case days:
 			tmp := c.getNextTime().AddDate(0, 0, int(c.getInterval()))
 			c.setNextTime(tmp)
-			//c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval))
 		case hours:
 			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Hour)
 			c.setNextTime(tmp)
-			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Hour)
 		case minutes:
 			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Minute)
 			c.setNextTime(tmp)
-			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Minute)
 		case seconds:
 			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Second)
 			c.setNextTime(tmp)
-			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Second)
 		case milliseconds:
 			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Millisecond)
 			c.setNextTime(tmp)
-			//c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Millisecond)
 		}
 	}
 
@@ -478,16 +486,21 @@ func (c *Job) getNextTime() time.Time {
 	return c.nextTime
 }
 
-func (c *Job) setUnit(unit unit) {
+func (c *Job) setEveryUnit(unit unit) {
 	c.lock.Lock()
-	c.unit = unit
+	c.everyUnit = unit
 	c.lock.Unlock()
 }
 
-func (c *Job) getUnit() unit {
+func (c *Job) getEveryUnit() unit {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	return c.unit
+	return c.everyUnit
+}
+func (c *Job) getDelayUnit() delayUnit {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return c.delayUnit
 }
 
 func (c *Job) getInterval() int64 {
@@ -500,4 +513,34 @@ func (c *Job) addRunTimes() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.runTimes++
+}
+
+func (c *Job) getRunTimes() int64 {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return c.runTimes
+}
+
+func (j *Job) getDisposed() bool {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.disposed
+}
+
+func (j *Job) setDisposed(r bool) {
+	j.lock.Lock()
+	j.disposed = r
+	j.lock.Unlock()
+}
+
+func (j *Job) setMaximumTimes(r int64) {
+	j.lock.Lock()
+	j.maximumTimes = r
+	j.lock.Unlock()
+}
+
+func (j *Job) getMaximumTimes() int64 {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.maximumTimes
 }

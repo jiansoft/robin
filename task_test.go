@@ -166,7 +166,7 @@ func Test_timerTask_schedule(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.name == "Test_timerTask_schedule_4" {
-				tt.fields.cancelled = true
+				tt.fields.disposed = true
 			}
 
 			tt.fields.schedule()
@@ -187,7 +187,7 @@ func Test_timerTask_schedule(t *testing.T) {
 				}
 				if tt.name == "Test_timerTask_schedule_3" && saveRunCount >= 30 {
 					lock.Lock()
-					tt.fields.setCancelled(true)
+					tt.fields.setDisposed(true)
 					runCount++
 					lock.Unlock()
 				}
