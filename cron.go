@@ -500,11 +500,12 @@ func (j *Job) getEveryUnit() unit {
 	defer j.lock.Unlock()
 	return j.everyUnit
 }
-func (j *Job) getDelayUnit() delayUnit {
+
+/*func (j *Job) getDelayUnit() delayUnit {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	return j.delayUnit
-}
+}*/
 
 func (j *Job) getInterval() int64 {
 	j.lock.Lock()
