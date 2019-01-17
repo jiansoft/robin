@@ -20,6 +20,10 @@ func TestAbs(t *testing.T) {
 			if got := Abs(tt.args.a); got != tt.want {
 				t.Errorf("Abs() = %v, want %v", got, tt.want)
 			}
+
+			if got := AbsForInt64(int64(tt.args.a)); got != int64(tt.want) {
+				t.Errorf("Abs() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

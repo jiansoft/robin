@@ -183,342 +183,345 @@ func NewJob(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
 	return jobPool.Get().(*Job).init(intervel, fiber, delayUnit)
 }
 
-func (c *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
-	c.lock.Lock()
-	c.disposed = false
-	c.runTimes = 0
-	c.maximumTimes = -1
-	c.hour = -1
-	c.minute = -1
-	c.second = -1
-	c.fiber = fiber
-	c.loc = time.Local
-	c.interval = intervel
-	c.delayUnit = delayUnit
-	c.timingMode = beforeExecuteTask
-	c.identifyId = fmt.Sprintf("%p-%p", &c, &fiber)
-	c.lock.Unlock()
-	return c
+func (j *Job) init(intervel int64, fiber Fiber, delayUnit delayUnit) *Job {
+	j.lock.Lock()
+	j.disposed = false
+	j.runTimes = 0
+	j.maximumTimes = -1
+	j.hour = -1
+	j.minute = -1
+	j.second = -1
+	j.fiber = fiber
+	j.loc = time.Local
+	j.interval = intervel
+	j.delayUnit = delayUnit
+	j.timingMode = beforeExecuteTask
+	j.identifyId = fmt.Sprintf("%p-%p", &j, &fiber)
+	j.lock.Unlock()
+	return j
 }
 
 // Dispose Job's Dispose
-func (c *Job) Dispose() {
-	// c.lock.Lock()
-	// defer c.lock.Unlock()
-	if c.getDisposed() {
+func (j *Job) Dispose() {
+	// j.lock.Lock()
+	// defer j.lock.Unlock()
+	if j.getDisposed() {
 		return
 	}
-	c.setDisposed(true)
-	c.taskDisposer.Dispose()
-	jobPool.Put(c)
+	j.setDisposed(true)
+	j.taskDisposer.Dispose()
+	j.task.release()
+	jobPool.Put(j)
 }
 
 // Identify Job's Identify
-func (c Job) Identify() string {
-	return c.identifyId
+func (j Job) Identify() string {
+	return j.identifyId
 }
 
 // Days sTime everyUnit of execution
-func (c *Job) Days() *Job {
-	if c.delayUnit == delayNone {
-		c.setEveryUnit(days)
-		//c.everyUnit = days
+func (j *Job) Days() *Job {
+	if j.delayUnit == delayNone {
+		j.setEveryUnit(days)
+		//j.everyUnit = days
 	} else {
-		c.delayUnit = delayDays
+		j.delayUnit = delayDays
 	}
-	return c
+	return j
 }
 
 // Hours Time everyUnit of execution
-func (c *Job) Hours() *Job {
-	if c.delayUnit == delayNone {
-		c.setEveryUnit(hours)
-		//c.everyUnit = hours
+func (j *Job) Hours() *Job {
+	if j.delayUnit == delayNone {
+		j.setEveryUnit(hours)
+		//j.everyUnit = hours
 	} else {
-		c.delayUnit = delayHours
+		j.delayUnit = delayHours
 	}
-	return c
+	return j
 }
 
 // Minutes Time everyUnit of execution
-func (c *Job) Minutes() *Job {
-	if c.delayUnit == delayNone {
-		c.setEveryUnit(minutes)
-		//c.everyUnit = minutes
+func (j *Job) Minutes() *Job {
+	if j.delayUnit == delayNone {
+		j.setEveryUnit(minutes)
+		//j.everyUnit = minutes
 	} else {
-		c.delayUnit = delayMinutes
+		j.delayUnit = delayMinutes
 	}
-	return c
+	return j
 }
 
 // Seconds Time everyUnit of execution
-func (c *Job) Seconds() *Job {
-	if c.delayUnit == delayNone {
-		c.setEveryUnit(seconds)
-		//c.everyUnit = seconds
+func (j *Job) Seconds() *Job {
+	if j.delayUnit == delayNone {
+		j.setEveryUnit(seconds)
+		//j.everyUnit = seconds
 	} else {
-		c.delayUnit = delaySeconds
+		j.delayUnit = delaySeconds
 	}
-	return c
+	return j
 }
 
 // MilliSeconds Time everyUnit of execution
-func (c *Job) MilliSeconds() *Job {
-	if c.delayUnit == delayNone {
-		c.setEveryUnit(milliseconds)
-		//c.everyUnit = milliseconds
+func (j *Job) MilliSeconds() *Job {
+	if j.delayUnit == delayNone {
+		j.setEveryUnit(milliseconds)
+		//j.everyUnit = milliseconds
 	} else {
-		c.delayUnit = delayMilliseconds
+		j.delayUnit = delayMilliseconds
 	}
-	return c
+	return j
 }
 
 // At sThe time specified at execution time
-func (c *Job) At(hour int, minute int, second int) *Job {
-	c.hour = Abs(c.hour)
-	c.minute = Abs(c.minute)
-	c.second = Abs(c.second)
-	if c.getEveryUnit() != hours {
-		c.hour = hour % 24
+func (j *Job) At(hour int, minute int, second int) *Job {
+	j.hour = Abs(j.hour)
+	j.minute = Abs(j.minute)
+	j.second = Abs(j.second)
+	if j.getEveryUnit() != hours {
+		j.hour = hour % 24
 	}
-	c.minute = minute % 60
-	c.second = second % 60
-	return c
+	j.minute = minute % 60
+	j.second = second % 60
+	return j
 }
 
 // AfterExecuteTask Start timing after the Task is executed
-func (c *Job) AfterExecuteTask() *Job {
-	//if c.delayUnit == delayNone {
-	c.timingMode = afterExecuteTask
+func (j *Job) AfterExecuteTask() *Job {
+	//if j.delayUnit == delayNone {
+	j.timingMode = afterExecuteTask
 	//}
-	return c
+	return j
 }
 
 // BeforeExecuteTask Start timing before the Task is executed
-func (c *Job) BeforeExecuteTask() *Job {
-	//if c.delayUnit == delayNone {
-	c.timingMode = beforeExecuteTask
+func (j *Job) BeforeExecuteTask() *Job {
+	//if j.delayUnit == delayNone {
+	j.timingMode = beforeExecuteTask
 	//}
-	return c
+	return j
 }
 
-func (c *Job) Times(times int64) *Job {
-	//if c.getDelayUnit() == delayNone {
-	c.setMaximumTimes(times)
+func (j *Job) Times(times int64) *Job {
+	//if j.getDelayUnit() == delayNone {
+	j.setMaximumTimes(times)
 	//}
-	return c
+	return j
 }
 
 // setDelayNextTime
-func (c *Job) setDelayNextTime(now time.Time) {
-	switch c.delayUnit {
+func (j *Job) setDelayNextTime(now time.Time) {
+	switch j.delayUnit {
 	/*case delayWeeks:
-	c.nextTime = now.AddDate(0, 0, 7)*/
+	j.nextTime = now.AddDate(0, 0, 7)*/
 	case delayDays:
-		c.setNextTime(now.AddDate(0, 0, int(c.getInterval())))
-		//c.nextTime = now.AddDate(0, 0, int(c.interval))
+		j.setNextTime(now.AddDate(0, 0, int(j.getInterval())))
+		//j.nextTime = now.AddDate(0, 0, int(j.interval))
 	case delayHours:
-		c.setNextTime(now.Add(time.Duration(c.getInterval()) * time.Hour))
-		//c.nextTime = now.Add(time.Duration(c.interval) * time.Hour)
+		j.setNextTime(now.Add(time.Duration(j.getInterval()) * time.Hour))
+		//j.nextTime = now.Add(time.Duration(j.interval) * time.Hour)
 	case delayMinutes:
-		c.setNextTime(now.Add(time.Duration(c.getInterval()) * time.Minute))
-		//c.nextTime = now.Add(time.Duration(c.interval) * time.Minute)
+		j.setNextTime(now.Add(time.Duration(j.getInterval()) * time.Minute))
+		//j.nextTime = now.Add(time.Duration(j.interval) * time.Minute)
 	case delaySeconds:
-		c.setNextTime(now.Add(time.Duration(c.getInterval()) * time.Second))
-		//c.nextTime = now.Add(time.Duration(c.interval) * time.Second)
+		j.setNextTime(now.Add(time.Duration(j.getInterval()) * time.Second))
+		//j.nextTime = now.Add(time.Duration(j.interval) * time.Second)
 	case delayMilliseconds:
-		c.setNextTime(now.Add(time.Duration(c.getInterval()) * time.Millisecond))
-		//c.nextTime = now.Add(time.Duration(c.interval) * time.Millisecond)
+		j.setNextTime(now.Add(time.Duration(j.getInterval()) * time.Millisecond))
+		//j.nextTime = now.Add(time.Duration(j.interval) * time.Millisecond)
 	}
 }
 
 // firstTimeSetWeeksNextTime
-func (c *Job) firstTimeSetWeeksNextTime(now time.Time) {
-	i := (7 - (int(now.Weekday() - c.weekday))) % 7
-	tmp := time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc).AddDate(0, 0, int(i))
-	c.setNextTime(tmp)
-	//c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc)
-	//c.nextTime = c.nextTime.AddDate(0, 0, int(i))
-	if c.getNextTime().Before(now) {
-		c.setNextTime(c.getNextTime().AddDate(0, 0, 7))
-		//c.nextTime = c.nextTime.AddDate(0, 0, 7)
+func (j *Job) firstTimeSetWeeksNextTime(now time.Time) {
+	i := (7 - (int(now.Weekday() - j.weekday))) % 7
+	tmp := time.Date(now.Year(), now.Month(), now.Day(), j.hour, j.minute, j.second, 0, j.loc).AddDate(0, 0, int(i))
+	j.setNextTime(tmp)
+	//j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), j.hour, j.minute, j.second, 0, j.loc)
+	//j.nextTime = j.nextTime.AddDate(0, 0, int(i))
+	if j.getNextTime().Before(now) {
+		j.setNextTime(j.getNextTime().AddDate(0, 0, 7))
+		//j.nextTime = j.nextTime.AddDate(0, 0, 7)
 	}
 }
 
 // firstTimeSetDaysNextTime
-func (c *Job) firstTimeSetDaysNextTime(now time.Time) {
-	if c.second < 0 || c.minute < 0 || c.hour < 0 {
-		c.nextTime = now.AddDate(0, 0, 1)
-		c.second = c.nextTime.Second()
-		c.minute = c.nextTime.Minute()
-		c.hour = c.nextTime.Hour()
+func (j *Job) firstTimeSetDaysNextTime(now time.Time) {
+	if j.second < 0 || j.minute < 0 || j.hour < 0 {
+		j.nextTime = now.AddDate(0, 0, 1)
+		j.second = j.nextTime.Second()
+		j.minute = j.nextTime.Minute()
+		j.hour = j.nextTime.Hour()
 	} else {
-		c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), c.hour, c.minute, c.second, 0, c.loc)
-		if c.interval > 1 {
-			c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval-1))
+		j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), j.hour, j.minute, j.second, 0, j.loc)
+		if j.interval > 1 {
+			j.nextTime = j.nextTime.AddDate(0, 0, int(j.interval-1))
 		}
-		if c.nextTime.Before(now) {
-			c.nextTime = c.nextTime.AddDate(0, 0, int(c.interval))
+		if j.nextTime.Before(now) {
+			j.nextTime = j.nextTime.AddDate(0, 0, int(j.interval))
 		}
 	}
 }
 
 // firstTimeSetHoursNextTime
-func (c *Job) firstTimeSetHoursNextTime(now time.Time) {
-	if c.minute < 0 {
-		c.minute = now.Minute()
+func (j *Job) firstTimeSetHoursNextTime(now time.Time) {
+	if j.minute < 0 {
+		j.minute = now.Minute()
 	}
-	if c.second < 0 {
-		c.second = now.Second()
+	if j.second < 0 {
+		j.second = now.Second()
 	}
-	c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), c.minute, c.second, 0, c.loc)
-	c.nextTime.Add(time.Duration(c.interval-1) * time.Hour)
-	if c.nextTime.Before(now) {
-		c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Hour /*.Duration(60*60*1000000)*/)
+	j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), j.minute, j.second, 0, j.loc)
+	j.nextTime.Add(time.Duration(j.interval-1) * time.Hour)
+	if j.nextTime.Before(now) {
+		j.nextTime = j.nextTime.Add(time.Duration(j.interval) * time.Hour /*.Duration(60*60*1000000)*/)
 	}
 }
 
 // firstTimeSetMinutesNextTime
-func (c *Job) firstTimeSetMinutesNextTime(now time.Time) {
-	if c.second < 0 {
-		c.second = now.Second()
+func (j *Job) firstTimeSetMinutesNextTime(now time.Time) {
+	if j.second < 0 {
+		j.second = now.Second()
 	}
-	c.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), c.second, 0, c.loc)
-	c.nextTime.Add(time.Duration(c.interval-1) * time.Hour)
-	if c.nextTime.Before(now) {
-		c.nextTime = c.nextTime.Add(time.Duration(c.interval) * time.Minute /*.Duration(60*60*1000000)*/)
+	j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), j.second, 0, j.loc)
+	j.nextTime.Add(time.Duration(j.interval-1) * time.Hour)
+	if j.nextTime.Before(now) {
+		j.nextTime = j.nextTime.Add(time.Duration(j.interval) * time.Minute /*.Duration(60*60*1000000)*/)
 	}
 }
 
 // Do some job needs to execute.
-func (c *Job) Do(fun interface{}, params ...interface{}) Disposable {
-	c.task = newTask(fun, params...)
+func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
+	j.setTask(newTask(fun, params...))
 	now := time.Now()
-	switch c.getEveryUnit() {
+	switch j.getEveryUnit() {
 	case delay:
-		c.setDelayNextTime(now)
+		j.setDelayNextTime(now)
 	case weeks:
-		c.firstTimeSetWeeksNextTime(now)
+		j.firstTimeSetWeeksNextTime(now)
 	case days:
-		c.firstTimeSetDaysNextTime(now)
+		j.firstTimeSetDaysNextTime(now)
 	case hours:
-		c.firstTimeSetHoursNextTime(now)
+		j.firstTimeSetHoursNextTime(now)
 	case minutes:
-		c.firstTimeSetMinutesNextTime(now)
+		j.firstTimeSetMinutesNextTime(now)
 	case seconds:
-		c.nextTime = now.Add(time.Duration(c.interval) * time.Second)
+		tmp := now.Add(time.Duration(j.getInterval()) * time.Second)
+		j.setNextTime(tmp)
 	case milliseconds:
-		c.nextTime = now.Add(time.Duration(c.interval) * time.Millisecond)
+		tmp := now.Add(time.Duration(j.getInterval()) * time.Millisecond)
+		j.setNextTime(tmp)
 	}
 
-	firstInMs := int64(c.nextTime.Sub(now) / time.Millisecond)
-	c.setTaskDisposer(firstInMs)
-	return c
+	firstInMs := int64(j.getNextTime().Sub(now) / time.Millisecond)
+	j.setTaskDisposer(firstInMs)
+	return j
 }
 
 // canDo the job can be execute or not
-func (c *Job) canDo() {
-	diff := int64(time.Now().Sub(c.nextTime) / time.Millisecond /*1000000*/)
-	if diff >= 0 /*time.Now().After(c.getNextTime())*/ {
-		if /*c.getEveryUnit() == delay ||*/ c.timingMode == beforeExecuteTask {
-			c.fiber.EnqueueWithTask(c.task)
+func (j *Job) canDo() {
+	diff := int64(time.Now().Sub(j.getNextTime()) / time.Millisecond /*1000000*/)
+	if diff >= 0 /*time.Now().After(j.getNextTime())*/ {
+		if j.getTimingMode() == beforeExecuteTask {
+			j.fiber.EnqueueWithTask(j.getTask())
 		} else {
 			s := time.Now()
-			c.task.run()
+			j.task.run()
 			e := time.Now()
 			d := e.Sub(s)
-			tmp := c.getNextTime().Add(d)
-			c.setNextTime(tmp)
+			tmp := j.getNextTime().Add(d)
+			j.setNextTime(tmp)
 		}
 
-		c.addRunTimes()
+		j.addRunTimes()
 
-		if c.getMaximumTimes() > 0 && c.getRunTimes() >= c.getMaximumTimes() /*|| c.getEveryUnit() == delay*/ {
-			c.setDisposed(true)
-			c.task.release()
-			jobPool.Put(c)
+		if j.getMaximumTimes() > 0 && j.getRunTimes() >= j.getMaximumTimes() /*|| j.getEveryUnit() == delay*/ {
+			j.setDisposed(true)
+			j.task.release()
+			jobPool.Put(j)
 			return
 		}
 
-		switch c.getEveryUnit() {
+		switch j.getEveryUnit() {
 		case delay:
-			c.setDelayNextTime(time.Now())
+			j.setDelayNextTime(time.Now())
 		case weeks:
-			tmp := c.getNextTime().AddDate(0, 0, 7)
-			c.setNextTime(tmp)
+			tmp := j.getNextTime().AddDate(0, 0, 7)
+			j.setNextTime(tmp)
 		case days:
-			tmp := c.getNextTime().AddDate(0, 0, int(c.getInterval()))
-			c.setNextTime(tmp)
+			tmp := j.getNextTime().AddDate(0, 0, int(j.getInterval()))
+			j.setNextTime(tmp)
 		case hours:
-			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Hour)
-			c.setNextTime(tmp)
+			tmp := j.getNextTime().Add(time.Duration(j.getInterval()) * time.Hour)
+			j.setNextTime(tmp)
 		case minutes:
-			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Minute)
-			c.setNextTime(tmp)
+			tmp := j.getNextTime().Add(time.Duration(j.getInterval()) * time.Minute)
+			j.setNextTime(tmp)
 		case seconds:
-			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Second)
-			c.setNextTime(tmp)
+			tmp := j.getNextTime().Add(time.Duration(j.getInterval()) * time.Second)
+			j.setNextTime(tmp)
 		case milliseconds:
-			tmp := c.getNextTime().Add(time.Duration(c.getInterval()) * time.Millisecond)
-			c.setNextTime(tmp)
+			tmp := j.getNextTime().Add(time.Duration(j.getInterval()) * time.Millisecond)
+			j.setNextTime(tmp)
 		}
 	}
 
-	adjustTime := int64(c.getNextTime().Sub(time.Now()) / time.Millisecond /*1000000*/)
-	c.setTaskDisposer(adjustTime)
+	adjustTime := int64(j.getNextTime().Sub(time.Now()) / time.Millisecond /*1000000*/)
+	j.setTaskDisposer(adjustTime)
 }
 
-func (c *Job) setTaskDisposer(firstInMs int64) {
-	c.lock.Lock()
-	c.taskDisposer = c.fiber.Schedule(firstInMs, c.canDo)
-	c.lock.Unlock()
+func (j *Job) setTaskDisposer(firstInMs int64) {
+	j.lock.Lock()
+	j.taskDisposer = j.fiber.Schedule(firstInMs, j.canDo)
+	j.lock.Unlock()
 }
 
-func (c *Job) setNextTime(nextTime time.Time) {
-	c.lock.Lock()
-	c.nextTime = nextTime
-	c.lock.Unlock()
+func (j *Job) setNextTime(nextTime time.Time) {
+	j.lock.Lock()
+	j.nextTime = nextTime
+	j.lock.Unlock()
 }
 
-func (c *Job) getNextTime() time.Time {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	return c.nextTime
+func (j *Job) getNextTime() time.Time {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.nextTime
 }
 
-func (c *Job) setEveryUnit(unit unit) {
-	c.lock.Lock()
-	c.everyUnit = unit
-	c.lock.Unlock()
+func (j *Job) setEveryUnit(unit unit) {
+	j.lock.Lock()
+	j.everyUnit = unit
+	j.lock.Unlock()
 }
 
-func (c *Job) getEveryUnit() unit {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	return c.everyUnit
+func (j *Job) getEveryUnit() unit {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.everyUnit
 }
-func (c *Job) getDelayUnit() delayUnit {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	return c.delayUnit
-}
-
-func (c *Job) getInterval() int64 {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	return c.interval
+func (j *Job) getDelayUnit() delayUnit {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.delayUnit
 }
 
-func (c *Job) addRunTimes() {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	c.runTimes++
+func (j *Job) getInterval() int64 {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.interval
 }
 
-func (c *Job) getRunTimes() int64 {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	return c.runTimes
+func (j *Job) addRunTimes() {
+	j.lock.Lock()
+	j.runTimes++
+	j.lock.Unlock()
+}
+
+func (j *Job) getRunTimes() int64 {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.runTimes
 }
 
 func (j *Job) getDisposed() bool {
@@ -543,4 +546,22 @@ func (j *Job) getMaximumTimes() int64 {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	return j.maximumTimes
+}
+
+func (j *Job) getTimingMode() timingAfterOrBeforeExecuteTask {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.timingMode
+}
+
+func (j *Job) getTask() Task {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	return j.task
+}
+
+func (j *Job) setTask(t Task) {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+	j.task = t
 }
