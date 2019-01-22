@@ -45,13 +45,13 @@ func NewScheduler(executionState ExecutionContext) *Scheduler {
 	return new(Scheduler).init(executionState)
 }
 
-// Schedule delay n milliseconds then execute once the function
+// Schedule delay n millisecond then execute once the function
 func (s *Scheduler) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return s.ScheduleOnInterval(firstInMs, -1, taskFun, params...)
 }
 
-// ScheduleOnInterval first time delay N milliseconds then execute once the function,
-// then interval N milliseconds repeat execute the function.
+// ScheduleOnInterval first time delay N millisecond then execute once the function,
+// then interval N millisecond repeat execute the function.
 func (s *Scheduler) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	pending := newTimerTask(s, newTask(taskFun, params...), firstInMs, regularInMs)
 	if s.isDispose {

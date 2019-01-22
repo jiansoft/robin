@@ -11,7 +11,29 @@ import (
 //var quitSemaphore chan bool
 
 func main() {
-	//RunChannelTest()
+	now := time.Now()
+	log.Printf("Start at %v",now.Format(time.RFC3339))
+	robin.Every(450).MilliSeconds().Times(2).Do(runCron, "Every 1 MilliSeconds Times 2")
+	robin.Every(1).Seconds().Times(3).Do(runCron, "Every 1 Seconds Times 3")
+	robin.Delay(4000).Times(4).Do(runCron, " Delay 4000 ms Times 4")
+
+	now = now.Add(time.Duration(17*time.Second+100))
+	robin.EveryMonday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Monday")
+	robin.EveryTuesday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Tuesday")
+
+	now = now.Add(time.Duration(1*time.Second))
+	robin.Every(10).Minutes().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Every 10 Minutes")
+
+	now = now.Add(time.Duration(1*time.Second))
+	robin.Every(1).Hours().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Every 1 Hours")
+
+	now = now.Add(time.Duration(1*time.Second))
+	robin.Every(1).Days().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Every 1 Days")
+
+	now = now.Add(time.Duration(1*time.Second))
+	robin.Everyday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Everyday ")
+
+	//_, _ = fmt.Scanln()
 
 	var runCronFiber = robin.NewGoroutineSingle()
 	runCronFiber.Start()
@@ -70,8 +92,8 @@ func main() {
 	//Every N seconds do once.
 	robin.Every(100).Seconds().Do(runCron, "Every 10 Seconds")
 
-	robin.Every(1).Seconds().Times(3).Do(runCron, "Every 1 Seconds Times 3")
-	robin.Delay(2000).Times(2).Do(runCron, " Delay 2000 ms Times 2")
+
+
 	robin.Delay(2000).Times(3).AfterExecuteTask().Do(CronTestAndSleepASecond, " Delay 2000 ms Times 2 AfterExecuteTask")
 	_, _ = fmt.Scanln()
 }
@@ -128,7 +150,6 @@ func RunChannelTest() {
 	})
 	robin.Every(10).Seconds().Do(channel2.Publish, "定期發布")
 	//channelThreadFiberPool.ScheduleOnInterval(0, 10000, channel2.Publish, "定期發布")
-
 }
 
 func subscribe(channel int, numSubscribers int, msg string) {
