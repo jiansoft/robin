@@ -192,7 +192,7 @@ func (j *Job) Dispose() {
 }
 
 // Identify Job's Identify
-func (j Job) Identify() string {
+func (j *Job) Identify() string {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 	return j.identifyId
