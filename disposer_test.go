@@ -49,7 +49,7 @@ func TestDisposer_Remove(t *testing.T) {
 	g := NewGoroutineSingle()
 	g.Start()
 	tests := []struct {
-		name   string
+		name string
 	}{
 		{"TestRemove"},
 	}
@@ -76,8 +76,8 @@ func TestDisposer_Count(t *testing.T) {
 	g := NewGoroutineSingle()
 	g.Start()
 	tests := []struct {
-		name   string
-		want   int
+		name string
+		want int
 	}{
 		{"TestCount", 1},
 	}
