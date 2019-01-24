@@ -24,7 +24,7 @@ func Test_Task_run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			for _, ttt := range tt.args {
 				ttt.task.run()
-				ttt.task.release()
+				//ttt.task.release()
 			}
 		})
 	}

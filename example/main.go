@@ -15,14 +15,17 @@ func main() {
 	log.Printf("Start at %v", now.Format(time.RFC3339))
 	robin.Every(450).MilliSeconds().Times(2).Do(runCron, "Every 1 MilliSeconds Times 2")
 	robin.Every(1).Seconds().Times(3).Do(runCron, "Every 1 Seconds Times 3")
-	robin.Delay(4000).Times(4).Do(runCron, " Delay 4000 ms Times 4")
+	robin.Every(10).Minutes().Do(runCron, "Every 10 Minutes")
+	robin.Delay(4000).Times(4).Do(runCron, "Delay 4000 ms Times 4")
 
 	now = now.Add(time.Duration(17*time.Second + 100))
 	robin.EveryMonday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Monday")
 	robin.EveryTuesday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Tuesday")
-
-	now = now.Add(time.Duration(1 * time.Second))
-	robin.Every(10).Minutes().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Every 10 Minutes")
+	robin.EveryWednesday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Wednesday")
+	robin.EveryThursday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Thursday")
+	robin.EveryFriday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Friday")
+	robin.EverySaturday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Saturday")
+	robin.EverySunday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Sunday")
 
 	now = now.Add(time.Duration(1 * time.Second))
 	robin.Every(1).Hours().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Every 1 Hours")
@@ -33,7 +36,7 @@ func main() {
 	now = now.Add(time.Duration(1 * time.Second))
 	robin.Everyday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Everyday ")
 
-	//_, _ = fmt.Scanln()
+	_, _ = fmt.Scanln()
 
 	var runCronFiber = robin.NewGoroutineSingle()
 	runCronFiber.Start()

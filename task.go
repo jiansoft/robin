@@ -7,18 +7,6 @@ import (
 	"time"
 )
 
-var (
-	taskPool = sync.Pool{
-		New: func() interface{} { return Task{} },
-	}
-
-	timerTaskPool = sync.Pool{
-		New: func() interface{} {
-			return &timerTask{lock: sync.Mutex{}} // new(timerTask)
-		},
-	}
-)
-
 //Task a struct
 type Task struct {
 	doFunc      interface{}
@@ -27,10 +15,10 @@ type Task struct {
 }
 
 func newTask(t interface{}, p ...interface{}) Task {
-	task := taskPool.Get().(Task)
-	task.doFunc = t
-	task.funcCache = reflect.ValueOf(t)
-	task.paramsCache = make([]reflect.Value, len(p))
+	task := Task{doFunc: t, funcCache: reflect.ValueOf(t), paramsCache: make([]reflect.Value, len(p))}
+	//task.doFunc = t
+	//task.funcCache = reflect.ValueOf(t)
+	//task.paramsCache = make([]reflect.Value, len(p))
 	for k, param := range p {
 		task.paramsCache[k] = reflect.ValueOf(param)
 	}
@@ -40,10 +28,6 @@ func newTask(t interface{}, p ...interface{}) Task {
 func (t Task) run() {
 	t.funcCache.Call(t.paramsCache)
 	//func(in []reflect.Value) { _ = t.funcCache.Call(in) }(t.paramsCache)
-}
-
-func (t Task) release() {
-	taskPool.Put(t)
 }
 
 type timerTask struct {
@@ -56,39 +40,38 @@ type timerTask struct {
 	lock         sync.Mutex
 }
 
-func newTimerTask(fiber SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
-	timerTask := timerTaskPool.Get().(*timerTask)
-	return timerTask.init(fiber, task, firstInMs, intervalInMs)
-}
-
-func (t *timerTask) init(scheduler SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
-	t.lock.Lock()
-	defer t.lock.Unlock()
+func newTimerTask(scheduler SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
+	t := &timerTask{lock: sync.Mutex{}} //timerTaskPool.Get().(*timerTask)
+	//t.lock.Lock()
 	t.scheduler = scheduler
 	t.task = task
 	t.firstInMs = firstInMs
 	t.intervalInMs = intervalInMs
-	t.identifyID = fmt.Sprintf("%p-%p", &t, &task)
+	t.identifyID = fmt.Sprintf("%p-%p", &t, &t.task)
 	t.disposed = false
+	//t.lock.Unlock()
 	return t
 }
 
+// Dispose release resources
 func (t *timerTask) Dispose() {
 	if t.getDisposed() {
 		return
 	}
 	t.setDisposed(true)
-	//if nil != t.scheduler {
 	t.scheduler.Remove(t)
-	//}
+	//t.lock.Lock()
+	//t.scheduler = nil
+	//t.lock.Unlock()
+	//t.task.release()
+	//t.release()
 
-	t.task.release()
-	t.release()
 }
 
+// Identify return the struct identify id
 func (t *timerTask) Identify() string {
-	t.lock.Lock()
-	defer t.lock.Unlock()
+	//t.lock.Lock()
+	//defer t.lock.Unlock()
 	return t.identifyID
 }
 
@@ -112,11 +95,11 @@ func (t *timerTask) doFirstSchedule() {
 }
 
 func (t *timerTask) doIntervalSchedule() {
-	if t.getInterval() <= 0 {
+	if t.intervalInMs <= 0 {
 		t.Dispose()
 		return
 	}
-	interval := time.NewTicker(time.Duration(t.getInterval()) * time.Millisecond)
+	interval := time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
 	go func() {
 		for !t.getDisposed() {
 			/*select {
@@ -147,26 +130,4 @@ func (t *timerTask) setDisposed(r bool) {
 	t.lock.Lock()
 	t.disposed = r
 	t.lock.Unlock()
-}
-
-/*func (t *timerTask) setIdentifyID(r string) {
-	t.lock.Lock()
-	t.identifyID = r
-	t.lock.Unlock()
-}*/
-
-func (t *timerTask) getInterval() int64 {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	return t.intervalInMs
-}
-
-/*func (t *timerTask) setInterval(r int64) {
-    t.lock.Lock()
-    t.intervalInMs = r
-    t.lock.Unlock()
-}*/
-
-func (t *timerTask) release() {
-	timerTaskPool.Put(t)
 }

@@ -89,7 +89,8 @@ func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 		return
 	}
 	g.flushPending = true
-	go g.flush()
+	g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
+	//go g.flush()
 }
 
 func (g *GoroutineMulti) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
@@ -126,6 +127,7 @@ func (g *GoroutineMulti) flush() {
 	if g.queue.Count() > 0 {
 		//It has new Task enqueue when clear tasks
 		g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
+		//g.flush()
 		//go g.flush()
 	} else {
 		//Task is empty
