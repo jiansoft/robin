@@ -19,12 +19,12 @@ const (
 	week                     = 7 * day
 )
 
-type afterOrBeforeExecuteTask int
+/*type afterOrBeforeExecuteTask int
 
 const (
 	beforeExecuteTask afterOrBeforeExecuteTask = iota
 	afterExecuteTask
-)
+)*/
 
 type jobModel int
 
@@ -47,22 +47,22 @@ type cronEvery struct {
 }
 
 type Job struct {
-	fiber        Fiber
-	identifyId   string
-	task         Task
-	taskDisposer Disposable
-	weekday      time.Weekday
-	atHour       int
-	atMinute     int
-	atSecond     int
-	interval     int64
-	nextTime     time.Time
-	timingMode   afterOrBeforeExecuteTask
-	lock         sync.Mutex
-	ranTimes     int64
-	maximumTimes int64
-	disposed     bool
-	duration     time.Duration
+	fiber                          Fiber
+	identifyId                     string
+	task                           Task
+	taskDisposer                   Disposable
+	weekday                        time.Weekday
+	atHour                         int
+	atMinute                       int
+	atSecond                       int
+	interval                       int64
+	nextTime                       time.Time
+	calculateNextTimeAfterExecuted bool
+	lock                           sync.Mutex
+	ranTimes                       int64
+	maximumTimes                   int64
+	disposed                       bool
+	duration                       time.Duration
 	jobModel
 	intervalUnit
 }
@@ -88,7 +88,7 @@ func newDelayJob(delayInMs int64) *Job {
 	j.interval = delayInMs
 	j.maximumTimes = 1
 	j.intervalUnit = millisecond
-	return j //NewJob(dc.fiber).setInterval(delayInMs).Times(1).setJobModel(jobDelay).MilliSeconds()
+	return j //NewJob(dc.fiber).setInterval(delayInMs).Times(1).setJobModel(jobDelay).Milliseconds()
 }
 
 func (c *cronDelay) init() *cronDelay {
@@ -115,37 +115,37 @@ func (c *cronEvery) init() *cronEvery {
 
 // EverySunday The job will execute every Sunday .
 func EverySunday() *Job {
-	return NewJob(ec.fiber).setInterval(1).week(time.Sunday)
+	return NewJob(ec.fiber).everyWeek(time.Sunday)
 }
 
 // EveryMonday The job will execute every Monday
 func EveryMonday() *Job {
-	return NewJob(ec.fiber).setInterval(1).week(time.Monday)
+	return NewJob(ec.fiber).everyWeek(time.Monday)
 }
 
 // EveryTuesday The job will execute every Tuesday
 func EveryTuesday() *Job {
-	return NewJob(ec.fiber).setInterval(1).week(time.Tuesday)
+	return NewJob(ec.fiber).everyWeek(time.Tuesday)
 }
 
 // EveryWednesday The job will execute every Wednesday
 func EveryWednesday() *Job {
-	return NewJob(ec.fiber).setInterval(1).week(time.Wednesday)
+	return NewJob(ec.fiber).everyWeek(time.Wednesday)
 }
 
 // EveryThursday The job will execute every Thursday
 func EveryThursday() *Job {
-	return NewJob(ec.fiber).setInterval(1).week(time.Thursday)
+	return NewJob(ec.fiber).everyWeek(time.Thursday)
 }
 
 // EveryFriday The job will execute every Friday
 func EveryFriday() *Job {
-	return NewJob(ec.fiber).setInterval(1).week(time.Friday)
+	return NewJob(ec.fiber).everyWeek(time.Friday)
 }
 
 // EverySaturday The job will execute every Saturday
 func EverySaturday() *Job {
-	return NewJob(ec.fiber).setInterval(1).week(time.Saturday)
+	return NewJob(ec.fiber).everyWeek(time.Saturday)
 }
 
 // Everyday The job will execute every day
@@ -160,24 +160,22 @@ func Every(interval int64) *Job {
 
 // Every The job will execute every N everyUnit(ex atHour、atMinute、atSecond、millisecond etc..).
 func (c *cronEvery) Every(interval int64) *Job {
-	return NewJob(c.fiber).setInterval(interval)
+	j := NewJob(ec.fiber)
+	j.interval = interval
+	return j
 }
 
 // return Job Constructors
 func NewJob(fiber Fiber) *Job {
-	j := &Job{lock: sync.Mutex{}} //jobPool.Get().(*Job)
-	//j.lock.Lock()
+	j := &Job{}
 	j.jobModel = jobEvery
-	j.disposed = false
-	j.ranTimes = 0
 	j.maximumTimes = -1
 	j.atHour = -1
 	j.atMinute = -1
 	j.atSecond = -1
 	j.fiber = fiber
-	j.timingMode = beforeExecuteTask
-	j.identifyId = fmt.Sprintf("%p-%p", &j, &fiber)
-	//j.lock.Unlock()
+	//j.calculateNextTimeBeforeExecuted = beforeExecuteTask
+	//j.identifyId = fmt.Sprintf("%p-%p", &j, &fiber)
 	return j
 }
 
@@ -188,21 +186,18 @@ func (j *Job) Dispose() {
 	}
 	j.setDisposed(true)
 	j.taskDisposer.Dispose()
-	//j.task.release()
-	//jobPool.Put(j)
 }
 
 // Identify Job's Identify
 func (j *Job) Identify() string {
-	//j.lock.Lock()
-	//defer j.lock.Unlock()
-	return j.identifyId
+	return fmt.Sprintf("%p-%p", &j, &j.fiber)
 }
 
-// week a time interval of execution
-func (j *Job) week(dayOfWeek time.Weekday) *Job {
+// everyWeek a time interval of execution
+func (j *Job) everyWeek(dayOfWeek time.Weekday) *Job {
 	j.intervalUnit = week
 	j.weekday = dayOfWeek
+	j.interval = 1
 	return j
 }
 
@@ -230,8 +225,8 @@ func (j *Job) Seconds() *Job {
 	return j
 }
 
-// MilliSeconds a time interval of execution
-func (j *Job) MilliSeconds() *Job {
+// Milliseconds a time interval of execution
+func (j *Job) Milliseconds() *Job {
 	j.intervalUnit = millisecond
 	return j
 }
@@ -247,14 +242,19 @@ func (j *Job) At(hh int, mm int, ss int) *Job {
 }
 
 // AfterExecuteTask Start timing after the Task is executed
+// just for delay model、every N second and every N millisecond
 func (j *Job) AfterExecuteTask() *Job {
-	j.timingMode = afterExecuteTask
+	if j.jobModel == jobDelay ||
+		j.intervalUnit == second ||
+		j.intervalUnit == millisecond {
+		j.calculateNextTimeAfterExecuted = true
+	}
 	return j
 }
 
 // BeforeExecuteTask Start timing before the Task is executed
 func (j *Job) BeforeExecuteTask() *Job {
-	j.timingMode = beforeExecuteTask
+	j.calculateNextTimeAfterExecuted = false
 	return j
 }
 
@@ -266,33 +266,36 @@ func (j *Job) Times(times int64) *Job {
 
 // Do some job needs to execute.
 func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
+	var duration time.Duration
 	j.task = newTask(fun, params...)
 	j.duration = time.Duration(j.interval*int64(j.intervalUnit)) * time.Millisecond
 	now := time.Now()
 	if j.jobModel == jobDelay || j.intervalUnit == second || j.intervalUnit == millisecond {
-		j.nextTime = now.Add(j.duration)
+		duration += j.duration
+		j.nextTime = now/*.Add(j.duration)*/
 	} else {
 		switch j.checkAtTime(now).intervalUnit {
 		case week:
 			i := (7 - (int(now.Weekday() - j.weekday))) % 7
-			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), j.atHour, j.atMinute, j.atSecond, 0, time.Local).AddDate(0, 0, int(i))
+			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), j.atHour, j.atMinute, j.atSecond, now.Nanosecond(), time.Local).AddDate(0, 0, int(i))
 		case day:
-			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), j.atHour, j.atMinute, j.atSecond, 0, time.Local)
+			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), j.atHour, j.atMinute, j.atSecond, now.Nanosecond(), time.Local)
 		case hour:
-			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), j.atMinute, j.atSecond, 0, time.Local)
+			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), j.atMinute, j.atSecond, now.Nanosecond(), time.Local)
 		case minute:
-			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), j.atSecond, 0, time.Local)
+			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), j.atSecond, now.Nanosecond(), time.Local)
 		}
 
 		if j.interval > 1 {
-			j.nextTime = j.nextTime.Add(time.Duration(j.interval*int64(j.intervalUnit)) * time.Millisecond)
+			duration += j.duration
 		}
 
 		if j.nextTime.Before(now) {
-			j.nextTime = j.nextTime.Add(time.Duration(j.interval*int64(j.intervalUnit)) * time.Millisecond)
+			duration += j.duration
 		}
 	}
 
+	j.nextTime = j.nextTime.Add(duration)
 	firstInMs := j.nextTime.Sub(now).Nanoseconds() / time.Millisecond.Nanoseconds()
 	j.schedule(firstInMs)
 	return j
@@ -300,20 +303,19 @@ func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 
 // canDo the job can be execute or not
 func (j *Job) canDo() {
-	adjustTime := int64(j.nextTime.Sub(time.Now()) / time.Millisecond /*1000000*/)
+	adjustTime := j.nextTime.Sub(time.Now()).Nanoseconds() / time.Millisecond.Nanoseconds()
 	if adjustTime > 0 {
 		j.schedule(adjustTime)
 		return
 	}
 
-	if j.timingMode == beforeExecuteTask {
-		j.fiber.EnqueueWithTask(j.task)
-	} else {
+	if j.calculateNextTimeAfterExecuted {
 		s := time.Now()
 		j.task.run()
-		e := time.Now()
-		d := e.Sub(s)
+		d := time.Now().Sub(s)
 		j.nextTime = j.nextTime.Add(d)
+	} else {
+		j.fiber.EnqueueWithTask(j.task)
 	}
 
 	if j.maximumTimes > 0 && j.maximumTimes <= atomic.AddInt64(&j.ranTimes, 1) {
@@ -322,8 +324,7 @@ func (j *Job) canDo() {
 	}
 
 	j.nextTime = j.nextTime.Add(j.duration)
-	adjustTime = int64(j.nextTime.Sub(time.Now()) / time.Millisecond)
-
+	adjustTime = j.nextTime.Sub(time.Now()).Nanoseconds() / time.Millisecond.Nanoseconds()
 	j.schedule(adjustTime)
 }
 
@@ -331,11 +332,6 @@ func (j *Job) schedule(firstInMs int64) {
 	j.lock.Lock()
 	j.taskDisposer = j.fiber.Schedule(firstInMs, j.canDo)
 	j.lock.Unlock()
-}
-
-func (j *Job) setInterval(interval int64) *Job {
-	j.interval = interval
-	return j
 }
 
 func (j *Job) getDisposed() bool {

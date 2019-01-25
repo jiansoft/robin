@@ -21,15 +21,15 @@ func TestEverySeries(t *testing.T) {
 			saturday := EverySaturday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Saturday")
 			sunday := EverySunday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Sunday")
 
-			milliSeconds := Every(55).MilliSeconds().Do(func(s string) { t.Logf("s:%v", s) }, "MilliSeconds")
+			milliSeconds := Every(55).Milliseconds().Do(func(s string) { t.Logf("s:%v", s) }, "Milliseconds")
 			seconds := Every(1).Seconds().Do(func(s string) { t.Logf("s:%v", s) }, "Seconds")
 			minutes := Every(1).Minutes().Do(func(s string) { t.Logf("s:%v", s) }, "Minutes")
 			hours := Every(2).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "Hours")
 			days := Every(1).Days().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 			rightNow := RightNow().Do(func(s string) { t.Logf("s:%v", s) }, "RightNow")
 
-			after := Every(60).MilliSeconds().AfterExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "After")
-			before := Every(60).MilliSeconds().BeforeExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "Before")
+			after := Every(60).Milliseconds().AfterExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "After")
+			before := Every(60).Milliseconds().BeforeExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "Before")
 
 			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
 			select {
@@ -60,9 +60,9 @@ func TestEverySeries(t *testing.T) {
 			mm := time.Now().Minute()
 			ss := time.Now().Second()
 			t.Logf("now:%v:%v:%v", hh, mm, ss)
-			Every(200).MilliSeconds().Times(3).Do(func(s string) { t.Logf("s:%v", s) }, "Every 200 MilliSeconds times 3")
+			Every(200).Milliseconds().Times(3).Do(func(s string) { t.Logf("s:%v", s) }, "Every 200 Milliseconds times 3")
 
-			h := Every(1200).MilliSeconds().Do(func(s string) { t.Logf("s:%v", s) }, "Every 3 Seconds")
+			h := Every(1200).Milliseconds().Do(func(s string) { t.Logf("s:%v", s) }, "Every 3 Seconds")
 			Every(1).Seconds().Do(func(s string) {
 				t.Logf("s:%v", s)
 				h.Dispose()
@@ -127,45 +127,45 @@ func TestDelaySeries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			RightNow().Times(3).Do(func(s string) { t.Logf("s:%v", s) }, "RightNow time 3")
 			RightNow().Do(func(s string) { t.Logf("s:%v", s) }, "RightNow")
-			Delay(5).MilliSeconds().Do(func(s string) { t.Logf("s:%v", s) }, "MilliSeconds")
+			Delay(5).Milliseconds().Do(func(s string) { t.Logf("s:%v", s) }, "Milliseconds")
 			Delay(50).Seconds().Do(func(s string) { t.Logf("s:%v", s) }, "Seconds")
 			Delay(50).Minutes().Do(func(s string) { t.Logf("s:%v", s) }, "Minutes")
 			Delay(50).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "Hours")
 			Delay(50).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 
 			unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
-			Delay(10).MilliSeconds().Do(func(s string, pervUnixMillisecond int64) {
+			Delay(10).Milliseconds().Do(func(s string, pervUnixMillisecond int64) {
 				unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
 				diffTime := unixMillisecond - pervUnixMillisecond
 				t.Logf("s:%v diff:%d", s, diffTime)
 				if diffTime < 10 {
 					t.Errorf("delay time got = %v, want >= 10", diffTime)
 				}
-				Delay(20).MilliSeconds().Do(func(s string, pervUnixMillisecond int64) {
+				Delay(20).Milliseconds().Do(func(s string, pervUnixMillisecond int64) {
 					unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
 					diffTime := unixMillisecond - pervUnixMillisecond
 					t.Logf("s:%v diff:%d", s, diffTime)
 					if diffTime < 20 {
 						t.Errorf("delay time got = %v, want >= 20", diffTime)
 					}
-					Delay(30).MilliSeconds().Do(func(s string, pervUnixMillisecond int64) {
+					Delay(30).Milliseconds().Do(func(s string, pervUnixMillisecond int64) {
 						unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
 						diffTime := unixMillisecond - pervUnixMillisecond
 						t.Logf("s:%v diff:%d", s, diffTime)
 						if diffTime < 30 {
 							t.Errorf("delay time got = %v, want >= 30", diffTime)
 						}
-						Delay(40).MilliSeconds().Do(func(s string, pervUnixMillisecond int64) {
+						Delay(40).Milliseconds().Do(func(s string, pervUnixMillisecond int64) {
 							unixMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
 							diffTime := unixMillisecond - pervUnixMillisecond
 							t.Logf("s:%v diff:%d", s, diffTime)
 							if diffTime < 40 {
 								t.Errorf("delay time got = %v, want >= 40", diffTime)
 							}
-						}, "MilliSeconds 40", unixMillisecond)
-					}, "MilliSeconds 30", unixMillisecond)
-				}, "MilliSeconds 20", unixMillisecond)
-			}, "MilliSeconds 10", unixMillisecond)
+						}, "Milliseconds 40", unixMillisecond)
+					}, "Milliseconds 30", unixMillisecond)
+				}, "Milliseconds 20", unixMillisecond)
+			}, "Milliseconds 10", unixMillisecond)
 
 			timeout := time.NewTimer(time.Duration(1200) * time.Millisecond)
 			select {

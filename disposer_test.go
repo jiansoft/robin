@@ -11,7 +11,7 @@ func TestDisposer_Add(t *testing.T) {
 	g := NewGoroutineSingle()
 	g.Start()
 	type fields struct {
-		Mutex *sync.Mutex
+		Mutex sync.Mutex
 	}
 	type args struct {
 		disposable Disposable
@@ -21,13 +21,13 @@ func TestDisposer_Add(t *testing.T) {
 		fields fields
 		args   args
 	}{
-		{"TestAdd", fields{Mutex: &sync.Mutex{}}, args{disposable: newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)}},
+		{"TestAdd", fields{Mutex: sync.Mutex{}}, args{disposable: newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Disposer{
-				lock: tt.fields.Mutex,
-				Map:  sync.Map{},
+				//lock: tt.fields.Mutex,
+				Map: sync.Map{},
 			}
 			//newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
 			d.Add(tt.args.disposable)
@@ -56,7 +56,7 @@ func TestDisposer_Remove(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Disposer{
-				lock: &sync.Mutex{},
+				lock: sync.Mutex{},
 				Map:  sync.Map{},
 			}
 			pending := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
@@ -98,13 +98,13 @@ func TestDisposer_Dispose(t *testing.T) {
 	g := NewGoroutineSingle()
 	g.Start()
 	type fields struct {
-		Mutex *sync.Mutex
+		Mutex sync.Mutex
 	}
 	tests := []struct {
 		name   string
 		fields fields
 	}{
-		{"TestDispose", fields{Mutex: &sync.Mutex{}}},
+		{"TestDispose", fields{Mutex: sync.Mutex{}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -129,13 +129,13 @@ func TestDisposer_Random(t *testing.T) {
 	g := NewGoroutineSingle()
 	g.Start()
 	type fields struct {
-		Mutex *sync.Mutex
+		Mutex sync.Mutex
 	}
 	tests := []struct {
 		name   string
 		fields fields
 	}{
-		{"TestDispose", fields{Mutex: &sync.Mutex{}}},
+		{"TestDispose", fields{Mutex: sync.Mutex{}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -13,9 +13,11 @@ import (
 func main() {
 	now := time.Now()
 	log.Printf("Start at %v", now.Format(time.RFC3339))
-	robin.Every(450).MilliSeconds().Times(2).Do(runCron, "Every 1 MilliSeconds Times 2")
+	robin.Every(450).Milliseconds().Times(2).Do(runCron, "Every 1 Milliseconds Times 2")
 	robin.Every(1).Seconds().Times(3).Do(runCron, "Every 1 Seconds Times 3")
 	robin.Every(10).Minutes().Do(runCron, "Every 10 Minutes")
+	robin.Every(10).Minutes().AfterExecuteTask().Do(runCronAndSleep, "Every 10 Minutes and sleep 4 Minutes", 4*60*1000)
+	robin.Every(60).Seconds().AfterExecuteTask().Do(runCronAndSleep, "Every 60 Seconds and sleep 4 Minutes", 4*60*1000)
 	robin.Delay(4000).Times(4).Do(runCron, "Delay 4000 ms Times 4")
 
 	now = now.Add(time.Duration(17*time.Second + 100))
@@ -34,7 +36,7 @@ func main() {
 	robin.Every(1).Days().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Every 1 Days")
 
 	now = now.Add(time.Duration(1 * time.Second))
-	robin.Everyday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Everyday ")
+	robin.Everyday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Everyday")
 
 	_, _ = fmt.Scanln()
 
@@ -49,7 +51,7 @@ func main() {
 	})
 
 	robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
-	//robin.Every(1000).MilliSeconds().Do(runCron, "Every(1000).MilliSeconds()")
+	//robin.Every(1000).Milliseconds().Do(runCron, "Every(1000).Milliseconds()")
 	//robin.Every(2).Seconds().Do(runCron, "Every(2).Seconds()")
 	//Every N seconds do once.
 	//robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
@@ -108,8 +110,12 @@ func runCron(s string) {
 	log.Printf("I am %s CronTest %v\n", s, time.Now())
 }
 
-func runCron1() {
-	log.Printf("康中文測試 %s", time.Now())
+func runCronAndSleep(s string, sleepInMs int) {
+	log.Printf("I am %s CronTest %v\n", s, time.Now())
+	timeout := time.NewTimer(time.Duration(sleepInMs) * time.Millisecond)
+	select {
+	case <-timeout.C:
+	}
 }
 
 func RunChannelTest() {

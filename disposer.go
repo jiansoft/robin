@@ -10,17 +10,12 @@ type Disposable interface {
 }
 
 type Disposer struct {
-	lock *sync.Mutex
+	lock sync.Mutex
 	sync.Map
 }
 
-func (d *Disposer) init() *Disposer {
-	d.lock = new(sync.Mutex)
-	return d
-}
-
 func NewDisposer() *Disposer {
-	return new(Disposer).init()
+	return new(Disposer)
 }
 
 func (d *Disposer) Add(disposable Disposable) {

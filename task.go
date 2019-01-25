@@ -41,15 +41,12 @@ type timerTask struct {
 }
 
 func newTimerTask(scheduler SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
-	t := &timerTask{lock: sync.Mutex{}} //timerTaskPool.Get().(*timerTask)
-	//t.lock.Lock()
+	t := &timerTask{}
 	t.scheduler = scheduler
 	t.task = task
 	t.firstInMs = firstInMs
 	t.intervalInMs = intervalInMs
 	t.identifyID = fmt.Sprintf("%p-%p", &t, &t.task)
-	t.disposed = false
-	//t.lock.Unlock()
 	return t
 }
 
@@ -60,18 +57,10 @@ func (t *timerTask) Dispose() {
 	}
 	t.setDisposed(true)
 	t.scheduler.Remove(t)
-	//t.lock.Lock()
-	//t.scheduler = nil
-	//t.lock.Unlock()
-	//t.task.release()
-	//t.release()
-
 }
 
 // Identify return the struct identify id
 func (t *timerTask) Identify() string {
-	//t.lock.Lock()
-	//defer t.lock.Unlock()
 	return t.identifyID
 }
 
