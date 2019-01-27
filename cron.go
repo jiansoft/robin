@@ -3,8 +3,6 @@ package robin
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
-
 	"time"
 )
 
@@ -59,7 +57,6 @@ type Job struct {
 	nextTime                       time.Time
 	calculateNextTimeAfterExecuted bool
 	lock                           sync.Mutex
-	ranTimes                       int64
 	maximumTimes                   int64
 	disposed                       bool
 	duration                       time.Duration
@@ -82,6 +79,12 @@ func newDelay() *cronDelay {
 	return new(cronDelay).init()
 }
 
+func (c *cronDelay) init() *cronDelay {
+	c.fiber = NewGoroutineMulti()
+	c.fiber.Start()
+	return c
+}
+
 func newDelayJob(delayInMs int64) *Job {
 	j := NewJob(dc.fiber)
 	j.jobModel = jobDelay
@@ -89,12 +92,6 @@ func newDelayJob(delayInMs int64) *Job {
 	j.maximumTimes = 1
 	j.intervalUnit = millisecond
 	return j //NewJob(dc.fiber).setInterval(delayInMs).Times(1).setJobModel(jobDelay).Milliseconds()
-}
-
-func (c *cronDelay) init() *cronDelay {
-	c.fiber = NewGoroutineMulti()
-	c.fiber.Start()
-	return c
 }
 
 // The job executes will delay N Milliseconds.
@@ -162,6 +159,7 @@ func Every(interval int64) *Job {
 func (c *cronEvery) Every(interval int64) *Job {
 	j := NewJob(ec.fiber)
 	j.interval = interval
+	j.intervalUnit = millisecond
 	return j
 }
 
@@ -174,8 +172,6 @@ func NewJob(fiber Fiber) *Job {
 	j.atMinute = -1
 	j.atSecond = -1
 	j.fiber = fiber
-	//j.calculateNextTimeBeforeExecuted = beforeExecuteTask
-	//j.identifyId = fmt.Sprintf("%p-%p", &j, &fiber)
 	return j
 }
 
@@ -272,7 +268,7 @@ func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	now := time.Now()
 	if j.jobModel == jobDelay || j.intervalUnit == second || j.intervalUnit == millisecond {
 		duration += j.duration
-		j.nextTime = now/*.Add(j.duration)*/
+		j.nextTime = now /*.Add(j.duration)*/
 	} else {
 		switch j.checkAtTime(now).intervalUnit {
 		case week:
@@ -318,7 +314,8 @@ func (j *Job) canDo() {
 		j.fiber.EnqueueWithTask(j.task)
 	}
 
-	if j.maximumTimes > 0 && j.maximumTimes <= atomic.AddInt64(&j.ranTimes, 1) {
+	j.maximumTimes += -1
+	if j.maximumTimes == 0 {
 		j.Dispose()
 		return
 	}
