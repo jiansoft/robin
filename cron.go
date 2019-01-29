@@ -17,13 +17,6 @@ const (
 	week                     = 7 * day
 )
 
-/*type afterOrBeforeExecuteTask int
-
-const (
-	beforeExecuteTask afterOrBeforeExecuteTask = iota
-	afterExecuteTask
-)*/
-
 type jobModel int
 
 const (
@@ -32,20 +25,19 @@ const (
 )
 
 var (
+	fiber = newFiber()
 	dc = newDelay()
 	ec = newEvery()
 )
 
 type cronDelay struct {
-	fiber Fiber
 }
 
 type cronEvery struct {
-	fiber Fiber
+
 }
 
 type Job struct {
-	fiber                          Fiber
 	identifyId                     string
 	task                           Task
 	taskDisposer                   Disposable
@@ -64,6 +56,23 @@ type Job struct {
 	intervalUnit
 }
 
+// newFiber
+func newFiber() *GoroutineMulti  {
+	fiber := NewGoroutineMulti()
+	fiber.Start()
+	return 	fiber
+}
+
+// newDelay Constructors
+func newDelay() *cronDelay {
+	return new(cronDelay)
+}
+
+// EveryCron Constructors
+func newEvery() *cronEvery {
+	return new(cronEvery)
+}
+
 // The job executes immediately.
 func RightNow() *Job {
 	return Delay(0)
@@ -74,75 +83,53 @@ func Delay(delayInMs int64) *Job {
 	return dc.Delay(delayInMs)
 }
 
-// newDelay Constructors
-func newDelay() *cronDelay {
-	return new(cronDelay).init()
-}
-
-func (c *cronDelay) init() *cronDelay {
-	c.fiber = NewGoroutineMulti()
-	c.fiber.Start()
-	return c
-}
-
-func newDelayJob(delayInMs int64) *Job {
-	j := NewJob(dc.fiber)
-	j.jobModel = jobDelay
-	j.interval = delayInMs
-	j.maximumTimes = 1
-	j.intervalUnit = millisecond
-	return j //NewJob(dc.fiber).setInterval(delayInMs).Times(1).setJobModel(jobDelay).Milliseconds()
-}
-
 // The job executes will delay N Milliseconds.
 func (c *cronDelay) Delay(delayInMs int64) *Job {
 	return newDelayJob(delayInMs)
 }
 
-// EveryCron Constructors
-func newEvery() *cronEvery {
-	return new(cronEvery).init()
-}
-
-func (c *cronEvery) init() *cronEvery {
-	c.fiber = NewGoroutineMulti()
-	c.fiber.Start()
-	return c
+func newDelayJob(delayInMs int64) *Job {
+	j := NewJob()
+	j.jobModel = jobDelay
+	j.interval = delayInMs
+	j.maximumTimes = 1
+	j.intervalUnit = millisecond
+	return j
 }
 
 // EverySunday The job will execute every Sunday .
 func EverySunday() *Job {
-	return NewJob(ec.fiber).everyWeek(time.Sunday)
+	return NewJob().everyWeek(time.Sunday)
 }
 
 // EveryMonday The job will execute every Monday
 func EveryMonday() *Job {
-	return NewJob(ec.fiber).everyWeek(time.Monday)
+	return NewJob().everyWeek(time.Monday)
 }
 
 // EveryTuesday The job will execute every Tuesday
 func EveryTuesday() *Job {
-	return NewJob(ec.fiber).everyWeek(time.Tuesday)
+	return NewJob().everyWeek(time.Tuesday)
 }
 
 // EveryWednesday The job will execute every Wednesday
 func EveryWednesday() *Job {
-	return NewJob(ec.fiber).everyWeek(time.Wednesday)
+	return NewJob().everyWeek(time.Wednesday)
 }
 
 // EveryThursday The job will execute every Thursday
 func EveryThursday() *Job {
-	return NewJob(ec.fiber).everyWeek(time.Thursday)
+	return NewJob().everyWeek(time.Thursday)
 }
 
 // EveryFriday The job will execute every Friday
 func EveryFriday() *Job {
-	return NewJob(ec.fiber).everyWeek(time.Friday)
+	return NewJob().everyWeek(time.Friday)
 }
 
 // EverySaturday The job will execute every Saturday
 func EverySaturday() *Job {
-	return NewJob(ec.fiber).everyWeek(time.Saturday)
+	return NewJob().everyWeek(time.Saturday)
 }
 
 // Everyday The job will execute every day
@@ -157,21 +144,20 @@ func Every(interval int64) *Job {
 
 // Every The job will execute every N everyUnit(ex atHour、atMinute、atSecond、millisecond etc..).
 func (c *cronEvery) Every(interval int64) *Job {
-	j := NewJob(ec.fiber)
+	j := NewJob()
 	j.interval = interval
 	j.intervalUnit = millisecond
 	return j
 }
 
 // return Job Constructors
-func NewJob(fiber Fiber) *Job {
+func NewJob() *Job {
 	j := &Job{}
 	j.jobModel = jobEvery
 	j.maximumTimes = -1
 	j.atHour = -1
 	j.atMinute = -1
 	j.atSecond = -1
-	j.fiber = fiber
 	return j
 }
 
@@ -182,11 +168,12 @@ func (j *Job) Dispose() {
 	}
 	j.setDisposed(true)
 	j.taskDisposer.Dispose()
+	//j.fiber = nil
 }
 
 // Identify Job's Identify
 func (j *Job) Identify() string {
-	return fmt.Sprintf("%p-%p", &j, &j.fiber)
+	return fmt.Sprintf("%p", &j)
 }
 
 // everyWeek a time interval of execution
@@ -229,11 +216,9 @@ func (j *Job) Milliseconds() *Job {
 
 // At the time specified at execution time
 func (j *Job) At(hh int, mm int, ss int) *Job {
-	//j.lock.Lock()
 	j.atHour = Abs(hh) % 24
 	j.atMinute = Abs(mm) % 60
 	j.atSecond = Abs(ss) % 60
-	//j.lock.Unlock()
 	return j
 }
 
@@ -268,7 +253,7 @@ func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	now := time.Now()
 	if j.jobModel == jobDelay || j.intervalUnit == second || j.intervalUnit == millisecond {
 		duration += j.duration
-		j.nextTime = now /*.Add(j.duration)*/
+		j.nextTime = now
 	} else {
 		switch j.checkAtTime(now).intervalUnit {
 		case week:
@@ -300,34 +285,32 @@ func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 // canDo the job can be execute or not
 func (j *Job) canDo() {
 	adjustTime := j.nextTime.Sub(time.Now()).Nanoseconds() / time.Millisecond.Nanoseconds()
-	if adjustTime > 0 {
-		j.schedule(adjustTime)
-		return
+	if adjustTime <= 0 {
+		if j.calculateNextTimeAfterExecuted {
+			s := time.Now()
+			j.task.run()
+			d := time.Now().Sub(s)
+			j.nextTime = j.nextTime.Add(d)
+		} else {
+			fiber.executor.ExecuteTaskWithGoroutine(j.task)
+		}
+
+		j.maximumTimes += -1
+		if j.maximumTimes == 0 {
+			j.Dispose()
+			return
+		}
+
+		j.nextTime = j.nextTime.Add(j.duration)
+		adjustTime = j.nextTime.Sub(time.Now()).Nanoseconds() / time.Millisecond.Nanoseconds()
 	}
 
-	if j.calculateNextTimeAfterExecuted {
-		s := time.Now()
-		j.task.run()
-		d := time.Now().Sub(s)
-		j.nextTime = j.nextTime.Add(d)
-	} else {
-		j.fiber.EnqueueWithTask(j.task)
-	}
-
-	j.maximumTimes += -1
-	if j.maximumTimes == 0 {
-		j.Dispose()
-		return
-	}
-
-	j.nextTime = j.nextTime.Add(j.duration)
-	adjustTime = j.nextTime.Sub(time.Now()).Nanoseconds() / time.Millisecond.Nanoseconds()
 	j.schedule(adjustTime)
 }
 
 func (j *Job) schedule(firstInMs int64) {
 	j.lock.Lock()
-	j.taskDisposer = j.fiber.Schedule(firstInMs, j.canDo)
+	j.taskDisposer = fiber.Schedule(firstInMs, j.canDo)
 	j.lock.Unlock()
 }
 
