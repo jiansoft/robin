@@ -8,16 +8,16 @@ import (
 	"github.com/jiansoft/robin"
 )
 
-//var quitSemaphore chan bool
-
 func main() {
 	now := time.Now()
 	log.Printf("Start at %v", now.Format(time.RFC3339))
-	robin.Every(450).Milliseconds().Times(2).Do(runCron, "Every 1 Milliseconds Times 2")
-	robin.Every(1).Seconds().Times(3).Do(runCron, "Every 1 Seconds Times 3")
-	robin.Every(10).Minutes().Do(runCron, "Every 10 Minutes")
-	robin.Every(10).Minutes().AfterExecuteTask().Do(runCronAndSleep, "Every 10 Minutes and sleep 4 Minutes", 4*60*1000)
-	robin.Every(60).Seconds().AfterExecuteTask().Do(runCronAndSleep, "Every 60 Seconds and sleep 4 Minutes", 4*60*1000)
+
+	robin.Every(450).Milliseconds().Times(2).Do(runCron, "every 1 Milliseconds Times 2")
+
+	robin.Every(1).Seconds().Times(3).Do(runCron, "every 1 Seconds Times 3")
+	robin.Every(10).Minutes().Do(runCron, "every 10 Minutes")
+	robin.Every(10).Minutes().AfterExecuteTask().Do(runCronAndSleep, "every 10 Minutes and sleep 4 Minutes", 4*60*1000)
+	robin.Every(60).Seconds().AfterExecuteTask().Do(runCronAndSleep, "every 60 Seconds and sleep 4 Minutes", 4*60*1000)
 	robin.Delay(4000).Times(4).Do(runCron, "Delay 4000 ms Times 4")
 
 	now = now.Add(time.Duration(17*time.Second + 100))
@@ -30,10 +30,10 @@ func main() {
 	robin.EverySunday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Sunday")
 
 	now = now.Add(time.Duration(1 * time.Second))
-	robin.Every(1).Hours().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Every 1 Hours")
+	robin.Every(1).Hours().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "every 1 Hours")
 
 	now = now.Add(time.Duration(1 * time.Second))
-	robin.Every(1).Days().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Every 1 Days")
+	robin.Every(1).Days().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "every 1 Days")
 
 	now = now.Add(time.Duration(1 * time.Second))
 	robin.Everyday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Everyday")
@@ -51,10 +51,10 @@ func main() {
 	})
 
 	robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
-	//robin.Every(1000).Milliseconds().Do(runCron, "Every(1000).Milliseconds()")
-	//robin.Every(2).Seconds().Do(runCron, "Every(2).Seconds()")
-	//Every N seconds do once.
-	//robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
+	//robin.every(1000).Milliseconds().Do(runCron, "every(1000).Milliseconds()")
+	//robin.every(2).Seconds().Do(runCron, "every(2).Seconds()")
+	//every N seconds do once.
+	//robin.every(10).Seconds().Do(runCron, "every 10 Seconds")
 	runCronFiber.ScheduleOnInterval(10000, 10000, func() {
 		log.Printf("runCronFiber 1\n")
 	})
@@ -65,9 +65,6 @@ func main() {
 		//log.Printf("runCronFiber 3\n")
 	})
 
-	//fmt.Scanln()
-	//<-quitSemaphore
-	//<-quitSemaphore
 	//Make a cron that will be executed everyday at 15:30:04(HH:mm:ss)
 	b := robin.Every(1).Days().At(15, 30, 4).Do(runCron, "Will be cancel")
 
@@ -82,20 +79,20 @@ func main() {
 	robin.Every(int64(second)).Seconds().AfterExecuteTask().Do(runSleepCron, "AfterExecuteTask", second, minute)
 	robin.Every(int64(second)).Seconds().Do(runSleepCron, "BeforeExecuteTask", second, 0)
 
-	//Every friday do once at 11:50:00(HH:mm:ss).
+	//every friday do once at 11:50:00(HH:mm:ss).
 	robin.EveryFriday().At(14, minute, second).Do(runCron, "Friday")
 
-	//Every N day do once at 11:50:00(HH:mm:ss)
+	//every N day do once at 11:50:00(HH:mm:ss)
 	robin.Every(1).Days().At(14, minute, second).Do(runCron, "Days")
 
-	//Every N hours do once at N:50:00(HH:mm:ss).
-	robin.Every(1).Hours().At(0, minute, second).Do(runCron, "Every 1 Hours")
+	//every N hours do once at N:50:00(HH:mm:ss).
+	robin.Every(1).Hours().At(0, minute, second).Do(runCron, "every 1 Hours")
 
-	//Every N minutes do once.
-	robin.Every(1).Minutes().At(0, 0, second).Do(runCron, "Every 1 Minutes")
+	//every N minutes do once.
+	robin.Every(1).Minutes().At(0, 0, second).Do(runCron, "every 1 Minutes")
 
-	//Every N seconds do once.
-	robin.Every(100).Seconds().Do(runCron, "Every 10 Seconds")
+	//every N seconds do once.
+	robin.Every(100).Seconds().Do(runCron, "every 10 Seconds")
 
 	robin.Delay(2000).Times(3).AfterExecuteTask().Do(CronTestAndSleepASecond, " Delay 2000 ms Times 2 AfterExecuteTask")
 	_, _ = fmt.Scanln()

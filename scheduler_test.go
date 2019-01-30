@@ -9,10 +9,10 @@ func TestScheduler_ScheduleOnInterval(t *testing.T) {
 	g := NewGoroutineSingle()
 	g.Start()
 	type fields struct {
-		fiber       ExecutionContext
+		fiber       executionContext
 		running     bool
 		isDispose   bool
-		disposabler *Disposer
+		disposabler *disposer
 	}
 	type args struct {
 		firstInMs   int64
@@ -59,10 +59,10 @@ func TestScheduler_Enqueue(t *testing.T) {
 	g := NewGoroutineMulti()
 	g.Start()
 	type fields struct {
-		fiber       ExecutionContext
+		fiber       executionContext
 		running     bool
 		isDispose   bool
-		disposabler *Disposer
+		disposabler *disposer
 	}
 	type args struct {
 		taskFun interface{}
@@ -99,10 +99,10 @@ func TestScheduler_Stop(t *testing.T) {
 	g := NewGoroutineMulti()
 	g.Start()
 	type fields struct {
-		fiber       ExecutionContext
+		fiber       executionContext
 		running     bool
 		isDispose   bool
-		disposabler *Disposer
+		disposabler *disposer
 	}
 	tests := []struct {
 		name   string
@@ -127,10 +127,10 @@ func TestScheduler_Dispose(t *testing.T) {
 	g := NewGoroutineMulti()
 	g.Start()
 	type fields struct {
-		fiber       ExecutionContext
+		fiber       executionContext
 		running     bool
 		isDispose   bool
-		disposabler *Disposer
+		disposabler *disposer
 	}
 	tests := []struct {
 		name   string

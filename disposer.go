@@ -9,28 +9,28 @@ type Disposable interface {
 	Identify() string
 }
 
-type Disposer struct {
+type disposer struct {
 	lock sync.Mutex
 	sync.Map
 }
 
-func NewDisposer() *Disposer {
-	return new(Disposer)
+func NewDisposer() *disposer {
+	return new(disposer)
 }
 
-func (d *Disposer) Add(disposable Disposable) {
+func (d *disposer) Add(disposable Disposable) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	d.Store(disposable.Identify(), disposable)
 }
 
-func (d *Disposer) Remove(disposable Disposable) {
+func (d *disposer) Remove(disposable Disposable) {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	d.Delete(disposable.Identify())
 }
 
-func (d *Disposer) Count() int {
+func (d *disposer) Count() int {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	count := 0
@@ -42,7 +42,7 @@ func (d *Disposer) Count() int {
 	return count
 }
 
-func (d *Disposer) Dispose() {
+func (d *disposer) Dispose() {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	var data []string

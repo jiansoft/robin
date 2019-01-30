@@ -22,26 +22,26 @@ type SubscriptionRegistry interface {
 	DeregisterSubscription(Disposable)
 }
 
-type ExecutionContext interface {
+type executionContext interface {
 	Enqueue(taskFun interface{}, params ...interface{})
 	EnqueueWithTask(task Task)
 }
 
 type Scheduler struct {
-	fiber       ExecutionContext
+	fiber       executionContext
 	running     bool
 	isDispose   bool
-	disposabler *Disposer
+	disposabler *disposer
 }
 
-func (s *Scheduler) init(executionState ExecutionContext) *Scheduler {
+func (s *Scheduler) init(executionState executionContext) *Scheduler {
 	s.fiber = executionState
 	s.running = true
 	s.disposabler = NewDisposer()
 	return s
 }
 
-func NewScheduler(executionState ExecutionContext) *Scheduler {
+func NewScheduler(executionState executionContext) *Scheduler {
 	return new(Scheduler).init(executionState)
 }
 

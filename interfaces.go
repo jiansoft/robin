@@ -28,7 +28,7 @@ type IReplySubscriber interface {
 }
 
 type IQueueChannel interface {
-	Subscribe(executionContext ExecutionContext, onMessage interface{}) Disposable
+	Subscribe(executionContext executionContext, onMessage interface{}) Disposable
 	Publish(message interface{})
 }
 type IProducerThreadSubscriber interface {

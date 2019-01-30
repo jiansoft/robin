@@ -26,15 +26,14 @@ const (
 
 var (
 	fiber = newFiber()
-	dc = newDelay()
-	ec = newEvery()
+	dc    = newDelay()
+	ec    = newEvery()
 )
 
 type cronDelay struct {
 }
 
 type cronEvery struct {
-
 }
 
 type Job struct {
@@ -57,10 +56,10 @@ type Job struct {
 }
 
 // newFiber
-func newFiber() *GoroutineMulti  {
+func newFiber() *GoroutineMulti {
 	fiber := NewGoroutineMulti()
 	fiber.Start()
-	return 	fiber
+	return fiber
 }
 
 // newDelay Constructors
@@ -68,7 +67,7 @@ func newDelay() *cronDelay {
 	return new(cronDelay)
 }
 
-// EveryCron Constructors
+// newEvery Constructors
 func newEvery() *cronEvery {
 	return new(cronEvery)
 }
@@ -78,18 +77,18 @@ func RightNow() *Job {
 	return Delay(0)
 }
 
-// The job executes will delay N Milliseconds.
-func Delay(delayInMs int64) *Job {
-	return dc.Delay(delayInMs)
+// The job executes will delay N interval.
+func Delay(interval int64) *Job {
+	return dc.Delay(interval)
 }
 
-// The job executes will delay N Milliseconds.
-func (c *cronDelay) Delay(delayInMs int64) *Job {
-	return newDelayJob(delayInMs)
+// Delay the job executes will delay N interval.
+func (c *cronDelay) Delay(interval int64) *Job {
+	return newDelayJob(interval)
 }
 
 func newDelayJob(delayInMs int64) *Job {
-	j := NewJob()
+	j := newJob()
 	j.jobModel = jobDelay
 	j.interval = delayInMs
 	j.maximumTimes = 1
@@ -97,61 +96,61 @@ func newDelayJob(delayInMs int64) *Job {
 	return j
 }
 
-// EverySunday The job will execute every Sunday .
+// EverySunday the job will execute every Sunday .
 func EverySunday() *Job {
-	return NewJob().everyWeek(time.Sunday)
+	return newJob().everyWeek(time.Sunday)
 }
 
-// EveryMonday The job will execute every Monday
+// EveryMonday the job will execute every Monday
 func EveryMonday() *Job {
-	return NewJob().everyWeek(time.Monday)
+	return newJob().everyWeek(time.Monday)
 }
 
-// EveryTuesday The job will execute every Tuesday
+// EveryTuesday the job will execute every Tuesday
 func EveryTuesday() *Job {
-	return NewJob().everyWeek(time.Tuesday)
+	return newJob().everyWeek(time.Tuesday)
 }
 
-// EveryWednesday The job will execute every Wednesday
+// EveryWednesday the job will execute every Wednesday
 func EveryWednesday() *Job {
-	return NewJob().everyWeek(time.Wednesday)
+	return newJob().everyWeek(time.Wednesday)
 }
 
-// EveryThursday The job will execute every Thursday
+// EveryThursday the job will execute every Thursday
 func EveryThursday() *Job {
-	return NewJob().everyWeek(time.Thursday)
+	return newJob().everyWeek(time.Thursday)
 }
 
-// EveryFriday The job will execute every Friday
+// EveryFriday the job will execute every Friday
 func EveryFriday() *Job {
-	return NewJob().everyWeek(time.Friday)
+	return newJob().everyWeek(time.Friday)
 }
 
-// EverySaturday The job will execute every Saturday
+// EverySaturday the job will execute every Saturday
 func EverySaturday() *Job {
-	return NewJob().everyWeek(time.Saturday)
+	return newJob().everyWeek(time.Saturday)
 }
 
-// Everyday The job will execute every day
+// Everyday the job will execute every day
 func Everyday() *Job {
-	return ec.Every(1).Days()
+	return ec.every(1).Days()
 }
 
-// Every The job will execute every N everyUnit(ex atHour、atMinute、atSecond、millisecond etc..).
+// every the job will execute every N everyUnit(ex atHour、atMinute、atSecond、millisecond etc..).
 func Every(interval int64) *Job {
-	return ec.Every(interval)
+	return ec.every(interval)
 }
 
-// Every The job will execute every N everyUnit(ex atHour、atMinute、atSecond、millisecond etc..).
-func (c *cronEvery) Every(interval int64) *Job {
-	j := NewJob()
+// every the job will execute every N everyUnit(ex atHour、atMinute、atSecond、millisecond etc..).
+func (c *cronEvery) every(interval int64) *Job {
+	j := newJob()
 	j.interval = interval
 	j.intervalUnit = millisecond
 	return j
 }
 
 // return Job Constructors
-func NewJob() *Job {
+func newJob() *Job {
 	j := &Job{}
 	j.jobModel = jobEvery
 	j.maximumTimes = -1
@@ -168,7 +167,6 @@ func (j *Job) Dispose() {
 	}
 	j.setDisposed(true)
 	j.taskDisposer.Dispose()
-	//j.fiber = nil
 }
 
 // Identify Job's Identify
@@ -222,18 +220,18 @@ func (j *Job) At(hh int, mm int, ss int) *Job {
 	return j
 }
 
-// AfterExecuteTask Start timing after the Task is executed
+// AfterExecuteTask waiting for the job execute finish then calculating the job next execution time
 // just for delay model、every N second and every N millisecond
+// If you want some job every N minute、hour or day do once and want to calculate next execution time by after the job executed.
+// Please use interval unit that Seconds or Milliseconds
 func (j *Job) AfterExecuteTask() *Job {
-	if j.jobModel == jobDelay ||
-		j.intervalUnit == second ||
-		j.intervalUnit == millisecond {
+	if j.jobModel == jobDelay || j.intervalUnit == second || j.intervalUnit == millisecond {
 		j.calculateNextTimeAfterExecuted = true
 	}
 	return j
 }
 
-// BeforeExecuteTask Start timing before the Task is executed
+// BeforeExecuteTask to calculate next execution time immediately don't wait
 func (j *Job) BeforeExecuteTask() *Job {
 	j.calculateNextTimeAfterExecuted = false
 	return j

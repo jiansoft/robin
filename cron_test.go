@@ -60,30 +60,30 @@ func TestEverySeries(t *testing.T) {
 			mm := time.Now().Minute()
 			ss := time.Now().Second()
 			t.Logf("now:%v:%v:%v", hh, mm, ss)
-			Every(200).Milliseconds().Times(3).Do(func(s string) { t.Logf("s:%v", s) }, "Every 200 Milliseconds times 3")
+			Every(200).Milliseconds().Times(3).Do(func(s string) { t.Logf("s:%v", s) }, "every 200 Milliseconds times 3")
 
-			h := Every(1200).Milliseconds().Do(func(s string) { t.Logf("s:%v", s) }, "Every 3 Seconds")
+			h := Every(1200).Milliseconds().Do(func(s string) { t.Logf("s:%v", s) }, "every 3 Seconds")
 			Every(1).Seconds().Do(func(s string) {
 				t.Logf("s:%v", s)
 				h.Dispose()
 			}, "h.Dispose")
 
-			Every(1).Seconds().Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Seconds")
-			Every(2).Seconds().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 2 Seconds")
+			Every(1).Seconds().Do(func(s string) { t.Logf("s:%v", s) }, "every 1 Seconds")
+			Every(2).Seconds().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "every 2 Seconds")
 
-			Every(1).Minutes().Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Minutes")
-			Every(1).Minutes().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Minutes")
-			Every(2).Minutes().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 2 Minutes")
+			Every(1).Minutes().Do(func(s string) { t.Logf("s:%v", s) }, "every 1 Minutes")
+			Every(1).Minutes().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "every 1 Minutes")
+			Every(2).Minutes().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "every 2 Minutes")
 
-			Every(1).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Hours")
-			Every(1).Hours().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Hours")
-			Every(2).Hours().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 2 Hours")
+			Every(1).Hours().Do(func(s string) { t.Logf("s:%v", s) }, "every 1 Hours")
+			Every(1).Hours().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "every 1 Hours")
+			Every(2).Hours().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "every 2 Hours")
 
 			Everyday().Do(func(s string) { t.Logf("s:%v", s) }, "Everyday")
 			Everyday().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Everyday")
-			Every(1).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Days")
-			Every(1).Days().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 1 Days")
-			Every(2).Days().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Every 2 Days")
+			Every(1).Days().Do(func(s string) { t.Logf("s:%v", s) }, "every 1 Days")
+			Every(1).Days().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "every 1 Days")
+			Every(2).Days().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "every 2 Days")
 
 			EveryMonday().Do(func(s string) { t.Logf("s:%v", s) }, "Monday")
 			EveryMonday().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Monday")

@@ -26,7 +26,7 @@ type GoroutineMulti struct {
 	executor       executor
 	executionState executionState
 	lock           *sync.Mutex
-	subscriptions  *Disposer
+	subscriptions  *disposer
 	flushPending   bool
 }
 
@@ -37,7 +37,7 @@ type GoroutineSingle struct {
 	executionState executionState
 	lock           *sync.Mutex
 	cond           *sync.Cond
-	subscriptions  *Disposer
+	subscriptions  *disposer
 }
 
 func (g *GoroutineMulti) init() *GoroutineMulti {

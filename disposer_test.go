@@ -25,7 +25,7 @@ func TestDisposer_Add(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Disposer{
+			d := &disposer{
 				//lock: tt.fields.Mutex,
 				Map: sync.Map{},
 			}
@@ -55,7 +55,7 @@ func TestDisposer_Remove(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Disposer{
+			d := &disposer{
 				lock: sync.Mutex{},
 				Map:  sync.Map{},
 			}
@@ -88,7 +88,7 @@ func TestDisposer_Count(t *testing.T) {
 			d.Add(pending)
 
 			if got := d.Count(); got != tt.want {
-				t.Errorf("Disposer.Count() = %v, want %v", got, tt.want)
+				t.Errorf("disposer.Count() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -108,7 +108,7 @@ func TestDisposer_Dispose(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Disposer{
+			d := &disposer{
 				lock: tt.fields.Mutex,
 				Map:  sync.Map{},
 			}
@@ -139,7 +139,7 @@ func TestDisposer_Random(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Disposer{
+			d := &disposer{
 				lock: tt.fields.Mutex,
 				Map:  sync.Map{},
 			}
