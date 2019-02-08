@@ -10,10 +10,6 @@ type ISubscriber interface {
 	ClearSubscribers()
 }
 
-type IChannel interface {
-	SubscribeOnProducerThreads(subscriber IProducerThreadSubscriber) Disposable
-}
-
 type IRequest interface {
 	Request() interface{}
 	SendReply(replyMsg interface{}) bool
@@ -30,10 +26,4 @@ type IReplySubscriber interface {
 type IQueueChannel interface {
 	Subscribe(executionContext executionContext, onMessage interface{}) Disposable
 	Publish(message interface{})
-}
-type IProducerThreadSubscriber interface {
-	//Allows for the registration and deregistration of fiber. Fiber
-	Subscriptions() SubscriptionRegistry
-	/*Method called from producer threads*/
-	ReceiveOnProducerThread(msg ...interface{})
 }

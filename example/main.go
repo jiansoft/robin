@@ -13,12 +13,38 @@ func main() {
 	log.Printf("Start at %v", now.Format(time.RFC3339))
 
 	robin.Every(450).Milliseconds().Times(2).Do(runCron, "every 1 Milliseconds Times 2")
-
 	robin.Every(1).Seconds().Times(3).Do(runCron, "every 1 Seconds Times 3")
 	robin.Every(10).Minutes().Do(runCron, "every 10 Minutes")
 	robin.Every(10).Minutes().AfterExecuteTask().Do(runCronAndSleep, "every 10 Minutes and sleep 4 Minutes", 4*60*1000)
 	robin.Every(60).Seconds().AfterExecuteTask().Do(runCronAndSleep, "every 60 Seconds and sleep 4 Minutes", 4*60*1000)
 	robin.Delay(4000).Times(4).Do(runCron, "Delay 4000 ms Times 4")
+	robin.Delay(21).Seconds().Do(func() {
+		channel := robin.NewChannel()
+		channel.Subscribe(func(s string) {
+			log.Printf("Subscribe 1 receive a message:%s", s)
+		})
+
+		subscribe2 := channel.Subscribe(func(s string) {
+			log.Printf("Subscribe 2 receive a message:%s", s)
+		})
+
+		log.Printf("the channel have %v subscribers.", channel.NumSubscribers())
+		channel.Publish("Publish message 1")
+
+		subscribe2.Dispose()
+		log.Printf("the channel have %v subscribers.", channel.NumSubscribers())
+		channel.Publish("Publish message 2")
+
+		channel.ClearSubscribers()
+		log.Printf("the channel have %v subscribers.", channel.NumSubscribers())
+		channel.Publish("Publish message 3")
+
+		channel.Subscribe(func(s string) {
+			log.Printf("Subscribe 3 receive a message:%s", s)
+		})
+		log.Printf("the channel have %v subscribers.", channel.NumSubscribers())
+		channel.Publish("Publish message 4")
+	})
 
 	now = now.Add(time.Duration(17*time.Second + 100))
 	robin.EveryMonday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Monday")
@@ -122,11 +148,11 @@ func RunChannelTest() {
 	var channel2 = robin.NewChannel()
 	//channelThreadFiber.Start()
 	channelThreadFiberPool.Start()
-	channel1.Subscribe(channelThreadFiberPool, func() {
+	channel1.Subscribe(func() {
 		log.Printf("我是 channel1 的訂閱者 1")
 	})
 
-	channel1.Subscribe(channelThreadFiberPool, func() {
+	channel1.Subscribe(func() {
 		log.Printf("我是 channel1 的訂閱者 2")
 	})
 	//定時2秒發布到  channel1
@@ -134,10 +160,10 @@ func RunChannelTest() {
 	//2.1 秒後取消定期的發布
 	channelThreadFiberPool.Schedule(2100, func() { dd.Dispose() })
 
-	Subscribe1 := channel2.Subscribe(channelThreadFiberPool, subscribe)
+	Subscribe1 := channel2.Subscribe(subscribe)
 	channel2.Publish(2, channel2.NumSubscribers(), "第一次發布 => Subscribe1")
 
-	Subscribe2 := channel2.Subscribe(channelThreadFiberPool, subscribe)
+	Subscribe2 := channel2.Subscribe(subscribe)
 	channel2.Publish(2, channel2.NumSubscribers(), "第二次發布 => Subscribe2")
 	//取消訂閱者 1 的訂閱
 	Subscribe1.Dispose()
@@ -148,7 +174,7 @@ func RunChannelTest() {
 
 	index := 0
 	//重新加入一個訂閱者
-	channel2.Subscribe(channelThreadFiberPool, func(msg string) {
+	channel2.Subscribe(func(msg string) {
 		index++
 		log.Printf("channe2 訂閱人數 %d %s 發布次數 %d %v ", channel2.NumSubscribers(), msg, index, time.Now().Format(time.RFC3339))
 	})

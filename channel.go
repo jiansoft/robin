@@ -1,57 +1,73 @@
 package robin
 
+import "fmt"
+
 type channel struct {
 	subscribers ConcurrentMap
 }
 
-func (c *channel) init() *channel {
+//NewChannel new a Channel instance
+func NewChannel() *channel {
+	c := new(channel)
 	c.subscribers = NewConcurrentMap()
 	return c
 }
 
-func NewChannel() *channel {
-	return new(channel).init()
-}
-
-func (c *channel) Subscribe(fiber Fiber, taskFun interface{}, params ...interface{}) Disposable {
+// Subscribe to register a receiver to receive the channel's message
+func (c *channel) Subscribe(taskFun interface{}, params ...interface{}) Disposable {
 	job := newTask(taskFun, params...)
-	subscription := NewChannelSubscription(fiber, job)
-	return c.SubscribeOnProducerThreads(subscription)
+	subscription := NewChannelSubscription(c, job)
+	c.subscribers.Set(subscription.Identify(), subscription)
+	return subscription
 }
 
-func (c *channel) SubscribeOnProducerThreads(subscriber IProducerThreadSubscriber) Disposable {
-	job := newTask(subscriber.ReceiveOnProducerThread)
-	return c.subscribeOnProducerThreads(job, subscriber.Subscriptions())
-}
-
-func (c *channel) subscribeOnProducerThreads(subscriber Task, fiber SubscriptionRegistry) Disposable {
-	unsubscriber := NewUnsubscriber(subscriber, c, fiber)
-	//將訂閱者的方法註冊到 IFiber內 ，當 Fiber.Dispose()時，同步將訂閱的方法移除
-	fiber.RegisterSubscription(unsubscriber)
-	//放到Channel 內的貯列，當 Chanel.Publish 時發布給訂閱的方法
-	c.subscribers.Set(unsubscriber.Identify(), unsubscriber)
-	return unsubscriber
-}
-
+// Publish a message to all subscribers
 func (c *channel) Publish(msg ...interface{}) {
 	for _, val := range c.subscribers.Items() {
-		if subscriber, ok := val.(*unsubscriber); ok {
-			subscriber.fiber.(Fiber).Enqueue(subscriber.receiver.doFunc, msg...)
+		if subscriber, ok := val.(*channelSubscription); ok {
+			fiber.Enqueue(subscriber.receiver.doFunc, msg...)
 		}
 	}
 }
 
-// Remove the subscriber
-func (c *channel) unsubscribe(disposable Disposable) {
-
-	if val, ok := c.subscribers.Get(disposable.Identify()); ok {
-		if subscriber, ok := val.(*unsubscriber); ok {
-			subscriber.fiber.DeregisterSubscription(subscriber)
-			c.subscribers.Remove(disposable.Identify())
-		}
+//ClearSubscribers empty the subscribers
+func (c *channel) ClearSubscribers() {
+	for key := range c.subscribers.Items() {
+		c.subscribers.Remove(key)
 	}
 }
 
 func (c *channel) NumSubscribers() int {
 	return c.subscribers.Count()
+}
+
+// unsubscribe remove the subscriber
+func (c *channel) unsubscribe(disposable Disposable) {
+	if val, ok := c.subscribers.Get(disposable.Identify()); ok {
+		if subscriber, ok := val.(*channelSubscription); ok {
+			c.subscribers.Remove(subscriber.Identify())
+		}
+	}
+}
+
+type channelSubscription struct {
+	channel    *channel
+	receiver   Task
+	identifyId string
+}
+
+func NewChannelSubscription(channel *channel, task Task) *channelSubscription {
+	c := new(channelSubscription)
+	c.channel = channel
+	c.receiver = task
+	c.identifyId = fmt.Sprintf("%p-%p", &c, &task)
+	return c
+}
+
+func (c *channelSubscription) Dispose() {
+	c.channel.unsubscribe(c)
+}
+
+func (c channelSubscription) Identify() string {
+	return c.identifyId
 }
