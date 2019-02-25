@@ -112,9 +112,20 @@ func TestGoroutineMulti_EnqueueWithTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fiber.EnqueueWithTask(tt.args)
-			tt.fiber.EnqueueWithTask(newTask(tt.args.doFunc, "Test 2"))
+			//tt.fiber.EnqueueWithTask(newTask(tt.args.doFunc, "Test 2"))
+			tt.fiber.EnqueueWithTask(newTask(func(s string) {
+				t.Logf("s:%v", s)
+				lock.Lock()
+				testCount++
+				lock.Unlock()
+			}, "Test 2"))
 			tt.fiber.executionState = stopped
-			tt.fiber.EnqueueWithTask(newTask(func(s string) { t.Logf("s:%v", s) }, "Test 3"))
+			tt.fiber.EnqueueWithTask(newTask(func(s string) {
+				t.Logf("s:%v", s)
+				lock.Lock()
+				testCount++
+				lock.Unlock()
+			}, "Test 3"))
 			timeout := time.NewTimer(time.Duration(30) * time.Millisecond)
 			select {
 			case <-timeout.C:
@@ -154,10 +165,10 @@ func TestGoroutineMulti_Schedule(t *testing.T) {
 					}
 				}, ii)
 			}
-			tt.fiber.Schedule(tt.firstMs, tt.args.doFunc, "Test 1")
-			tt.fiber.Schedule(tt.firstMs, tt.args.doFunc, "Test 2")
-			tt.fiber.Schedule(tt.firstMs, tt.args.doFunc, "Test 3")
-			gotD := tt.fiber.Schedule(tt.firstMs, tt.args.doFunc, "Test 4")
+			tt.fiber.Schedule(tt.firstMs, func(s string) { t.Logf("s:%v", s) }, "Test 1")
+			tt.fiber.Schedule(tt.firstMs, func(s string) { t.Logf("s:%v", s) }, "Test 2")
+			tt.fiber.Schedule(tt.firstMs, func(s string) { t.Logf("s:%v", s) }, "Test 3")
+			gotD := tt.fiber.Schedule(tt.firstMs, newTask(func(s string) { t.Logf("s:%v", s) }), "Test 4")
 			switch gotD.(type) {
 			case Disposable:
 			default:
@@ -197,10 +208,21 @@ func TestGoroutineMulti_ScheduleOnInterval(t *testing.T) {
 				lock.Unlock()
 			}), 50, 100, 2},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotD1 := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 1")
-			gotD2 := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 2")
+			gotD1 := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, func(s string) {
+				//t.Logf("s:%v", s)
+				lock.Lock()
+				test1Count++
+				lock.Unlock()
+			}, "Test 1")
+			gotD2 := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, func(s string) {
+				//t.Logf("s:%v", s)
+				lock.Lock()
+				test1Count++
+				lock.Unlock()
+			}, "Test 2")
 			switch gotD2.(type) {
 			case Disposable:
 			default:
@@ -357,10 +379,10 @@ func TestGoroutineSingle_Schedule(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.fiber.Schedule(tt.firstMs, tt.args.doFunc, "Test 1")
-			tt.fiber.Schedule(tt.firstMs, tt.args.doFunc, "Test 2")
-			tt.fiber.Schedule(tt.firstMs, tt.args.doFunc, "Test 3")
-			gotD := tt.fiber.Schedule(tt.firstMs, tt.args.doFunc, "Test 4")
+			tt.fiber.Schedule(tt.firstMs, func(s string) { t.Logf("s:%v", s) }, "Test 1")
+			tt.fiber.Schedule(tt.firstMs, func(s string) { t.Logf("s:%v", s) }, "Test 2")
+			tt.fiber.Schedule(tt.firstMs, func(s string) { t.Logf("s:%v", s) }, "Test 3")
+			gotD := tt.fiber.Schedule(tt.firstMs, newTask(func(s string) { t.Logf("s:%v", s) }), "Test 4")
 			switch gotD.(type) {
 			case Disposable:
 			default:
@@ -401,8 +423,18 @@ func TestGoroutineSingle_ScheduleOnInterval(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 1")
-			gotD2 := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, tt.args.doFunc, "Test 2")
+			tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, func(s string) {
+				//t.Logf("s:%v", s)
+				lock.Lock()
+				test1Count++
+				lock.Unlock()
+			}, "Test 1")
+			gotD2 := tt.fiber.ScheduleOnInterval(tt.firstMs, tt.regularMs, func(s string) {
+				//t.Logf("s:%v", s)
+				lock.Lock()
+				test1Count++
+				lock.Unlock()
+			}, "Test 2")
 			switch gotD2.(type) {
 			case Disposable:
 			default:

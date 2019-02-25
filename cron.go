@@ -37,7 +37,7 @@ type cronEvery struct {
 }
 
 type Job struct {
-	identifyId                     string
+	//identifyId                     string
 	task                           Task
 	taskDisposer                   Disposable
 	weekday                        time.Weekday

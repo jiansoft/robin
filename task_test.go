@@ -108,7 +108,7 @@ func Test_timerTask_Dispose(t *testing.T) {
 	}
 }
 
-func Test_timerTask_Identify(t *testing.T) {
+/*func Test_timerTask_Identify(t *testing.T) {
 	g := NewGoroutineMulti()
 	g.Start()
 	tests := []struct {
@@ -125,7 +125,7 @@ func Test_timerTask_Identify(t *testing.T) {
 			t.Logf("timerTask.Identify() = %v", tt.fields.Identify())
 		})
 	}
-}
+}*/
 
 func Test_timerTask_schedule(t *testing.T) {
 	lock := sync.Mutex{}

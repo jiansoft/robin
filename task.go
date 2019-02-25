@@ -1,7 +1,6 @@
 package robin
 
 import (
-	"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -9,18 +8,17 @@ import (
 
 //Task a struct
 type Task struct {
-	doFunc      interface{}
 	funcCache   reflect.Value
 	paramsCache []reflect.Value
 }
 
-func newTask(t interface{}, p ...interface{}) Task {
-	task := Task{doFunc: t, funcCache: reflect.ValueOf(t), paramsCache: make([]reflect.Value, len(p))}
-	//task.doFunc = t
-	//task.funcCache = reflect.ValueOf(t)
-	//task.paramsCache = make([]reflect.Value, len(p))
-	for k, param := range p {
-		task.paramsCache[k] = reflect.ValueOf(param)
+func newTask(f interface{}, p ...interface{}) Task {
+	var paramLen = len(p)
+	task := Task{funcCache: reflect.ValueOf(f), paramsCache: make([]reflect.Value, paramLen)}
+	if paramLen > 0 {
+		for k, param := range p {
+			task.paramsCache[k] = reflect.ValueOf(param)
+		}
 	}
 	return task
 }
@@ -30,8 +28,14 @@ func (t Task) run() {
 	//func(in []reflect.Value) { _ = t.funcCache.Call(in) }(t.paramsCache)
 }
 
+func (t *Task) Params(p ...interface{}) {
+	t.paramsCache = make([]reflect.Value, len(p))
+	for k, param := range p {
+		t.paramsCache[k] = reflect.ValueOf(param)
+	}
+}
+
 type timerTask struct {
-	identifyID   string
 	scheduler    SchedulerRegistry
 	firstInMs    int64
 	intervalInMs int64
@@ -46,7 +50,6 @@ func newTimerTask(scheduler SchedulerRegistry, task Task, firstInMs int64, inter
 	t.task = task
 	t.firstInMs = firstInMs
 	t.intervalInMs = intervalInMs
-	t.identifyID = fmt.Sprintf("%p-%p", &t, &t.task)
 	return t
 }
 
@@ -61,7 +64,7 @@ func (t *timerTask) Dispose() {
 
 // Identify return the struct identify id
 func (t *timerTask) Identify() string {
-	return t.identifyID
+	return "" // t.identifyID
 }
 
 func (t *timerTask) schedule() {
@@ -92,9 +95,9 @@ func (t *timerTask) doIntervalSchedule() {
 	go func() {
 		for !t.getDisposed() {
 			/*select {
-			case <-t.interval.C:
-				t.executeOnFiber()
-			}*/
+			  case <-t.interval.C:
+			  	t.executeOnFiber()
+			  }*/
 			<-interval.C
 			t.executeOnFiber()
 		}

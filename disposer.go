@@ -20,34 +20,32 @@ func NewDisposer() *disposer {
 
 func (d *disposer) Add(disposable Disposable) {
 	d.lock.Lock()
-	defer d.lock.Unlock()
-	d.Store(disposable.Identify(), disposable)
+	d.Store(disposable, disposable)
+	d.lock.Unlock()
 }
 
 func (d *disposer) Remove(disposable Disposable) {
 	d.lock.Lock()
-	defer d.lock.Unlock()
-	d.Delete(disposable.Identify())
+	d.Delete(disposable)
+	d.lock.Unlock()
 }
 
 func (d *disposer) Count() int {
 	d.lock.Lock()
-	defer d.lock.Unlock()
 	count := 0
 	d.Range(func(k, v interface{}) bool {
 		count++
 		return true
 	})
-
+	d.lock.Unlock()
 	return count
 }
 
 func (d *disposer) Dispose() {
 	d.lock.Lock()
-	defer d.lock.Unlock()
-	var data []string
+	var data []interface{}
 	d.Range(func(k, v interface{}) bool {
-		data = append(data, k.(string))
+		data = append(data, k)
 		v.(Disposable).Dispose()
 		return true
 	})
@@ -55,5 +53,5 @@ func (d *disposer) Dispose() {
 	for _, key := range data {
 		d.Delete(key)
 	}
-	data = data[:0]
+	d.lock.Unlock()
 }

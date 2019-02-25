@@ -118,6 +118,7 @@ func TestDisposer_Dispose(t *testing.T) {
 			d.Add(pending1)
 			d.Add(pending2)
 			d.Add(pending3)
+			d.Add(pending3)
 			t.Logf("before dispose has count:%v", d.Count())
 			d.Dispose()
 			t.Logf("after dispose has count:%v", d.Count())
@@ -144,6 +145,7 @@ func TestDisposer_Random(t *testing.T) {
 				Map:  sync.Map{},
 			}
 			for i := 0; i < 10; i++ {
+				ii := i
 				RightNow().Do(func() {
 					pending1 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
 					pending2 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
@@ -151,20 +153,36 @@ func TestDisposer_Random(t *testing.T) {
 					d.Add(pending1)
 					d.Add(pending2)
 					d.Add(pending3)
-					//t.Logf("%v add now has count:%v", ii,d.Count())
+					d.Remove(pending1)
+					d.Remove(pending2)
+					d.Remove(pending3)
+					d.Remove(pending3)
+					t.Logf("%v add now has count:%v", ii, d.Count())
 				})
+
+				pending1 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+				pending2 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+				pending3 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+				d.Add(pending1)
+				d.Add(pending2)
+				d.Add(pending3)
+				d.Remove(pending1)
+				d.Remove(pending2)
+
 				RightNow().Do(func() {
-					d.Dispose()
+					//d.Dispose()
 					//t.Logf("dispose now has count:%v", d.Count())
 				})
 			}
-			Delay(2000).Do(func() {
-				d.Dispose()
-			})
+			/* Delay(1000).Do(func() {
+			    d.Dispose()
+			})*/
 			timeout := time.NewTimer(time.Duration(2000) * time.Millisecond)
 
 			select {
 			case <-timeout.C:
+				t.Logf("dispose now has count:%v", d.Count())
+				d.Dispose()
 				t.Logf("dispose now has count:%v", d.Count())
 			}
 		})

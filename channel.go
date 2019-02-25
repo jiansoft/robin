@@ -25,7 +25,9 @@ func (c *channel) Subscribe(taskFun interface{}, params ...interface{}) Disposab
 func (c *channel) Publish(msg ...interface{}) {
 	for _, val := range c.subscribers.Items() {
 		if subscriber, ok := val.(*channelSubscription); ok {
-			fiber.Enqueue(subscriber.receiver.doFunc, msg...)
+			subscriber.receiver.Params(msg...)
+			fiber.EnqueueWithTask(subscriber.receiver)
+			//fiber.Enqueue(subscriber.receiver.doFunc, msg...)
 		}
 	}
 }
