@@ -249,32 +249,6 @@ func TestGoroutineMulti_ScheduleOnInterval(t *testing.T) {
 	}
 }
 
-func TestGoroutineMulti_Subscription(t *testing.T) {
-	g := NewGoroutineMulti()
-	g.Start()
-	tests := []struct {
-		name  string
-		fiber *GoroutineMulti
-		want  int
-		want1 int
-	}{
-		{"Test_GoroutineMulti_Subscription", g, 1, 0},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			d := tt.fiber.Schedule(1000, func() {})
-			tt.fiber.RegisterSubscription(d)
-			if tt.want != tt.fiber.NumSubscriptions() {
-				t.Errorf("%s test count %v, want %v", tt.name, tt.fiber.NumSubscriptions(), tt.want)
-			}
-			tt.fiber.DeregisterSubscription(d)
-			if tt.want1 != tt.fiber.NumSubscriptions() {
-				t.Errorf("%s test count %v, want %v", tt.name, tt.fiber.NumSubscriptions(), tt.want1)
-			}
-		})
-	}
-}
-
 func TestGoroutineSingle_Start(t *testing.T) {
 	tests := []struct {
 		name string
@@ -461,32 +435,6 @@ func TestGoroutineSingle_ScheduleOnInterval(t *testing.T) {
 	}
 }
 
-func TestGoroutineSingle_Subscription(t *testing.T) {
-	g := NewGoroutineSingle()
-	g.Start()
-	tests := []struct {
-		name  string
-		fiber *GoroutineSingle
-		want  int
-		want1 int
-	}{
-		{"Test_GoroutineSingle_Subscription", g, 1, 0},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			d := tt.fiber.Schedule(1000, func() {})
-			tt.fiber.RegisterSubscription(d)
-			if tt.want != tt.fiber.NumSubscriptions() {
-				t.Errorf("%s test count %v, want %v", tt.name, tt.fiber.NumSubscriptions(), tt.want)
-			}
-			tt.fiber.DeregisterSubscription(d)
-			if tt.want1 != tt.fiber.NumSubscriptions() {
-				t.Errorf("%s test count %v, want %v", tt.name, tt.fiber.NumSubscriptions(), tt.want1)
-			}
-		})
-
-	}
-}
 
 func TestGoroutineSingle_dequeueAll(t *testing.T) {
 	tests := []struct {

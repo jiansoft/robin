@@ -51,8 +51,7 @@ func TestEverySeries(t *testing.T) {
 			rightNow.Dispose()
 			after.Dispose()
 			before.Dispose()
-			t.Logf("after:%v", after.Identify())
-			t.Logf("before:%v", before.Identify())
+
 			Every(2).Days().Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 			Every(2).Days().At(0, 1, 2).Do(func(s string) { t.Logf("s:%v", s) }, "Days")
 

@@ -1,7 +1,6 @@
 package robin
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -37,7 +36,6 @@ type cronEvery struct {
 }
 
 type Job struct {
-	//identifyId                     string
 	task                           Task
 	taskDisposer                   Disposable
 	weekday                        time.Weekday
@@ -167,11 +165,6 @@ func (j *Job) Dispose() {
 	}
 	j.setDisposed(true)
 	j.taskDisposer.Dispose()
-}
-
-// Identify Job's Identify
-func (j *Job) Identify() string {
-	return fmt.Sprintf("%p", &j)
 }
 
 // everyWeek a time interval of execution

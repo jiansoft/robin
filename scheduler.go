@@ -31,13 +31,13 @@ type Scheduler struct {
 	fiber       executionContext
 	running     bool
 	isDispose   bool
-	disposabler *disposer
+	disposabler *container
 }
 
 func (s *Scheduler) init(executionState executionContext) *Scheduler {
 	s.fiber = executionState
 	s.running = true
-	s.disposabler = NewDisposer()
+	s.disposabler = NewContainer()
 	return s
 }
 
@@ -61,13 +61,6 @@ func (s *Scheduler) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskF
 	if firstInMs > 0 {
 		s.disposabler.Add(pending)
 	}
-	/*if firstInMs <= 0 {
-		//pending.executeOnFiber()
-		//pending.Dispose()
-	} else {
-		//pending.schedule()
-		s.disposabler.Add(pending)
-	}*/
 	return pending
 }
 

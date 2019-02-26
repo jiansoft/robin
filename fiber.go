@@ -26,7 +26,7 @@ type GoroutineMulti struct {
 	executor       executor
 	executionState executionState
 	lock           *sync.Mutex
-	subscriptions  *disposer
+	//subscriptions  *container
 	flushPending   bool
 }
 
@@ -37,7 +37,7 @@ type GoroutineSingle struct {
 	executionState executionState
 	lock           *sync.Mutex
 	cond           *sync.Cond
-	subscriptions  *disposer
+	//subscriptions  *container
 }
 
 func (g *GoroutineMulti) init() *GoroutineMulti {
@@ -45,7 +45,7 @@ func (g *GoroutineMulti) init() *GoroutineMulti {
 	g.executionState = created
 	g.scheduler = NewScheduler(g)
 	g.executor = newDefaultExecutor()
-	g.subscriptions = NewDisposer()
+	//g.subscriptions = NewContainer()
 	g.lock = new(sync.Mutex)
 	return g
 }
@@ -70,7 +70,7 @@ func (g *GoroutineMulti) Stop() {
 func (g *GoroutineMulti) Dispose() {
 	g.Stop()
 	g.scheduler.Dispose()
-	g.subscriptions.Dispose()
+	//g.subscriptions.Dispose()
 	g.queue.Dispose()
 }
 
@@ -102,18 +102,18 @@ func (g *GoroutineMulti) ScheduleOnInterval(firstInMs int64, regularInMs int64, 
 }
 
 /*implement SubscriptionRegistry.RegisterSubscription */
-func (g *GoroutineMulti) RegisterSubscription(toAdd Disposable) {
+/*func (g *GoroutineMulti) RegisterSubscription(toAdd Disposable) {
 	g.subscriptions.Add(toAdd)
-}
+}*/
 
 /*implement SubscriptionRegistry.DeregisterSubscription */
-func (g *GoroutineMulti) DeregisterSubscription(toRemove Disposable) {
+/*func (g *GoroutineMulti) DeregisterSubscription(toRemove Disposable) {
 	g.subscriptions.Remove(toRemove)
-}
+}*/
 
-func (g *GoroutineMulti) NumSubscriptions() int {
+/*func (g *GoroutineMulti) NumSubscriptions() int {
 	return g.subscriptions.Count()
-}
+}*/
 
 func (g *GoroutineMulti) flush() {
 	g.lock.Lock()
@@ -138,7 +138,7 @@ func (g *GoroutineMulti) flush() {
 func (g *GoroutineSingle) init() *GoroutineSingle {
 	g.queue = NewDefaultQueue()
 	g.executionState = created
-	g.subscriptions = NewDisposer()
+	//g.subscriptions = NewContainer()
 	g.scheduler = NewScheduler(g)
 	g.executor = newDefaultExecutor()
 	g.lock = new(sync.Mutex)
@@ -178,7 +178,7 @@ func (g *GoroutineSingle) Dispose() {
 	g.cond.Broadcast()
 	g.lock.Unlock()
 	g.scheduler.Dispose()
-	g.subscriptions.Dispose()
+	//g.subscriptions.Dispose()
 	g.queue.Dispose()
 }
 
@@ -211,19 +211,19 @@ func (g GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, 
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)
 }
 
-/*implement SubscriptionRegistry.RegisterSubscription */
+/*implement SubscriptionRegistry.RegisterSubscription *//*
 func (g *GoroutineSingle) RegisterSubscription(toAdd Disposable) {
 	g.subscriptions.Add(toAdd)
-}
+}*/
 
 /*implement SubscriptionRegistry.DeregisterSubscription */
-func (g *GoroutineSingle) DeregisterSubscription(toRemove Disposable) {
+/*func (g *GoroutineSingle) DeregisterSubscription(toRemove Disposable) {
 	g.subscriptions.Remove(toRemove)
 }
 
 func (g *GoroutineSingle) NumSubscriptions() int {
 	return g.subscriptions.Count()
-}
+}*/
 
 func (g *GoroutineSingle) executeNextBatch() bool {
 	tasks, ok := g.dequeueAll()

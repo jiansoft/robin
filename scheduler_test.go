@@ -12,7 +12,7 @@ func TestScheduler_ScheduleOnInterval(t *testing.T) {
 		fiber       executionContext
 		running     bool
 		isDispose   bool
-		disposabler *disposer
+		disposabler *container
 	}
 	type args struct {
 		firstInMs   int64
@@ -32,7 +32,7 @@ func TestScheduler_ScheduleOnInterval(t *testing.T) {
 		args   args
 	}{
 		{"Test_Scheduler_ScheduleOnInterval",
-			fields{fiber: g, running: true, isDispose: false, disposabler: NewDisposer()},
+			fields{fiber: g, running: true, isDispose: false, disposabler: NewContainer()},
 			args{firstInMs: 0, regularInMs: 10, taskFun: func(s string) { t.Logf("s:%v", s) }, params: names}},
 	}
 	for _, tt := range tests {
@@ -62,7 +62,7 @@ func TestScheduler_Enqueue(t *testing.T) {
 		fiber       executionContext
 		running     bool
 		isDispose   bool
-		disposabler *disposer
+		disposabler *container
 	}
 	type args struct {
 		taskFun interface{}
@@ -79,7 +79,7 @@ func TestScheduler_Enqueue(t *testing.T) {
 		args   args
 	}{
 		{"Test_Scheduler_Enqueue",
-			fields{fiber: g, running: true, isDispose: false, disposabler: NewDisposer()},
+			fields{fiber: g, running: true, isDispose: false, disposabler: NewContainer()},
 			args{taskFun: func(s string) { t.Logf("s:%v", s) }, params: names}},
 	}
 	for _, tt := range tests {
@@ -102,13 +102,13 @@ func TestScheduler_Stop(t *testing.T) {
 		fiber       executionContext
 		running     bool
 		isDispose   bool
-		disposabler *disposer
+		disposabler *container
 	}
 	tests := []struct {
 		name   string
 		fields fields
 	}{
-		{"Test_Scheduler_Stop", fields{fiber: g, running: true, isDispose: false, disposabler: NewDisposer()}},
+		{"Test_Scheduler_Stop", fields{fiber: g, running: true, isDispose: false, disposabler: NewContainer()}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -130,13 +130,13 @@ func TestScheduler_Dispose(t *testing.T) {
 		fiber       executionContext
 		running     bool
 		isDispose   bool
-		disposabler *disposer
+		disposabler *container
 	}
 	tests := []struct {
 		name   string
 		fields fields
 	}{
-		{"Test_Scheduler_Dispose", fields{fiber: g, running: true, isDispose: false, disposabler: NewDisposer()}},
+		{"Test_Scheduler_Dispose", fields{fiber: g, running: true, isDispose: false, disposabler: NewContainer()}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

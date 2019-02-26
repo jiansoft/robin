@@ -108,25 +108,6 @@ func Test_timerTask_Dispose(t *testing.T) {
 	}
 }
 
-/*func Test_timerTask_Identify(t *testing.T) {
-	g := NewGoroutineMulti()
-	g.Start()
-	tests := []struct {
-		name   string
-		fields *timerTask
-	}{
-		{"Test_timerTask_Identify", newTimerTask(g.scheduler.(*Scheduler), newTask(func(s int64) { t.Logf("s:%v", s) }, time.Now().UnixNano()), 10, 10)},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.fields.Identify(); got == "" {
-				t.Errorf("timerTask.Identify() = %v", got)
-			}
-			t.Logf("timerTask.Identify() = %v", tt.fields.Identify())
-		})
-	}
-}*/
-
 func Test_timerTask_schedule(t *testing.T) {
 	lock := sync.Mutex{}
 	lock.Lock()
