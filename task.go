@@ -3,6 +3,7 @@ package robin
 import (
     "reflect"
     "sync"
+    "sync/atomic"
     "time"
 )
 
@@ -26,33 +27,30 @@ func (t Task) run() {
 func (t *Task) params(p ...interface{}) {
     var paramLen = len(p)
     t.paramsCache = make([]reflect.Value, paramLen)
-    if paramLen > 0 {
-        for k, param := range p {
-            t.paramsCache[k] = reflect.ValueOf(param)
-        }
+    for k, param := range p {
+        t.paramsCache[k] = reflect.ValueOf(param)
     }
 }
 
 type timerTask struct {
-    scheduler    SchedulerRegistry
+    scheduler    IScheduler
     firstInMs    int64
     intervalInMs int64
     task         Task
-    disposed     bool
+    disposed     int32
     lock         sync.Mutex
 }
 
-func newTimerTask(scheduler SchedulerRegistry, task Task, firstInMs int64, intervalInMs int64) *timerTask {
+func newTimerTask(scheduler IScheduler, task Task, firstInMs int64, intervalInMs int64) *timerTask {
     var t = &timerTask{scheduler: scheduler, task: task, firstInMs: firstInMs, intervalInMs: intervalInMs}
     return t
 }
 
 // Dispose release resources
 func (t *timerTask) Dispose() {
-    if t.getDisposed() {
+    if atomic.CompareAndSwapInt32(&t.disposed, 0, 1) {
         return
     }
-    t.setDisposed(true)
     t.scheduler.Remove(t)
 }
 
@@ -61,6 +59,7 @@ func (t *timerTask) schedule() {
         t.doFirstSchedule()
         return
     }
+
     first := time.NewTimer(time.Duration(t.firstInMs) * time.Millisecond)
     go func() {
         select {
@@ -72,17 +71,14 @@ func (t *timerTask) schedule() {
 
 func (t *timerTask) doFirstSchedule() {
     t.executeOnFiber()
-    t.doIntervalSchedule()
-}
-
-func (t *timerTask) doIntervalSchedule() {
     if t.intervalInMs <= 0 {
         t.Dispose()
         return
     }
+
     interval := time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
     go func() {
-        for !t.getDisposed() {
+        for atomic.LoadInt32(&t.disposed) == 0 {
             /*select {
               case <-t.interval.C:
               	t.executeOnFiber()
@@ -95,20 +91,10 @@ func (t *timerTask) doIntervalSchedule() {
 }
 
 func (t *timerTask) executeOnFiber() {
-    if t.getDisposed() {
+    if atomic.LoadInt32(&t.disposed) == 1 {
         return
     }
     t.scheduler.EnqueueWithTask(t.task)
 }
 
-func (t *timerTask) getDisposed() bool {
-    t.lock.Lock()
-    defer t.lock.Unlock()
-    return t.disposed
-}
 
-func (t *timerTask) setDisposed(r bool) {
-    t.lock.Lock()
-    t.disposed = r
-    t.lock.Unlock()
-}

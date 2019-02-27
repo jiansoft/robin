@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// ConcurrentQueue A "thread" safe string to anything container.
+// ConcurrentQueue A "thread" safe string to anything items.
 type ConcurrentQueue struct {
 	lock      *sync.Mutex
 	container *list.List

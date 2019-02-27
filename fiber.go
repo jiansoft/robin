@@ -26,7 +26,6 @@ type GoroutineMulti struct {
 	executor       executor
 	executionState executionState
 	lock           *sync.Mutex
-	//subscriptions  *container
 	flushPending   bool
 }
 
@@ -37,15 +36,13 @@ type GoroutineSingle struct {
 	executionState executionState
 	lock           *sync.Mutex
 	cond           *sync.Cond
-	//subscriptions  *container
 }
 
 func (g *GoroutineMulti) init() *GoroutineMulti {
 	g.queue = NewDefaultQueue()
 	g.executionState = created
-	g.scheduler = NewScheduler(g)
+	g.scheduler = newScheduler(g)
 	g.executor = newDefaultExecutor()
-	//g.subscriptions = NewContainer()
 	g.lock = new(sync.Mutex)
 	return g
 }
@@ -59,7 +56,6 @@ func (g *GoroutineMulti) Start() {
 		return
 	}
 	g.executionState = running
-	g.scheduler.Start()
 	g.Enqueue(func() {})
 }
 
@@ -70,7 +66,6 @@ func (g *GoroutineMulti) Stop() {
 func (g *GoroutineMulti) Dispose() {
 	g.Stop()
 	g.scheduler.Dispose()
-	//g.subscriptions.Dispose()
 	g.queue.Dispose()
 }
 
@@ -89,8 +84,8 @@ func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 		return
 	}
 	g.flushPending = true
-	g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
-	//go g.flush()
+	//g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
+	go g.flush()
 }
 
 func (g *GoroutineMulti) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
@@ -100,20 +95,6 @@ func (g *GoroutineMulti) Schedule(firstInMs int64, taskFun interface{}, params .
 func (g *GoroutineMulti) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)
 }
-
-/*implement SubscriptionRegistry.RegisterSubscription */
-/*func (g *GoroutineMulti) RegisterSubscription(toAdd Disposable) {
-	g.subscriptions.Add(toAdd)
-}*/
-
-/*implement SubscriptionRegistry.DeregisterSubscription */
-/*func (g *GoroutineMulti) DeregisterSubscription(toRemove Disposable) {
-	g.subscriptions.Remove(toRemove)
-}*/
-
-/*func (g *GoroutineMulti) NumSubscriptions() int {
-	return g.subscriptions.Count()
-}*/
 
 func (g *GoroutineMulti) flush() {
 	g.lock.Lock()
@@ -126,9 +107,8 @@ func (g *GoroutineMulti) flush() {
 	g.executor.ExecuteTasksWithGoroutine(toDoTasks)
 	if g.queue.Count() > 0 {
 		//It has new Task enqueue when clear tasks
-		g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
-		//g.flush()
-		//go g.flush()
+		//g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
+		go g.flush()
 	} else {
 		//Task is empty
 		g.flushPending = false
@@ -138,8 +118,7 @@ func (g *GoroutineMulti) flush() {
 func (g *GoroutineSingle) init() *GoroutineSingle {
 	g.queue = NewDefaultQueue()
 	g.executionState = created
-	//g.subscriptions = NewContainer()
-	g.scheduler = NewScheduler(g)
+	g.scheduler = newScheduler(g)
 	g.executor = newDefaultExecutor()
 	g.lock = new(sync.Mutex)
 	g.cond = sync.NewCond(g.lock)
@@ -157,7 +136,7 @@ func (g *GoroutineSingle) Start() {
 		return
 	}
 	g.executionState = running
-	g.scheduler.Start()
+	//g.scheduler.Start()
 	go func() {
 		for g.executeNextBatch() {
 		}
@@ -169,7 +148,6 @@ func (g *GoroutineSingle) Stop() {
 	g.executionState = stopped
 	g.cond.Broadcast()
 	g.lock.Unlock()
-	g.scheduler.Stop()
 }
 
 func (g *GoroutineSingle) Dispose() {
@@ -178,7 +156,6 @@ func (g *GoroutineSingle) Dispose() {
 	g.cond.Broadcast()
 	g.lock.Unlock()
 	g.scheduler.Dispose()
-	//g.subscriptions.Dispose()
 	g.queue.Dispose()
 }
 
@@ -210,20 +187,6 @@ func (g GoroutineSingle) Schedule(firstInMs int64, taskFun interface{}, params .
 func (g GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)
 }
-
-/*implement SubscriptionRegistry.RegisterSubscription *//*
-func (g *GoroutineSingle) RegisterSubscription(toAdd Disposable) {
-	g.subscriptions.Add(toAdd)
-}*/
-
-/*implement SubscriptionRegistry.DeregisterSubscription */
-/*func (g *GoroutineSingle) DeregisterSubscription(toRemove Disposable) {
-	g.subscriptions.Remove(toRemove)
-}
-
-func (g *GoroutineSingle) NumSubscriptions() int {
-	return g.subscriptions.Count()
-}*/
 
 func (g *GoroutineSingle) executeNextBatch() bool {
 	tasks, ok := g.dequeueAll()

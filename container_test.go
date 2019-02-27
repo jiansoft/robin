@@ -21,15 +21,15 @@ func TestContainer_Add(t *testing.T) {
         fields fields
         args   args
     }{
-        {"TestAdd", fields{Mutex: sync.Mutex{}}, args{disposable: newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)}},
+        {"TestAdd", fields{Mutex: sync.Mutex{}}, args{disposable: newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)}},
     }
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             d := &container{
                 //lock: tt.fields.Mutex,
-                container: sync.Map{},
+                items: sync.Map{},
             }
-            //newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+            //newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
             d.Add(tt.args.disposable)
             d.Add(tt.args.disposable)
             d.Add(tt.args.disposable)
@@ -57,11 +57,11 @@ func TestContainer_Remove(t *testing.T) {
         t.Run(tt.name, func(t *testing.T) {
             d := &container{
                 //lock: sync.Mutex{},
-                container: sync.Map{},
+                items: sync.Map{},
             }
-            pending := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+            pending := newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
             d.Add(pending)
-            t.Logf("now container has count:%v", d.Count())
+            t.Logf("now items has count:%v", d.Count())
             d.Remove(pending)
             if d.Count() == 0 {
                 t.Logf("Success count:%v", d.Count())
@@ -84,11 +84,11 @@ func TestContainer_Count(t *testing.T) {
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             d := NewContainer()
-            pending := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+            pending := newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
             d.Add(pending)
 
             if got := d.Count(); got != tt.want {
-                t.Errorf("container.Count() = %v, want %v", got, tt.want)
+                t.Errorf("items.Count() = %v, want %v", got, tt.want)
             }
         })
     }
@@ -110,11 +110,11 @@ func TestContainer_Dispose(t *testing.T) {
         t.Run(tt.name, func(t *testing.T) {
             d := &container{
                 //lock: tt.fields.Mutex,
-                container: sync.Map{},
+                items: sync.Map{},
             }
-            pending1 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
-            pending2 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
-            pending3 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+            pending1 := newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
+            pending2 := newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
+            pending3 := newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
             d.Add(pending1)
             d.Add(pending2)
             d.Add(pending3)
@@ -144,9 +144,9 @@ func TestContainer_Random(t *testing.T) {
             for i := 0; i < 10; i++ {
                 ii := i
                 RightNow().Do(func() {
-                    pending1 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
-                    pending2 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
-                    pending3 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+                    pending1 := newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
+                    pending2 := newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
+                    pending3 := newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
                     d.Add(pending1)
                     d.Add(pending2)
                     d.Add(pending3)
@@ -156,9 +156,9 @@ func TestContainer_Random(t *testing.T) {
 
                 })
 
-                pending1 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
-                pending2 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
-                pending3 := newTimerTask(g.scheduler.(*Scheduler), newTask(func() {}), 50, 50)
+                pending1 := newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
+                pending2 := newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
+                pending3 := newTimerTask(g.scheduler.(*scheduler), newTask(func() {}), 50, 50)
                 d.Add(pending1)
                 d.Add(pending2)
                 d.Add(pending3)

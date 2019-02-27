@@ -1,152 +1,54 @@
 package robin
 
 import (
-	"testing"
-	"time"
+    "testing"
+    "time"
 )
 
-func TestScheduler_ScheduleOnInterval(t *testing.T) {
-	g := NewGoroutineSingle()
-	g.Start()
-	type fields struct {
-		fiber       executionContext
-		running     bool
-		isDispose   bool
-		disposabler *container
-	}
-	type args struct {
-		firstInMs   int64
-		regularInMs int64
-		taskFun     interface{}
-		params      []interface{}
-	}
-	strs := []string{"first"}
-	names := make([]interface{}, len(strs))
-	for i, s := range strs {
-		names[i] = s
-	}
+func TestScheduler(t *testing.T) {
+    gs := NewGoroutineSingle()
+    gm := NewGoroutineMulti()
+    gs.Start()
+    gm.Start()
 
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{"Test_Scheduler_ScheduleOnInterval",
-			fields{fiber: g, running: true, isDispose: false, disposabler: NewContainer()},
-			args{firstInMs: 0, regularInMs: 10, taskFun: func(s string) { t.Logf("s:%v", s) }, params: names}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &Scheduler{
-				fiber:       tt.fields.fiber,
-				running:     tt.fields.running,
-				isDispose:   tt.fields.isDispose,
-				disposabler: tt.fields.disposabler,
-			}
-			s.isDispose = true
-			s.ScheduleOnInterval(tt.args.firstInMs, tt.args.regularInMs, tt.args.taskFun, tt.args.params...)
-			s.isDispose = false
-			s.ScheduleOnInterval(tt.args.firstInMs, tt.args.regularInMs, tt.args.taskFun, tt.args.params...)
-			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
-			select {
-			case <-timeout.C:
-			}
-		})
-	}
+    type fields struct {
+        gs Fiber
+        gm Fiber
+    }
+
+    tests := []struct {
+        name   string
+        fields fields
+    }{
+        {"Test_Scheduler_ScheduleOnInterval", fields{gs: gs, gm: gm},},
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            schedulerTest(t, tt.fields.gs)
+            schedulerTest(t, tt.fields.gm)
+            timeout := time.NewTimer(time.Duration(10) * time.Millisecond)
+            select {
+            case <-timeout.C:
+            }
+        })
+    }
 }
 
-func TestScheduler_Enqueue(t *testing.T) {
-	g := NewGoroutineMulti()
-	g.Start()
-	type fields struct {
-		fiber       executionContext
-		running     bool
-		isDispose   bool
-		disposabler *container
-	}
-	type args struct {
-		taskFun interface{}
-		params  []interface{}
-	}
-	strs := []string{"first"}
-	names := make([]interface{}, len(strs))
-	for i, s := range strs {
-		names[i] = s
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{"Test_Scheduler_Enqueue",
-			fields{fiber: g, running: true, isDispose: false, disposabler: NewContainer()},
-			args{taskFun: func(s string) { t.Logf("s:%v", s) }, params: names}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &Scheduler{
-				fiber:       tt.fields.fiber,
-				running:     tt.fields.running,
-				isDispose:   tt.fields.isDispose,
-				disposabler: tt.fields.disposabler,
-			}
-			s.Enqueue(tt.args.taskFun, tt.args.params...)
-		})
-	}
-}
-
-func TestScheduler_Stop(t *testing.T) {
-	g := NewGoroutineMulti()
-	g.Start()
-	type fields struct {
-		fiber       executionContext
-		running     bool
-		isDispose   bool
-		disposabler *container
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-		{"Test_Scheduler_Stop", fields{fiber: g, running: true, isDispose: false, disposabler: NewContainer()}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &Scheduler{
-				fiber:       tt.fields.fiber,
-				running:     tt.fields.running,
-				isDispose:   tt.fields.isDispose,
-				disposabler: tt.fields.disposabler,
-			}
-			s.Stop()
-		})
-	}
-}
-
-func TestScheduler_Dispose(t *testing.T) {
-	g := NewGoroutineMulti()
-	g.Start()
-	type fields struct {
-		fiber       executionContext
-		running     bool
-		isDispose   bool
-		disposabler *container
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-		{"Test_Scheduler_Dispose", fields{fiber: g, running: true, isDispose: false, disposabler: NewContainer()}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &Scheduler{
-				fiber:       tt.fields.fiber,
-				running:     tt.fields.running,
-				isDispose:   tt.fields.isDispose,
-				disposabler: tt.fields.disposabler,
-			}
-			s.Dispose()
-		})
-	}
+func schedulerTest(t *testing.T, fiber Fiber) {
+    s := newScheduler(fiber)
+    taskFun := func(s string, t *testing.T) {
+        t.Logf("msg:%v", s)
+    }
+    s.Enqueue(taskFun, "Enqueue", t)
+    s.EnqueueWithTask(newTask(taskFun, "EnqueueWithTask", t))
+    s.Schedule(0, taskFun, "Schedule", t)
+    s.ScheduleOnInterval(0, 10, taskFun, "first", t)
+    <-time.After(time.Duration(10) * time.Millisecond)
+    s.ScheduleOnInterval(0, 10, taskFun, "second", t)
+    <-time.After(time.Duration(20) * time.Millisecond)
+    s.isDispose = true
+    d := s.ScheduleOnInterval(0, 10, taskFun, "remove", t)
+    d.Dispose()
+    s.Remove(d)
+    s.Dispose()
 }

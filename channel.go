@@ -1,7 +1,6 @@
 package robin
 
 type channel struct {
-    //subscribers ConcurrentMap
     subscribers *container
 }
 

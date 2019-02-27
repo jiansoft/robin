@@ -10,18 +10,18 @@ type Disposable interface {
 
 type container struct {
     sync.Mutex
-    container sync.Map
+    items sync.Map
 }
 
 func NewContainer() *container {
     return new(container)
 }
 
-// Items return container`s all item
+// Items return items`s all item
 func (d *container) Items() []interface{} {
     d.Lock()
     var data []interface{}
-    d.container.Range(func(k, v interface{}) bool {
+    d.items.Range(func(k, v interface{}) bool {
         data = append(data, v)
         return true
     })
@@ -29,32 +29,32 @@ func (d *container) Items() []interface{} {
     return data
 }
 
-// Add put a item into container
+// Add put a item into items
 func (d *container) Add(item interface{}) {
     d.Lock()
-    d.container.Store(item, item)
+    d.items.Store(item, item)
     d.Unlock()
 }
 
-// Remove a item from container
+// Remove a item from items
 func (d *container) Remove(item interface{}) {
     d.Lock()
-    d.container.Delete(item)
+    d.items.Delete(item)
     d.Unlock()
 }
 
-// Get a item from container if it exist
-/*func (d *container) Get(item interface{}) (value interface{}, ok bool) {
+// Get a item from items if it exist
+/*func (d *items) Get(item interface{}) (value interface{}, ok bool) {
     d.Lock()
     defer d.Unlock()
-    return d.container.Load(item)
+    return d.items.Load(item)
 }*/
 
-// Count return container`s number of items
+// Count return items`s number of items
 func (d *container) Count() int {
     d.Lock()
     count := 0
-    d.container.Range(func(k, v interface{}) bool {
+    d.items.Range(func(k, v interface{}) bool {
         count++
         return true
     })
@@ -66,13 +66,13 @@ func (d *container) Count() int {
 func (d *container) Dispose() {
     d.Lock()
     var data []interface{}
-    d.container.Range(func(k, v interface{}) bool {
-        data = append(data, k)
-        v.(Disposable).Dispose()
+    d.items.Range(func(k, v interface{}) bool {
+        d.items.Delete(k)
+        data = append(data, v)
         return true
     })
-    for _, key := range data {
-        d.container.Delete(key)
-    }
     d.Unlock()
+    for _, v := range data {
+        v.(Disposable).Dispose()
+    }
 }
