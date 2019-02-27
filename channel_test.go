@@ -34,24 +34,24 @@ func TestNewChannel(t *testing.T) {
 			})
 
 			channel.Publish("Publish message 1", t) //3
-			<-time.After(time.Duration(30))
+			<-time.After(time.Duration(30) * time.Millisecond)
 
 			subscribe1.Dispose()
 			channel.Remove(subscribe2)
 
 			channel.Publish("Publish message 2", t) //1
-			<-time.After(time.Duration(30))
+			<-time.After(time.Duration(30) * time.Millisecond)
 
 			channel.Subscribe(func(s string, test *testing.T) {
 				atomic.AddInt32(&recvCount, 1)
 			})
 
 			channel.Publish("Publish message 3", t) //2
-			<-time.After(time.Duration(30))
+			<-time.After(time.Duration(30) * time.Millisecond)
 
 			channel.Clear()
 			channel.Publish("Publish message 4", t) //
-			<-time.After(time.Duration(30))
+			<-time.After(time.Duration(30) * time.Millisecond)
 
 			if got := atomic.LoadInt32(&recvCount); got != tt.want {
 				t.Errorf("recvCount = %v, want %v", got, tt.want)
