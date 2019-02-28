@@ -2,6 +2,7 @@ package robin
 
 type executor interface {
 	ExecuteTasks(t []Task)
+	ExecuteTask(Task)
 	ExecuteTasksWithGoroutine(t []Task)
 	ExecuteTaskWithGoroutine(t Task)
 }
@@ -15,8 +16,12 @@ func newDefaultExecutor() defaultExecutor {
 
 func (d defaultExecutor) ExecuteTasks(tasks []Task) {
 	for _, task := range tasks {
-		task.run()
+		d.ExecuteTask(task)
 	}
+}
+
+func (d defaultExecutor) ExecuteTask(task Task) {
+	task.run()
 }
 
 func (d defaultExecutor) ExecuteTasksWithGoroutine(tasks []Task) {

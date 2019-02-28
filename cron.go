@@ -279,7 +279,7 @@ func (j *Job) canDo() {
 	if adjustTime <= 0 {
 		if j.calculateNextTimeAfterExecuted {
 			s := time.Now()
-			j.task.run()
+			fiber.executor.ExecuteTask(j.task)
 			d := time.Now().Sub(s)
 			j.nextTime = j.nextTime.Add(d)
 		} else {

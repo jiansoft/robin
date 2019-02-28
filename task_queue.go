@@ -5,55 +5,52 @@ import (
 )
 
 type taskQueue interface {
-	Enqueue(t Task)
-	DequeueAll() ([]Task, bool)
 	Count() int
+	DequeueAll() ([]Task, bool)
 	Dispose()
+	Enqueue(t Task)
 }
 
-// DefaultQueue struct
-type DefaultQueue struct {
+// defaultQueue struct
+type defaultQueue struct {
 	paddingTasks []Task
 	toDoTasks    []Task
-	lock         sync.Mutex
+	sync.Mutex
 }
 
-func (d *DefaultQueue) init() *DefaultQueue {
-	d.toDoTasks = []Task{}
-	d.paddingTasks = []Task{}
-	return d
+//newDefaultQueue return a new defaultQueue
+func newDefaultQueue() *defaultQueue {
+	q := &defaultQueue{toDoTasks: []Task{}, paddingTasks: []Task{}}
+	return q
 }
 
-//NewDefaultQueue return a new DefaultQueue
-func NewDefaultQueue() *DefaultQueue {
-	return new(DefaultQueue).init()
-}
-
-// Dispose dispose DefaultQueue
-func (d *DefaultQueue) Dispose() {
+// Dispose dispose defaultQueue
+func (d *defaultQueue) Dispose() {
+	d.Lock()
 	d.paddingTasks = d.paddingTasks[:0]
 	d.toDoTasks = d.paddingTasks[:0]
+	d.Unlock()
 }
 
 // Enqueue put a task into queue
-func (d *DefaultQueue) Enqueue(task Task) {
-	d.lock.Lock()
+func (d *defaultQueue) Enqueue(task Task) {
+	d.Lock()
 	d.paddingTasks = append(d.paddingTasks, task)
-	d.lock.Unlock()
+	d.Unlock()
 }
 
 // DequeueAll return currrent tasks
-func (d *DefaultQueue) DequeueAll() ([]Task, bool) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
+func (d *defaultQueue) DequeueAll() ([]Task, bool) {
+	d.Lock()
+	defer d.Unlock()
 	d.toDoTasks, d.paddingTasks = d.paddingTasks, d.toDoTasks
 	d.paddingTasks = d.paddingTasks[:0]
 	return d.toDoTasks, len(d.toDoTasks) > 0
 }
 
 // Count return padding tasks length
-func (d *DefaultQueue) Count() int {
-	d.lock.Lock()
-	defer d.lock.Unlock()
+func (d *defaultQueue) Count() int {
+	d.Lock()
+	defer d.Unlock()
 	return len(d.paddingTasks)
 }

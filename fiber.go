@@ -25,7 +25,7 @@ type GoroutineMulti struct {
 	scheduler      IScheduler
 	executor       executor
 	executionState executionState
-	lock           *sync.Mutex
+	locker         *sync.Mutex
 	flushPending   bool
 }
 
@@ -34,16 +34,16 @@ type GoroutineSingle struct {
 	scheduler      IScheduler
 	executor       executor
 	executionState executionState
-	lock           *sync.Mutex
+	locker         *sync.Mutex
 	cond           *sync.Cond
 }
 
 func (g *GoroutineMulti) init() *GoroutineMulti {
-	g.queue = NewDefaultQueue()
+	g.queue = newDefaultQueue()
 	g.executionState = created
 	g.scheduler = newScheduler(g)
 	g.executor = newDefaultExecutor()
-	g.lock = new(sync.Mutex)
+	g.locker = new(sync.Mutex)
 	return g
 }
 
@@ -78,14 +78,14 @@ func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 		return
 	}
 	g.queue.Enqueue(task)
-	g.lock.Lock()
-	defer g.lock.Unlock()
+	g.locker.Lock()
+	defer g.locker.Unlock()
 	if g.flushPending {
 		return
 	}
 	g.flushPending = true
-	//g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
-	go g.flush()
+	g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
+	//go g.flush()
 }
 
 func (g *GoroutineMulti) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
@@ -97,8 +97,8 @@ func (g *GoroutineMulti) ScheduleOnInterval(firstInMs int64, regularInMs int64, 
 }
 
 func (g *GoroutineMulti) flush() {
-	g.lock.Lock()
-	defer g.lock.Unlock()
+	g.locker.Lock()
+	defer g.locker.Unlock()
 	toDoTasks, ok := g.queue.DequeueAll()
 	if !ok {
 		g.flushPending = false
@@ -107,8 +107,8 @@ func (g *GoroutineMulti) flush() {
 	g.executor.ExecuteTasksWithGoroutine(toDoTasks)
 	if g.queue.Count() > 0 {
 		//It has new Task enqueue when clear tasks
-		//g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
-		go g.flush()
+		g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
+		//go g.flush()
 	} else {
 		//Task is empty
 		g.flushPending = false
@@ -116,12 +116,12 @@ func (g *GoroutineMulti) flush() {
 }
 
 func (g *GoroutineSingle) init() *GoroutineSingle {
-	g.queue = NewDefaultQueue()
 	g.executionState = created
+	g.queue = newDefaultQueue()
 	g.scheduler = newScheduler(g)
 	g.executor = newDefaultExecutor()
-	g.lock = new(sync.Mutex)
-	g.cond = sync.NewCond(g.lock)
+	g.locker = new(sync.Mutex)
+	g.cond = sync.NewCond(g.locker)
 	return g
 }
 
@@ -130,8 +130,8 @@ func NewGoroutineSingle() *GoroutineSingle {
 }
 
 func (g *GoroutineSingle) Start() {
-	g.lock.Lock()
-	defer g.lock.Unlock()
+	g.locker.Lock()
+	defer g.locker.Unlock()
 	if g.executionState == running {
 		return
 	}
@@ -144,17 +144,17 @@ func (g *GoroutineSingle) Start() {
 }
 
 func (g *GoroutineSingle) Stop() {
-	g.lock.Lock()
+	g.locker.Lock()
 	g.executionState = stopped
 	g.cond.Broadcast()
-	g.lock.Unlock()
+	g.locker.Unlock()
 }
 
 func (g *GoroutineSingle) Dispose() {
-	g.lock.Lock()
+	g.locker.Lock()
 	g.executionState = stopped
 	g.cond.Broadcast()
-	g.lock.Unlock()
+	g.locker.Unlock()
 	g.scheduler.Dispose()
 	g.queue.Dispose()
 }
@@ -197,8 +197,8 @@ func (g *GoroutineSingle) executeNextBatch() bool {
 }
 
 func (g *GoroutineSingle) dequeueAll() ([]Task, bool) {
-	g.lock.Lock()
-	defer g.lock.Unlock()
+	g.locker.Lock()
+	defer g.locker.Unlock()
 	if !g.readyToDequeue() {
 		return nil, false
 	}
