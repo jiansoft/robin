@@ -38,17 +38,14 @@ type GoroutineSingle struct {
 	cond           *sync.Cond
 }
 
-func (g *GoroutineMulti) init() *GoroutineMulti {
+func NewGoroutineMulti() *GoroutineMulti {
+	g := new(GoroutineMulti)
 	g.queue = newDefaultQueue()
 	g.executionState = created
 	g.scheduler = newScheduler(g)
 	g.executor = newDefaultExecutor()
 	g.locker = new(sync.Mutex)
 	return g
-}
-
-func NewGoroutineMulti() *GoroutineMulti {
-	return new(GoroutineMulti).init()
 }
 
 func (g *GoroutineMulti) Start() {
@@ -115,7 +112,8 @@ func (g *GoroutineMulti) flush() {
 	}
 }
 
-func (g *GoroutineSingle) init() *GoroutineSingle {
+func NewGoroutineSingle() *GoroutineSingle {
+	g := new(GoroutineSingle)
 	g.executionState = created
 	g.queue = newDefaultQueue()
 	g.scheduler = newScheduler(g)
@@ -123,10 +121,6 @@ func (g *GoroutineSingle) init() *GoroutineSingle {
 	g.locker = new(sync.Mutex)
 	g.cond = sync.NewCond(g.locker)
 	return g
-}
-
-func NewGoroutineSingle() *GoroutineSingle {
-	return new(GoroutineSingle).init()
 }
 
 func (g *GoroutineSingle) Start() {
