@@ -15,7 +15,7 @@ func TestFiber(t *testing.T) {
 		intervalCount int32
 		wg            sync.WaitGroup
 	}{
-		{"Test_Fiber", 0, 0, sync.WaitGroup{}},
+		{"TestFiber", 0, 0, sync.WaitGroup{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -83,50 +83,23 @@ func TestFiber(t *testing.T) {
 			assert.Equal(t, int32(loop), atomic.LoadInt32(&tt.intervalCount), "they should be equal")
 
 			gm.Stop()
+			gs.Stop()
 
 			gm.EnqueueWithTask(newTask(func() {
 				atomic.AddInt32(&tt.count, 1)
 
 			}))
 
-			gs.Stop()
 			gs.EnqueueWithTask(newTask(func() {
 				atomic.AddInt32(&tt.count, 1)
 
 			}))
 
-			_, got1 := gs.dequeueAll()
-			assert.Equal(t, false, got1, "GoroutineSingle.dequeueAll() got = %v, want %v", got1, false)
-			/*if got1 != false {
-				t.Errorf("GoroutineSingle.dequeueAll() got = %v, want %v", got, false)
-			}*/
+			_, got := gs.dequeueAll()
+			assert.Equal(t, false, got, "GoroutineSingle.dequeueAll() got = %v, want %v", got, false)
 
 			gm.Dispose()
 			gs.Dispose()
 		})
 	}
 }
-
-//
-//func TestGoroutineSingle_dequeueAll(t *testing.T) {
-//	//lock := sync.Mutex{}
-//	tests := []struct {
-//		name  string
-//		want  bool
-//		want1 bool
-//	}{
-//		{"Test_GoroutineSingle_dequeueAll", false, true},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			g := NewGoroutineSingle()
-//			got, got1 := g.dequeueAll()
-//			if got1 != tt.want {
-//				t.Errorf("GoroutineSingle.dequeueAll() got = %v, want %v", got, tt.want)
-//			}
-//
-//
-//
-//		})
-//	}
-//}

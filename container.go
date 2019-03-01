@@ -13,7 +13,7 @@ type container struct {
 	sync.Map
 }
 
-func NewContainer() *container {
+func newContainer() *container {
 	return new(container)
 }
 

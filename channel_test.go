@@ -21,7 +21,7 @@ func TestChannel(t *testing.T) {
 		name string
 		want int32
 	}{
-		{name: "Test_TestNewChannel_1", want: 6},
+		{name: "TestChannel", want: 6},
 		/*{name: "Test_TestNewChannel_2", want: 3},*/
 	}
 

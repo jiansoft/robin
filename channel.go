@@ -6,7 +6,7 @@ type Channel struct {
 
 //NewChannel new a Channel instance
 func NewChannel() Channel {
-	c := Channel{subscribers: NewContainer()}
+	c := Channel{subscribers: newContainer()}
 	return c
 }
 
