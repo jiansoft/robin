@@ -23,20 +23,18 @@ func Test_timerTask_schedule(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			wg := sync.WaitGroup{}
-			if tt.name == "Test_timerTask_schedule_4" {
-				tt.fields.disposed = 1
-			}
 			tt.fields.schedule()
 			for true {
-				saveRunCount := atomic.LoadInt32(&runCount)
-				if tt.name == "Test_timerTask_schedule_1" && saveRunCount >= 10 {
+				if atomic.LoadInt32(&runCount) >= 10 {
 					tt.fields.Dispose()
 					break
 				}
 			}
-			tt.fields.Dispose()
 
+			tt.fields.executeOnFiber()
+			assert.Equal(t, int32(10), atomic.LoadInt32(&runCount), "they should be equal")
+
+			wg := sync.WaitGroup{}
 			wg.Add(2)
 			var runT1Count int32
 			t1 := g.ScheduleOnInterval(0, 10, func() {
