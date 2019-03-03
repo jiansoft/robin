@@ -1,9 +1,12 @@
 package robin
 
 import (
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_timerTask_schedule(t *testing.T) {
@@ -14,15 +17,13 @@ func Test_timerTask_schedule(t *testing.T) {
 		name   string
 		fields *timerTask
 	}{
-		{"Test_timerTask_schedule_1", newTimerTask(g.scheduler.(*scheduler), newTask(func(s int64) {
+		{"Test_timerTask_schedule_1", newTimerTask(g.scheduler.(*scheduler), newTask(func() {
 			atomic.AddInt32(&runCount, 1)
-		}, time.Now().UnixNano()), 0, 5)},
-		/*{"Test_timerTask_schedule_2", newTimerTask(g.scheduler.(*scheduler), newTask(func(s int64) {
-		    atomic.AddInt32(&runCount, 1)
-		}, time.Now().UnixNano()), 5, 10)},*/
+		}), 0, 5)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			wg := sync.WaitGroup{}
 			if tt.name == "Test_timerTask_schedule_4" {
 				tt.fields.disposed = 1
 			}
@@ -31,76 +32,46 @@ func Test_timerTask_schedule(t *testing.T) {
 				saveRunCount := atomic.LoadInt32(&runCount)
 				if tt.name == "Test_timerTask_schedule_1" && saveRunCount >= 10 {
 					tt.fields.Dispose()
-					return
-				}
-				if tt.name == "Test_timerTask_schedule_2" && saveRunCount >= 20 {
-					tt.fields.Dispose()
-					return
-				}
-				if tt.name == "Test_timerTask_schedule_3" && saveRunCount >= 31 {
-					return
-				}
-				if tt.name == "Test_timerTask_schedule_3" && saveRunCount >= 30 {
-					atomic.SwapInt32(&tt.fields.disposed, 1)
-					atomic.AddInt32(&runCount, 1)
-				}
-				if tt.name == "Test_timerTask_schedule_4" {
-					timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
-					select {
-					case <-timeout.C:
-					}
-					return
+					break
 				}
 			}
 			tt.fields.Dispose()
+
+			wg.Add(2)
+			var runT1Count int32
+			t1 := g.ScheduleOnInterval(0, 10, func() {
+				atomic.AddInt32(&runT1Count, 1)
+				wg.Done()
+			})
+			wg.Wait()
+			t1.Dispose()
+			<-time.After(time.Duration(30) * time.Millisecond)
+			assert.Equal(t, int32(2), atomic.LoadInt32(&runT1Count), "they should be equal")
+
+			var runT2Count int32
+			t2 := g.ScheduleOnInterval(1000, 10, func() {
+				atomic.AddInt32(&runT2Count, 1)
+			})
+			t2.Dispose()
+
+			<-time.After(time.Duration(30) * time.Millisecond)
+			assert.Equal(t, int32(0), atomic.LoadInt32(&runT2Count), "they should be equal")
+
+			var runT3Count int32
+			t3 := g.Schedule(1000, func() {
+				atomic.AddInt32(&runT3Count, 1)
+			})
+			t3.Dispose()
+			<-time.After(time.Duration(30) * time.Millisecond)
+			assert.Equal(t, int32(0), atomic.LoadInt32(&runT3Count), "they should be equal")
+
+			var runT4Count int32
+			t4 := g.Schedule(0, func() {
+				atomic.AddInt32(&runT4Count, 1)
+			})
+			t4.Dispose()
+			<-time.After(time.Duration(30) * time.Millisecond)
+			assert.Equal(t, int32(1), atomic.LoadInt32(&runT4Count), "they should be equal")
 		})
-	}
-}
-
-func Test_Schedule_Mix(t *testing.T) {
-	g := NewGoroutineSingle()
-	g.Start()
-	tests := []struct {
-		name string
-	}{
-		{"Test_Schedule_Mix_1"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			d := g.Schedule(1000, func(s int64) {
-				t.Logf("run_1 s:%v", s)
-			}, int64(1000))
-			d.Dispose()
-
-			d = g.Schedule(20, func(s int64) {
-				t.Logf("run_2 s:%v", s)
-				g.Schedule(30, func(s int64) {
-					t.Logf("run_3 s:%v", s)
-					g.Schedule(60, func(s int64) {
-						t.Logf("run_6 s:%v", s)
-					}, int64(60+30+20))
-				}, int64(30+20))
-			}, int64(20))
-
-			g40 := g.Schedule(40, func(s int64) {
-				t.Logf("run_4 s:%v", s)
-			}, int64(40))
-
-			g70 := g.Schedule(70, func(s int64) {
-				t.Logf("run_7 s:%v", s)
-			}, int64(70))
-
-			timeout := time.NewTimer(time.Duration(150) * time.Millisecond)
-			select {
-			case <-timeout.C:
-			}
-			d.Dispose()
-			g40.Dispose()
-			g70.Dispose()
-		})
-	}
-	timeout := time.NewTimer(time.Duration(150) * time.Millisecond)
-	select {
-	case <-timeout.C:
 	}
 }

@@ -2,7 +2,6 @@ package robin
 
 import (
 	"reflect"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -24,7 +23,7 @@ func newTask(f interface{}, p ...interface{}) Task {
 	return task
 }
 
-func (t Task) run() {
+func (t Task) execute() {
 	t.funcCache.Call(t.paramsCache)
 	//func(in []reflect.Value) { _ = t.funcCache.Call(in) }(t.paramsCache)
 }
@@ -35,56 +34,61 @@ type timerTask struct {
 	intervalInMs int64
 	task         Task
 	disposed     int32
-	lock         sync.Mutex
+	exitC        chan bool
 }
 
 func newTimerTask(scheduler IScheduler, task Task, firstInMs int64, intervalInMs int64) *timerTask {
-	var t = &timerTask{scheduler: scheduler, task: task, firstInMs: firstInMs, intervalInMs: intervalInMs}
+	var t = &timerTask{scheduler: scheduler, task: task, firstInMs: firstInMs, intervalInMs: intervalInMs, exitC: make(chan bool)}
 	return t
 }
 
 // Dispose release resources
 func (t *timerTask) Dispose() {
-	if atomic.CompareAndSwapInt32(&t.disposed, 0, 1) {
+	if !atomic.CompareAndSwapInt32(&t.disposed, 0, 1) {
 		return
 	}
+
 	t.scheduler.Remove(t)
+	close(t.exitC)
 }
 
 func (t *timerTask) schedule() {
-	if t.firstInMs <= 0 {
-		t.doFirstSchedule()
+	firstInMs := atomic.LoadInt64(&t.firstInMs)
+	if firstInMs <= 0 {
+		t.next()
 		return
 	}
 
-	first := time.NewTimer(time.Duration(t.firstInMs) * time.Millisecond)
-	go func() {
+	go func(first time.Duration, exitC chan bool) {
 		select {
-		case <-first.C:
-			t.doFirstSchedule()
+		case <-time.After(first):
+			t.next()
+		case <-exitC:
+			return
 		}
-	}()
+	}(time.Duration(firstInMs)*time.Millisecond, t.exitC)
 }
 
-func (t *timerTask) doFirstSchedule() {
+func (t *timerTask) next() {
 	t.executeOnFiber()
-	if t.intervalInMs <= 0 {
+	intervalInMs := atomic.LoadInt64(&t.intervalInMs)
+	if intervalInMs <= 0 {
 		t.Dispose()
 		return
 	}
 
-	interval := time.NewTicker(time.Duration(t.intervalInMs) * time.Millisecond)
-	go func() {
+	ticker := time.NewTicker(time.Duration(intervalInMs) * time.Millisecond)
+	go func(ticker *time.Ticker, exitC chan bool) {
 		for atomic.LoadInt32(&t.disposed) == 0 {
-			/*select {
-			  case <-t.interval.C:
-			  	t.executeOnFiber()
-			  }*/
-			<-interval.C
-			t.executeOnFiber()
+			select {
+			case <-ticker.C:
+				t.executeOnFiber()
+			case <-exitC:
+				break
+			}
 		}
-		interval.Stop()
-	}()
+		ticker.Stop()
+	}(ticker, t.exitC)
 }
 
 func (t *timerTask) executeOnFiber() {

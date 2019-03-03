@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	fiber = newFiber()
+	fiber *GoroutineMulti
 	dc    = newDelay()
 	ec    = newEvery()
 )
@@ -45,19 +45,17 @@ type Job struct {
 	interval                       int64
 	nextTime                       time.Time
 	calculateNextTimeAfterExecuted bool
-	lock                           sync.Mutex
-	maximumTimes                   int64
-	disposed                       bool
-	duration                       time.Duration
+	sync.Mutex
+	maximumTimes int64
+	disposed     bool
+	duration     time.Duration
 	jobModel
 	intervalUnit
 }
 
-// newFiber
-func newFiber() *GoroutineMulti {
-	fiber := NewGoroutineMulti()
+func init() {
+	fiber = NewGoroutineMulti()
 	fiber.Start()
-	return fiber
 }
 
 // newDelay Constructors
@@ -300,21 +298,21 @@ func (j *Job) canDo() {
 }
 
 func (j *Job) schedule(firstInMs int64) {
-	j.lock.Lock()
+	j.Lock()
 	j.taskDisposer = fiber.Schedule(firstInMs, j.canDo)
-	j.lock.Unlock()
+	j.Unlock()
 }
 
 func (j *Job) getDisposed() bool {
-	j.lock.Lock()
-	defer j.lock.Unlock()
+	j.Lock()
+	defer j.Unlock()
 	return j.disposed
 }
 
 func (j *Job) setDisposed(r bool) {
-	j.lock.Lock()
+	j.Lock()
 	j.disposed = r
-	j.lock.Unlock()
+	j.Unlock()
 }
 
 func (j *Job) checkAtTime(now time.Time) *Job {

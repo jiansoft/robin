@@ -5,11 +5,11 @@ import (
 	"time"
 )
 
-func TestEverySeries(t *testing.T) {
+func TestEvery(t *testing.T) {
 	tests := []struct {
 		name string
 	}{
-		{"TestEverySeries"},
+		{"TestEvery"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -117,13 +117,11 @@ func TestEverySeries(t *testing.T) {
 	}
 }
 
-func TestDelaySeries(t *testing.T) {
+func TestDelay(t *testing.T) {
 	tests := []struct {
 		name string
 	}{
-		{"Test_DelaySeries_1"},
-		//{"Test_DelaySeries_2"},
-		//{"Test_DelaySeries_3"},
+		{"TestDelay"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

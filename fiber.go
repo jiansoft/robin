@@ -53,7 +53,7 @@ func (g *GoroutineMulti) Start() {
 		return
 	}
 	g.executionState = running
-	g.Enqueue(func() {})
+	//g.Enqueue(func() {})
 }
 
 func (g *GoroutineMulti) Stop() {

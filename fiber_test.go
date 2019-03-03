@@ -90,6 +90,8 @@ func TestFiber(t *testing.T) {
 
 			}))
 
+			gm.flush()
+
 			gs.EnqueueWithTask(newTask(func() {
 				atomic.AddInt32(&tt.count, 1)
 

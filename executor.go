@@ -21,7 +21,7 @@ func (d defaultExecutor) ExecuteTasks(tasks []Task) {
 }
 
 func (d defaultExecutor) ExecuteTask(task Task) {
-	task.run()
+	task.execute()
 }
 
 func (d defaultExecutor) ExecuteTasksWithGoroutine(tasks []Task) {
@@ -31,5 +31,5 @@ func (d defaultExecutor) ExecuteTasksWithGoroutine(tasks []Task) {
 }
 
 func (d defaultExecutor) ExecuteTaskWithGoroutine(task Task) {
-	go task.run()
+	go task.execute()
 }
