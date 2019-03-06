@@ -94,13 +94,13 @@ func TestChannel(t *testing.T) {
 func TestChannelConcurrency(t *testing.T) {
 	tests := []struct {
 		name string
-		wg   sync.WaitGroup
 	}{
 		{name: "Test_TestConcurrency_1"},
 		//{name: "Test_TestConcurrency_2",},
 	}
 	lock := sync.RWMutex{}
 	channel := NewChannel()
+	wg := sync.WaitGroup{}
 	for _, tt := range tests {
 		//atomic.SwapInt32(&recvCount, 0)
 		t.Run(tt.name, func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestChannelConcurrency(t *testing.T) {
 			count := 0
 			lock.Unlock()
 			loop := 2
-			tt.wg.Add(loop * loop)
+			wg.Add(loop * loop)
 			for i := 0; i < loop; i++ {
 				RightNow().Do(func(c Channel) {
 					for i := 0; i < loop; i++ {
@@ -126,12 +126,12 @@ func TestChannelConcurrency(t *testing.T) {
 
 					for i := 0; i < loop; i++ {
 						c.Publish(fmt.Sprintf("Publish message Channel:%v", c.Count()))
-						tt.wg.Done()
+						wg.Done()
 					}
 				}, channel)
 			}
 
-			tt.wg.Wait()
+			wg.Wait()
 			//<-time.After(time.Duration(5 * time.Second))
 			//log.Printf("Finish %d", atomic.LoadInt32(&recvCount))
 		})
