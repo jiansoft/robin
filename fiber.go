@@ -53,7 +53,6 @@ func (g *GoroutineMulti) Start() {
 		return
 	}
 	g.executionState = running
-	//g.Enqueue(func() {})
 }
 
 func (g *GoroutineMulti) Stop() {
@@ -130,7 +129,6 @@ func (g *GoroutineSingle) Start() {
 		return
 	}
 	g.executionState = running
-	//g.scheduler.Start()
 	go func() {
 		for g.executeNextBatch() {
 		}

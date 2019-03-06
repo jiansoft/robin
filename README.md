@@ -88,7 +88,7 @@ func main() {
     //This time just p1 and p2 receives the message that "The boss resurge second.".
     channel.Publish("The boss resurge second.")
     
-    //Unsubscribe all subscriber in the channel
+    //Unsubscribe all subscribers from the channel
     channel.Clear()
     
     //The channel is empty so no one can receive the message
@@ -103,7 +103,7 @@ type player struct {
 	Nickname string
 }
 func (p player) eventFinalBossResurge(someBossInfo string) {
-	log.Printf("%s receive a message : %s", p.NickName, someBossInfo)
+	log.Printf("%s receive a message : %s", p.Nickname, someBossInfo)
 }
 ~~~
 [More example](<https://github.com/jiansoft/robin/blob/master/example/main.go>)
