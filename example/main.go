@@ -11,12 +11,11 @@ import (
 func main() {
 	now := time.Now()
 	log.Printf("Start at %v", now.Format(time.RFC3339))
-
-	robin.Every(450).Milliseconds().Times(2).Do(runCron, "every 1 Milliseconds Times 2")
+	robin.Every(450).Milliseconds().Times(2).Do(runCron, "every 450 Milliseconds Times 2")
 	robin.Every(1).Seconds().Times(3).Do(runCron, "every 1 Seconds Times 3")
 	robin.Every(10).Minutes().Do(runCron, "every 10 Minutes")
-	robin.Every(10).Minutes().AfterExecuteTask().Do(runCronAndSleep, "every 10 Minutes and sleep 4 Minutes", 4*60*1000)
-	robin.Every(60).Seconds().AfterExecuteTask().Do(runCronAndSleep, "every 60 Seconds and sleep 4 Minutes", 4*60*1000)
+	robin.Every(10).Minutes().AfterExecuteTask().Do(runCronAndSleep, "every 10 Minutes and AfterExecuteTask(didn't work)", 4*60*1000)
+	robin.Every(600).Seconds().AfterExecuteTask().Do(runCronAndSleep, "every 600 Seconds and sleep 4 Minutes", 4*60*1000)
 	robin.Delay(4000).Times(4).Do(runCron, "Delay 4000 ms Times 4")
 	robin.Delay(21).Seconds().Do(func() {
 		p1 := player{NickName: "Player 1"}

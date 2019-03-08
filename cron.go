@@ -36,21 +36,21 @@ type cronEvery struct {
 }
 
 type Job struct {
-	task                           Task
-	taskDisposer                   Disposable
-	weekday                        time.Weekday
-	atHour                         int
-	atMinute                       int
-	atSecond                       int
-	interval                       int64
-	nextTime                       time.Time
-	calculateNextTimeAfterExecuted bool
-	sync.Mutex
-	maximumTimes int64
-	disposed     bool
-	duration     time.Duration
+	task           Task
+	taskDisposer   Disposable
+	weekday        time.Weekday
+	atHour         int
+	atMinute       int
+	atSecond       int
+	interval       int64
+	nextTime       time.Time
+	afterCalculate bool
+	maximumTimes   int64
+	disposed       bool
+	duration       time.Duration
 	jobModel
 	intervalUnit
+	sync.Mutex
 }
 
 func init() {
@@ -145,14 +145,9 @@ func (c *cronEvery) every(interval int64) *Job {
 	return j
 }
 
-// return Job Constructors
+// newJob create a Job struct and return it
 func newJob() *Job {
-	j := &Job{}
-	j.jobModel = jobEvery
-	j.maximumTimes = -1
-	j.atHour = -1
-	j.atMinute = -1
-	j.atSecond = -1
+	j := &Job{jobModel: jobEvery, maximumTimes: -1, atHour: -1, atMinute: -1, atSecond: -1}
 	return j
 }
 
@@ -217,14 +212,14 @@ func (j *Job) At(hh int, mm int, ss int) *Job {
 // Please use interval unit that Seconds or Milliseconds
 func (j *Job) AfterExecuteTask() *Job {
 	if j.jobModel == jobDelay || j.intervalUnit == second || j.intervalUnit == millisecond {
-		j.calculateNextTimeAfterExecuted = true
+		j.afterCalculate = true
 	}
 	return j
 }
 
 // BeforeExecuteTask to calculate next execution time immediately don't wait
 func (j *Job) BeforeExecuteTask() *Job {
-	j.calculateNextTimeAfterExecuted = false
+	j.afterCalculate = false
 	return j
 }
 
@@ -236,18 +231,19 @@ func (j *Job) Times(times int64) *Job {
 
 // Do some job needs to execute.
 func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
-	var duration time.Duration
 	j.task = newTask(fun, params...)
 	j.duration = time.Duration(j.interval*int64(j.intervalUnit)) * time.Millisecond
 	now := time.Now()
 	if j.jobModel == jobDelay || j.intervalUnit == second || j.intervalUnit == millisecond {
-		duration += j.duration
 		j.nextTime = now
 	} else {
 		switch j.checkAtTime(now).intervalUnit {
 		case week:
+			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), j.atHour, j.atMinute, j.atSecond, now.Nanosecond(), time.Local)
 			i := (7 - (int(now.Weekday() - j.weekday))) % 7
-			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), j.atHour, j.atMinute, j.atSecond, now.Nanosecond(), time.Local).AddDate(0, 0, int(i))
+			if i > 0 {
+				j.nextTime = j.nextTime.AddDate(0, 0, int(i))
+			}
 		case day:
 			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), j.atHour, j.atMinute, j.atSecond, now.Nanosecond(), time.Local)
 		case hour:
@@ -255,17 +251,13 @@ func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 		case minute:
 			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), j.atSecond, now.Nanosecond(), time.Local)
 		}
-
-		if j.interval > 1 {
-			duration += j.duration
-		}
-
-		if j.nextTime.Before(now) {
-			duration += j.duration
-		}
 	}
 
-	j.nextTime = j.nextTime.Add(duration)
+	diff := j.nextTime.UnixNano() - now.UnixNano()
+	if diff <= 0 {
+		j.nextTime = j.nextTime.Add(j.duration)
+	}
+
 	firstInMs := j.nextTime.Sub(now).Nanoseconds() / time.Millisecond.Nanoseconds()
 	j.schedule(firstInMs)
 	return j
@@ -275,7 +267,7 @@ func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 func (j *Job) canDo() {
 	adjustTime := j.nextTime.Sub(time.Now()).Nanoseconds() / time.Millisecond.Nanoseconds()
 	if adjustTime <= 0 {
-		if j.calculateNextTimeAfterExecuted {
+		if j.afterCalculate {
 			s := time.Now()
 			fiber.executor.ExecuteTask(j.task)
 			d := time.Now().Sub(s)
