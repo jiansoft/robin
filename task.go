@@ -14,9 +14,8 @@ type Task struct {
 }
 
 func newTask(f interface{}, p ...interface{}) Task {
-	task := Task{doFunc: f, funcCache: reflect.ValueOf(f)}
 	var paramLen = len(p)
-	task.paramsCache = make([]reflect.Value, paramLen)
+	task := Task{doFunc: f, funcCache: reflect.ValueOf(f), paramsCache: make([]reflect.Value, paramLen)}
 	for k, param := range p {
 		task.paramsCache[k] = reflect.ValueOf(param)
 	}
