@@ -10,6 +10,7 @@ const (
 
 type executionState int
 
+// Fiber define some function
 type Fiber interface {
 	Start()
 	Stop()
@@ -20,6 +21,7 @@ type Fiber interface {
 	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
 }
 
+// GoroutineMulti a fiber backed by more goroutine. Each job is executed by a new goroutine.
 type GoroutineMulti struct {
 	queue          taskQueue
 	scheduler      IScheduler
@@ -29,6 +31,7 @@ type GoroutineMulti struct {
 	flushPending   bool
 }
 
+// GoroutineSingle a fiber backed by a dedicated goroutine. Every job is executed by a goroutine.
 type GoroutineSingle struct {
 	queue          taskQueue
 	scheduler      IScheduler
@@ -38,6 +41,7 @@ type GoroutineSingle struct {
 	cond           *sync.Cond
 }
 
+// NewGoroutineMulti create a GoroutineMulti instance
 func NewGoroutineMulti() *GoroutineMulti {
 	g := new(GoroutineMulti)
 	g.queue = newDefaultQueue()
@@ -48,6 +52,7 @@ func NewGoroutineMulti() *GoroutineMulti {
 	return g
 }
 
+// Start the fiber work now
 func (g *GoroutineMulti) Start() {
 	if g.executionState == running {
 		return
@@ -55,20 +60,24 @@ func (g *GoroutineMulti) Start() {
 	g.executionState = running
 }
 
+// Stop the fiber work
 func (g *GoroutineMulti) Stop() {
 	g.executionState = stopped
 }
 
+// Dispose stop the fiber and release resource
 func (g *GoroutineMulti) Dispose() {
 	g.Stop()
 	g.scheduler.Dispose()
 	g.queue.Dispose()
 }
 
+// Enqueue use the fiber to execute a task
 func (g *GoroutineMulti) Enqueue(taskFun interface{}, params ...interface{}) {
 	g.EnqueueWithTask(newTask(taskFun, params...))
 }
 
+// EnqueueWithTask use the fiber to execute a task
 func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 	if g.executionState != running {
 		return
@@ -84,10 +93,14 @@ func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 	//go g.flush()
 }
 
+// Schedule execute the task once at the specified time
+// that depends on parameter firstInMs.
 func (g *GoroutineMulti) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.Schedule(firstInMs, taskFun, params...)
 }
 
+// ScheduleOnInterval execute the task once at the specified time
+// that depends on parameters both firstInMs and regularInMs.
 func (g *GoroutineMulti) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)
 }
@@ -111,6 +124,7 @@ func (g *GoroutineMulti) flush() {
 	}
 }
 
+// NewGoroutineSingle create a GoroutineSingle instance
 func NewGoroutineSingle() *GoroutineSingle {
 	g := new(GoroutineSingle)
 	g.executionState = created
@@ -122,6 +136,7 @@ func NewGoroutineSingle() *GoroutineSingle {
 	return g
 }
 
+// Start the fiber work now
 func (g *GoroutineSingle) Start() {
 	g.locker.Lock()
 	defer g.locker.Unlock()
@@ -135,6 +150,7 @@ func (g *GoroutineSingle) Start() {
 	}()
 }
 
+// Stop the fiber work
 func (g *GoroutineSingle) Stop() {
 	g.locker.Lock()
 	g.executionState = stopped
@@ -142,6 +158,7 @@ func (g *GoroutineSingle) Stop() {
 	g.locker.Unlock()
 }
 
+// Dispose stop the fiber and release resource
 func (g *GoroutineSingle) Dispose() {
 	g.locker.Lock()
 	g.executionState = stopped
@@ -151,8 +168,7 @@ func (g *GoroutineSingle) Dispose() {
 	g.queue.Dispose()
 }
 
-// EnqueueWrap from parameters taskFun and params
-// to a task and into to the queue waiting for executing.
+// Enqueue use the fiber to execute a task
 func (g *GoroutineSingle) Enqueue(taskFun interface{}, params ...interface{}) {
 	g.EnqueueWithTask(newTask(taskFun, params...))
 }
@@ -174,7 +190,7 @@ func (g GoroutineSingle) Schedule(firstInMs int64, taskFun interface{}, params .
 	return g.scheduler.Schedule(firstInMs, taskFun, params...)
 }
 
-// Schedule execute the task once at the specified time
+// ScheduleOnInterval execute the task once at the specified time
 // that depends on parameters both firstInMs and regularInMs.
 func (g GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)

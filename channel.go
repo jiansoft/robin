@@ -1,5 +1,6 @@
 package robin
 
+// Channel is a struct that has a member variable to store subscribers
 type Channel struct {
 	subscribers *container
 }
@@ -40,16 +41,18 @@ func (c Channel) Count() int {
 	return c.subscribers.Count()
 }
 
-// Unsubscribe remove the subscriber
+// Unsubscribe remove the subscriber from the channel
 func (c Channel) Unsubscribe(subscriber interface{}) {
 	c.subscribers.Remove(subscriber)
 }
 
+// Subscriber is a struct for register to a channel
 type Subscriber struct {
 	channel  Channel
 	receiver Task
 }
 
+// Unsubscribe remove the subscriber from the channel
 func (c *Subscriber) Unsubscribe() {
 	c.channel.Unsubscribe(c)
 }

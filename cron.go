@@ -35,6 +35,7 @@ type cronDelay struct {
 type cronEvery struct {
 }
 
+// Job store some infomartion for cron use.
 type Job struct {
 	task           Task
 	taskDisposer   Disposable
@@ -68,12 +69,12 @@ func newEvery() *cronEvery {
 	return new(cronEvery)
 }
 
-// The job executes immediately.
+// RightNow The job executes immediately.
 func RightNow() *Job {
 	return Delay(0)
 }
 
-// The job executes will delay N interval.
+// Delay The job executes will delay N interval.
 func Delay(interval int64) *Job {
 	return dc.Delay(interval)
 }
@@ -132,7 +133,7 @@ func Everyday() *Job {
 	return ec.every(1).Days()
 }
 
-// every the job will execute every N everyUnit(ex atHour、atMinute、atSecond、millisecond etc..).
+// Every the job will execute every N everyUnit(ex atHour、atMinute、atSecond、millisecond etc..).
 func Every(interval int64) *Job {
 	return ec.every(interval)
 }

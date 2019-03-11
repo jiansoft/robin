@@ -123,7 +123,7 @@ func main() {
 	//every N seconds do once.
 	robin.Every(100).Seconds().Do(runCron, "every 10 Seconds")
 
-	robin.Delay(2000).Times(3).AfterExecuteTask().Do(CronTestAndSleepASecond, " Delay 2000 ms Times 2 AfterExecuteTask")
+	robin.Delay(2000).Times(3).AfterExecuteTask().Do(cronTestAndSleepASecond, " Delay 2000 ms Times 2 AfterExecuteTask")
 	_, _ = fmt.Scanln()
 }
 
@@ -144,7 +144,7 @@ func runCronAndSleep(s string, sleepInMs int) {
 	}
 }
 
-func CronTestAndSleepASecond(s string) {
+func cronTestAndSleepASecond(s string) {
 	log.Printf("I am %s CronTest and sleep a second %v\n", s, time.Now())
 	timeout := time.NewTimer(time.Duration(1000) * time.Millisecond)
 	select {

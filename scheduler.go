@@ -1,5 +1,6 @@
 package robin
 
+// IScheduler an interface that for GoroutineMulti and GoroutineSingle use.
 type IScheduler interface {
 	Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
 	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)

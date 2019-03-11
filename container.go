@@ -4,6 +4,7 @@ import (
 	"sync"
 )
 
+// Disposable an interface just has only one function
 type Disposable interface {
 	Dispose()
 }
