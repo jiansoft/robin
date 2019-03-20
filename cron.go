@@ -241,7 +241,7 @@ func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 		switch j.checkAtTime(now).intervalUnit {
 		case week:
 			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), j.atHour, j.atMinute, j.atSecond, now.Nanosecond(), time.Local)
-			i := (7 - (int(now.Weekday() - j.weekday))) % 7
+			i := (7 - (now.Weekday() - j.weekday)) % 7
 			if i > 0 {
 				j.nextTime = j.nextTime.AddDate(0, 0, int(i))
 			}
