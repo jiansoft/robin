@@ -9,8 +9,10 @@ import (
 )
 
 func main() {
+	var f, t time.Time
 	now := time.Now()
-	log.Printf("Start at %v", now.Format(time.RFC3339))
+	log.Printf("Start at %v\n", now.Format(time.RFC3339))
+
 	robin.Every(450).Milliseconds().Times(2).Do(runCron, "every 450 Milliseconds Times 2")
 	robin.Every(1).Seconds().Times(3).Do(runCron, "every 1 Seconds Times 3")
 	robin.Every(10).Minutes().Do(runCron, "every 10 Minutes")
@@ -58,15 +60,21 @@ func main() {
 	robin.EverySaturday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Saturday")
 	robin.EverySunday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Sunday")
 
-	now = now.Add(time.Duration(1 * time.Second))
+	now = now.Add(time.Duration(time.Second))
 	robin.Every(1).Hours().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "every 1 Hours")
 
-	now = now.Add(time.Duration(1 * time.Second))
+	now = now.Add(time.Duration(time.Second))
 	robin.Every(1).Days().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "every 1 Days")
 
-	now = now.Add(time.Duration(1 * time.Second))
+	now = now.Add(time.Duration(time.Second))
 	robin.Everyday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Everyday")
 
+	now = now.Add(time.Second)
+	f = time.Date(0, 0, 0, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), time.Local)
+	now = now.Add(time.Second * 6)
+	t = time.Date(0, 0, 0, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), time.Local)
+
+	robin.Every(3).Seconds().Between(f, t).Do(runCron, "every 3 Seconds Between")
 	_, _ = fmt.Scanln()
 
 	var runCronFiber = robin.NewGoroutineSingle()

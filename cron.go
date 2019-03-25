@@ -49,6 +49,8 @@ type Job struct {
 	maximumTimes   int64
 	disposed       bool
 	duration       time.Duration
+	fromTime       time.Time
+	toTime         time.Time
 	jobModel
 	intervalUnit
 	sync.Mutex
@@ -230,12 +232,27 @@ func (j *Job) Times(times int64) *Job {
 	return j
 }
 
+// Between
+func (j *Job) Between(from time.Time, to time.Time) *Job {
+	if j.jobModel == jobDelay ||
+		from.IsZero() ||
+		to.IsZero() ||
+		to.Unix() <= from.Unix() {
+		return j
+	}
+
+	now := time.Now()
+	j.fromTime = time.Date(now.Year(), now.Month(), now.Day(), from.Hour(), from.Minute(), from.Second(), now.Nanosecond(), time.Local)
+	j.toTime = time.Date(now.Year(), now.Month(), now.Day(), to.Hour(), to.Minute(), to.Second(), now.Nanosecond(), time.Local)
+	return j
+}
+
 // Do some job needs to execute.
 func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	j.task = newTask(fun, params...)
 	j.duration = time.Duration(j.interval*int64(j.intervalUnit)) * time.Millisecond
 	now := time.Now()
-	if j.jobModel == jobDelay || j.intervalUnit == second || j.intervalUnit == millisecond {
+	if j.jobModel == jobDelay {
 		j.nextTime = now
 	} else {
 		switch j.checkAtTime(now).intervalUnit {
@@ -251,6 +268,21 @@ func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), j.atMinute, j.atSecond, now.Nanosecond(), time.Local)
 		case minute:
 			j.nextTime = time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), j.atSecond, now.Nanosecond(), time.Local)
+		case second, millisecond:
+			j.nextTime = now
+			if !j.fromTime.IsZero() {
+				if j.nextTime.Unix() < j.fromTime.Unix() {
+					j.nextTime = j.fromTime
+				}
+			}
+
+			if !j.toTime.IsZero() {
+				if j.nextTime.Unix() > j.toTime.Unix() {
+					j.fromTime = j.fromTime.Add(24 * time.Hour)
+					j.toTime = j.toTime.Add(24 * time.Hour)
+					j.nextTime = j.fromTime
+				}
+			}
 		}
 	}
 
@@ -260,6 +292,7 @@ func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 	}
 
 	firstInMs := j.nextTime.Sub(now).Nanoseconds() / time.Millisecond.Nanoseconds()
+
 	j.schedule(firstInMs)
 	return j
 }
@@ -284,6 +317,14 @@ func (j *Job) canDo() {
 		}
 
 		j.nextTime = j.nextTime.Add(j.duration)
+
+		if !j.toTime.IsZero() {
+			if j.nextTime.Unix() > j.toTime.Unix() {
+				j.fromTime = j.fromTime.Add(24 * time.Hour)
+				j.toTime = j.toTime.Add(24 * time.Hour)
+				j.nextTime = j.fromTime
+			}
+		}
 		adjustTime = j.nextTime.Sub(time.Now()).Nanoseconds() / time.Millisecond.Nanoseconds()
 	}
 
