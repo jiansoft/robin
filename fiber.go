@@ -186,13 +186,13 @@ func (g *GoroutineSingle) EnqueueWithTask(task Task) {
 
 // Schedule execute the task once at the specified time
 // that depends on parameter firstInMs.
-func (g GoroutineSingle) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
+func (g *GoroutineSingle) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.Schedule(firstInMs, taskFun, params...)
 }
 
 // ScheduleOnInterval execute the task once at the specified time
 // that depends on parameters both firstInMs and regularInMs.
-func (g GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
+func (g *GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)
 }
 
