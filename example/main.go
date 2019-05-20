@@ -11,7 +11,7 @@ import (
 func main() {
 	var f, t time.Time
 	now := time.Now()
-	log.Printf("Start at %v\n", now.Format(time.RFC3339))
+	log.Printf("Start at %v\n", now.Format("2006-01-02 15:04:05.000"))
 
 	robin.Every(450).Milliseconds().Times(2).Do(runCron, "every 450 Milliseconds Times 2")
 	robin.Every(1).Seconds().Times(3).Do(runCron, "every 1 Seconds Times 3")
@@ -74,7 +74,7 @@ func main() {
 	now = now.Add(time.Second * 6)
 	t = time.Date(0, 0, 0, now.Hour(), now.Minute(), now.Second(), now.Nanosecond(), time.Local)
 
-	robin.Every(3).Seconds().Between(f, t).Do(runCron, "every 3 Seconds Between")
+	robin.Every(1).Seconds().Between(f, t).Do(runCron, fmt.Sprintf("every 1 Seconds Between %s and %s", f.Format("15:04:05.000"), t.Format("15:04:05.000")))
 	_, _ = fmt.Scanln()
 
 	var runCronFiber = robin.NewGoroutineSingle()
@@ -136,16 +136,16 @@ func main() {
 }
 
 func runSleepCron(s string, second int, sleep int) {
-	log.Printf("%s every %d second and sleep %d  now %v\n", s, second, sleep, time.Now())
+	log.Printf("%s every %d second and sleep %d  now %v\n", s, second, sleep, time.Now().Format("15:04:05.000"))
 	time.Sleep(time.Duration(sleep) * time.Second)
 }
 
 func runCron(s string) {
-	log.Printf("I am %s CronTest %v\n", s, time.Now())
+	log.Printf("I am %s CronTest %v\n", s, time.Now().Format("15:04:05.000"))
 }
 
 func runCronAndSleep(s string, sleepInMs int) {
-	log.Printf("I am %s CronTest %v\n", s, time.Now())
+	log.Printf("I am %s CronTest %v\n", s, time.Now().Format("15:04:05.000"))
 	timeout := time.NewTimer(time.Duration(sleepInMs) * time.Millisecond)
 	select {
 	case <-timeout.C:
