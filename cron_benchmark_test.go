@@ -5,7 +5,6 @@ import (
 )
 
 func BenchmarkCron_StartStop(b *testing.B) {
-
 	cases := []struct {
 		name string
 		N    int // the data size (i.e. number of existing timers)
