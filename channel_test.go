@@ -110,7 +110,7 @@ func TestChannelConcurrency(t *testing.T) {
 			loop := 2
 			wg.Add(loop * loop)
 			for i := 0; i < loop; i++ {
-				RightNow().Do(func(c Channel) {
+				RightNow().Do(func(c *Channel) {
 					for i := 0; i < loop; i++ {
 						lock.RLock()
 						p := &player{Nickname: strconv.Itoa(count)}
