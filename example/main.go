@@ -12,7 +12,8 @@ func main() {
 	var f, t time.Time
 	now := time.Now()
 	log.Printf("Start at %v\n", now.Format("2006-01-02 15:04:05.000"))
-
+	untilTime := now.Add(time.Duration(26*time.Second + time.Millisecond))
+	robin.Until(untilTime).Do(runCron, fmt.Sprintf("until =>%s", untilTime.Format("2006-01-02 15:04:05.000")))
 	robin.Every(450).Milliseconds().Times(2).Do(runCron, "every 450 Milliseconds Times 2")
 	robin.Every(1).Seconds().Times(3).Do(runCron, "every 1 Seconds Times 3")
 	robin.Every(10).Minutes().Do(runCron, "every 10 Minutes")

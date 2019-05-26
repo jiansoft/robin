@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+type Worker interface {
+	Do(interface{}, ...interface{}) Disposable
+}
+
 type intervalUnit int64
 
 const (
@@ -22,18 +26,15 @@ type jobModel int
 const (
 	jobDelay jobModel = iota
 	jobEvery
+	jobUntil
 )
 
 var (
 	fiber = NewGoroutineMulti()
-	dc    = newDelay()
-	ec    = newEvery()
 )
 
-type cronDelay struct {
-}
-
-type cronEvery struct {
+type UntilJob struct {
+	untilTime time.Time
 }
 
 // Job store some infomartion for cron use.
@@ -65,14 +66,25 @@ func init() {
 	fiber.Start()
 }
 
-// newDelay Constructors
-func newDelay() *cronDelay {
-	return new(cronDelay)
+// newUntilJob Constructors
+func newUntilJob() *UntilJob {
+	return new(UntilJob)
 }
 
-// newEvery Constructors
-func newEvery() *cronEvery {
-	return new(cronEvery)
+// Until
+func Until(time time.Time) Worker {
+	j := newUntilJob()
+	j.untilTime = time
+	return j
+}
+
+// Do
+func (u *UntilJob) Do(fun interface{}, params ...interface{}) Disposable {
+	j := newJob()
+	j.jobModel = jobUntil
+	j.nextTime = u.untilTime
+	j.maximumTimes = 1
+	return j.Do(fun, params...)
 }
 
 // RightNow The job executes immediately.
@@ -81,16 +93,7 @@ func RightNow() *Job {
 }
 
 // Delay The job executes will delay N interval.
-func Delay(interval int64) *Job {
-	return dc.Delay(interval)
-}
-
-// Delay the job executes will delay N interval.
-func (c *cronDelay) Delay(interval int64) *Job {
-	return newDelayJob(interval)
-}
-
-func newDelayJob(delayInMs int64) *Job {
+func Delay(delayInMs int64) *Job {
 	j := newJob()
 	j.jobModel = jobDelay
 	j.interval = delayInMs
@@ -101,51 +104,51 @@ func newDelayJob(delayInMs int64) *Job {
 
 // EverySunday the job will execute every Sunday .
 func EverySunday() *Job {
-	return newJob().everyWeek(time.Sunday)
+	return newJob().week(time.Sunday)
 }
 
 // EveryMonday the job will execute every Monday
 func EveryMonday() *Job {
-	return newJob().everyWeek(time.Monday)
+	return newJob().week(time.Monday)
 }
 
 // EveryTuesday the job will execute every Tuesday
 func EveryTuesday() *Job {
-	return newJob().everyWeek(time.Tuesday)
+	return newJob().week(time.Tuesday)
 }
 
 // EveryWednesday the job will execute every Wednesday
 func EveryWednesday() *Job {
-	return newJob().everyWeek(time.Wednesday)
+	return newJob().week(time.Wednesday)
 }
 
 // EveryThursday the job will execute every Thursday
 func EveryThursday() *Job {
-	return newJob().everyWeek(time.Thursday)
+	return newJob().week(time.Thursday)
 }
 
 // EveryFriday the job will execute every Friday
 func EveryFriday() *Job {
-	return newJob().everyWeek(time.Friday)
+	return newJob().week(time.Friday)
 }
 
 // EverySaturday the job will execute every Saturday
 func EverySaturday() *Job {
-	return newJob().everyWeek(time.Saturday)
+	return newJob().week(time.Saturday)
 }
 
 // Everyday the job will execute every day
 func Everyday() *Job {
-	return ec.every(1).Days()
+	return every(1).Days()
 }
 
 // Every the job will execute every N everyUnit(ex atHour、atMinute、atSecond、millisecond etc..).
 func Every(interval int64) *Job {
-	return ec.every(interval)
+	return every(interval)
 }
 
 // every the job will execute every N everyUnit(ex atHour、atMinute、atSecond、millisecond etc..).
-func (c *cronEvery) every(interval int64) *Job {
+func every(interval int64) *Job {
 	j := newJob()
 	j.interval = interval
 	j.intervalUnit = millisecond
@@ -160,15 +163,17 @@ func newJob() *Job {
 
 // Dispose Job's Dispose
 func (j *Job) Dispose() {
-	if j.getDisposed() {
+	j.Lock()
+	defer j.Unlock()
+	if j.disposed {
 		return
 	}
-	j.setDisposed(true)
+	j.disposed = true
 	j.taskDisposer.Dispose()
 }
 
-// everyWeek a time interval of execution
-func (j *Job) everyWeek(dayOfWeek time.Weekday) *Job {
+// week a time interval of execution
+func (j *Job) week(dayOfWeek time.Weekday) *Job {
 	j.intervalUnit = week
 	j.weekday = dayOfWeek
 	j.interval = 1
@@ -261,7 +266,11 @@ func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 
 	if j.jobModel == jobDelay {
 		j.nextTime = now
-	} else {
+	} else if j.jobModel == jobUntil {
+		if j.nextTime.UnixNano() < now.UnixNano() {
+			return j
+		}
+	} else if j.jobModel == jobEvery {
 		if j.atHour < 0 {
 			j.atHour = now.Hour()
 		}
@@ -352,18 +361,5 @@ func (j *Job) schedule() {
 	diff := j.remainTime()
 	j.Lock()
 	j.taskDisposer = fiber.Schedule(diff, j.run)
-	j.Unlock()
-}
-
-func (j *Job) getDisposed() bool {
-	j.Lock()
-	r := j.disposed
-	j.Unlock()
-	return r
-}
-
-func (j *Job) setDisposed(r bool) {
-	j.Lock()
-	j.disposed = r
 	j.Unlock()
 }
