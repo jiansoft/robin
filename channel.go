@@ -1,51 +1,58 @@
 package robin
 
+import "sync"
+
 // Channel is a struct that has a member variable to store subscribers
 type Channel struct {
-	subscribers *container
+	sync.Map
 }
 
 //NewChannel new a Channel instance
 func NewChannel() *Channel {
-	c := &Channel{subscribers: newContainer()}
+	c := &Channel{}
 	return c
 }
 
 // Subscribe to register a receiver to receive the Channel's message
 func (c *Channel) Subscribe(taskFun interface{}, params ...interface{}) *Subscriber {
 	s := &Subscriber{channel: c, receiver: newTask(taskFun, params...)}
-	c.subscribers.Add(s)
+	c.Store(s, s)
 	return s
 }
 
 // Publish a message to all subscribers
 func (c *Channel) Publish(msg ...interface{}) {
 	fiber.Enqueue(func(c *Channel) {
-		items := c.subscribers.Items()
-		for _, val := range items {
-			if s, ok := val.(*Subscriber); ok {
+		c.Range(func(k, v interface{}) bool {
+			if s, ok := v.(*Subscriber); ok {
 				fiber.Enqueue(s.receiver.doFunc, msg...)
 			}
-		}
+			return true
+		})
 	}, c)
 }
 
 // Clear empty the subscribers
-func (c Channel) Clear() {
-	items := c.subscribers.Items()
-	for _, value := range items {
-		c.subscribers.Remove(value)
-	}
+func (c *Channel) Clear() {
+	c.Range(func(k, v interface{}) bool {
+		c.Delete(k)
+		return true
+	})
 }
 
 // Count returns a number that how many subscribers in the Channel.
 func (c *Channel) Count() int {
-	return c.subscribers.Count()
+	count := 0
+	c.Range(func(k, v interface{}) bool {
+		count++
+		return true
+	})
+	return count
 }
 
 // Unsubscribe remove the subscriber from the channel
 func (c *Channel) Unsubscribe(subscriber interface{}) {
-	c.subscribers.Remove(subscriber)
+	c.Delete(subscriber)
 }
 
 // Subscriber is a struct for register to a channel

@@ -1,5 +1,12 @@
 package robin
 
+import "sync"
+
+// Disposable an interface just has only one function
+type Disposable interface {
+	Dispose()
+}
+
 // IScheduler an interface that for GoroutineMulti and GoroutineSingle use.
 type IScheduler interface {
 	Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
@@ -11,17 +18,16 @@ type IScheduler interface {
 }
 
 type scheduler struct {
-	fiber       Fiber
-	running     bool
-	isDispose   bool
-	disposabler *container
+	fiber     Fiber
+	running   bool
+	isDispose bool
+	sync.Map
 }
 
 func newScheduler(executionState Fiber) *scheduler {
 	s := new(scheduler)
 	s.fiber = executionState
 	s.running = true
-	s.disposabler = newContainer()
 	return s
 }
 
@@ -37,7 +43,7 @@ func (s *scheduler) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskF
 	if s.isDispose {
 		return pending
 	}
-	s.disposabler.Add(pending)
+	s.Store(pending, pending)
 	pending.schedule()
 	return pending
 }
@@ -53,10 +59,14 @@ func (s *scheduler) EnqueueWithTask(task Task) {
 
 //Implement SchedulerRegistry.Remove
 func (s *scheduler) Remove(d Disposable) {
-	s.disposabler.Remove(d)
+	s.Delete(d)
 }
 
 func (s *scheduler) Dispose() {
 	s.isDispose = true
-	s.disposabler.Dispose()
+	s.Range(func(k, v interface{}) bool {
+		s.Delete(k)
+		v.(Disposable).Dispose()
+		return true
+	})
 }
