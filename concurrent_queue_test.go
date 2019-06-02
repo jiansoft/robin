@@ -101,6 +101,10 @@ func TestConcurrentQueue_TryDequeue(t *testing.T) {
 			if got1 != tt.want1 {
 				t.Errorf("ConcurrentQueue.TryDequeue() got1 = %v, want %v", got1, tt.want1)
 			}
+			got2, got3 := tt.fields.TryDequeue()
+			if got3 {
+				t.Errorf("ConcurrentQueue.TryDequeue() got1 = %v, want %v", got2, tt.want1)
+			}
 		})
 	}
 }

@@ -57,7 +57,7 @@ func (s *scheduler) EnqueueWithTask(task Task) {
 	s.fiber.EnqueueWithTask(task)
 }
 
-//Implement SchedulerRegistry.Remove
+//Implement SchedulerRegistry.Forget
 func (s *scheduler) Remove(d Disposable) {
 	s.Delete(d)
 }
