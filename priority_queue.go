@@ -19,8 +19,9 @@ type Item struct {
 // ie. the 0th element is the lowest value
 type PriorityQueue []*Item
 
-func NewPriorityQueue(capacity int) PriorityQueue {
-	return make(PriorityQueue, 0, capacity)
+func NewPriorityQueue(capacity int) *PriorityQueue {
+	pg := make(PriorityQueue, 0, capacity)
+	return &pg
 }
 
 func (pq PriorityQueue) Len() int {
@@ -38,9 +39,6 @@ func (pq PriorityQueue) Swap(i, j int) {
 }
 
 func (pq *PriorityQueue) Push(x interface{}) {
-	lock.Lock()
-	defer lock.Unlock()
-	//heap.Push(&pq, item)
 	n, c := len(*pq), cap(*pq)
 	if n >= c {
 		npq := make(PriorityQueue, n, c*2)
@@ -54,9 +52,13 @@ func (pq *PriorityQueue) Push(x interface{}) {
 	(*pq)[n] = item
 }
 
-func (pq *PriorityQueue) Pop() interface{} {
+func (pq *PriorityQueue) PushItem(item *Item) {
 	lock.Lock()
-	defer lock.Unlock()
+	heap.Push(pq, item)
+	lock.Unlock()
+}
+
+func (pq *PriorityQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)
 	item := old[n-1]
@@ -65,11 +67,11 @@ func (pq *PriorityQueue) Pop() interface{} {
 	return item
 }
 
-// update modifies the priority  of an Item in the queue.
+// update modifies the priority of an Item in the queue.
 func (pq *PriorityQueue) Update(item *Item) {
 	lock.Lock()
-	defer lock.Unlock()
 	heap.Fix(pq, item.Index)
+	lock.Unlock()
 }
 
 func (pq *PriorityQueue) TryDequeue(limit int64) (*Item, bool) {

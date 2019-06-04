@@ -12,6 +12,7 @@ type MemoryCach interface {
 	Remember(key string, value interface{}, ttl int64)
 	Forget(key string)
 	Read(string) (interface{}, bool)
+	Have(string) bool
 }
 
 type memoryCacheEntry struct {
@@ -47,6 +48,7 @@ func memoryCache() *memoryCacheStore {
 	return store
 }
 
+// Remember
 func (m *memoryCacheStore) Remember(key string, val interface{}, ttl int64) {
 	e := &memoryCacheEntry{key: key, value: val}
 	m.usage.Store(e.key, e)
@@ -59,6 +61,7 @@ func (m *memoryCacheStore) Remember(key string, val interface{}, ttl int64) {
 	//}
 }
 
+// Read
 func (m *memoryCacheStore) Read(key string) (interface{}, bool) {
 	t := time.Now().UTC().UnixNano()
 	if val, ok := m.usage.Load(key); ok {
@@ -70,6 +73,13 @@ func (m *memoryCacheStore) Read(key string) (interface{}, bool) {
 	return nil, false
 }
 
+// Have
+func (m *memoryCacheStore) Have(key string) bool {
+	_, ok := m.usage.Load(key)
+	return ok
+}
+
+// Forget
 func (m *memoryCacheStore) Forget(key string) {
 	m.usage.Delete(key)
 }
@@ -102,5 +112,4 @@ func (m *memoryCacheStore) flushExpiredItems() {
 		}
 		m.usage.Delete(val)
 	}
-
 }
