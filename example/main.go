@@ -11,6 +11,7 @@ import (
 func main() {
 	var f, t time.Time
 
+	robin.Memory().Remember("qq", "qQQQ", time.Duration(time.Second))
 	robin.Delay(997).Milliseconds().Do(func() {
 		val, ok := robin.Memory().Read("qq")
 		if ok {
@@ -27,7 +28,7 @@ func main() {
 			log.Printf("qq is empty")
 		}
 	})
-	robin.Memory().Remember("qq", "q", 1)
+
 	now := time.Now()
 	log.Printf("Start at %v\n", now.Format("2006-01-02 15:04:05.000"))
 	untilTime := now.Add(time.Duration(26*time.Second + time.Millisecond))

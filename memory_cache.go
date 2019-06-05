@@ -9,22 +9,23 @@ import (
 const expirationInterval = 30
 
 type MemoryCach interface {
-	Remember(key string, value interface{}, ttl int64)
+	Remember(key string, value interface{}, ttl time.Duration)
 	Forget(key string)
 	Read(string) (interface{}, bool)
 	Have(string) bool
 }
 
-type memoryCacheEntry struct {
+type memoryCacheEntity struct {
 	utcCreated int64
 	utcAbsExp  int64
 	key        string
 	value      interface{}
+	item       *Item
 }
 
 type memoryCacheStore struct {
-	usage   sync.Map
-	expires *ConcurrentQueue
+	usage sync.Map
+	pq    *PriorityQueue
 }
 
 var (
@@ -32,15 +33,17 @@ var (
 	once  sync.Once
 )
 
+// Memory returns memoryCacheStore instance.
 func Memory() MemoryCach {
 	return memoryCache()
 }
 
+// memoryCache
 func memoryCache() *memoryCacheStore {
 	once.Do(func() {
 		if store == nil {
 			store = new(memoryCacheStore)
-			store.expires = NewConcurrentQueue()
+			store.pq = NewPriorityQueue(1024)
 			Every(expirationInterval).Seconds().AfterExecuteTask().Do(store.flushExpiredItems)
 		}
 	})
@@ -48,68 +51,75 @@ func memoryCache() *memoryCacheStore {
 	return store
 }
 
-// Remember
-func (m *memoryCacheStore) Remember(key string, val interface{}, ttl int64) {
-	e := &memoryCacheEntry{key: key, value: val}
-	m.usage.Store(e.key, e)
+// hasExpired returns true if the item has expired.
+func (m memoryCacheEntity) hasExpired() bool {
+	return time.Now().UTC().UnixNano() > m.utcAbsExp
+}
+
+// loadMemoryCacheEntry
+func (m *memoryCacheStore) loadMemoryCacheEntry(key string) (*memoryCacheEntity, bool) {
+	val, ok := m.usage.Load(key)
+	if !ok {
+		return nil, false
+	}
+	return val.(*memoryCacheEntity), true
+}
+
+// Remember keeps an item into memory
+func (m *memoryCacheStore) Remember(key string, val interface{}, ttl time.Duration) {
 	utc := time.Now().UTC().UnixNano()
-	e.utcCreated = utc
-	e.utcAbsExp = utc + ttl*int64(time.Second)
-	//if e.utcAbsExp < e.utcCreated {
-	//	atomic.SwapInt32(&e.inEexpire, 1)
-	//	m.expires.Enqueue(e.key)
-	//}
+	e := &memoryCacheEntity{key: key, value: val, utcCreated: utc, utcAbsExp: utc + ttl.Nanoseconds()}
+	item := &Item{Value: e, Priority: e.utcAbsExp}
+	e.item = item
+	m.usage.Store(e.key, e)
+	m.pq.PushItem(item)
 }
 
 // Read
 func (m *memoryCacheStore) Read(key string) (interface{}, bool) {
-	t := time.Now().UTC().UnixNano()
-	if val, ok := m.usage.Load(key); ok {
-		//e := val.(*memoryCacheEntry)
-		if val.(*memoryCacheEntry).utcAbsExp >= t {
-			return val.(*memoryCacheEntry).value, true
-		}
+	entity, ok := m.loadMemoryCacheEntry(key)
+	if !ok {
+		return nil, false
 	}
-	return nil, false
+
+	if entity.hasExpired() {
+		return nil, false
+	}
+
+	return entity.value, true
 }
 
-// Have
+// Have returns true if memory has the item and it's not expired.
 func (m *memoryCacheStore) Have(key string) bool {
-	_, ok := m.usage.Load(key)
+	_, ok := m.Read(key)
 	return ok
 }
 
-// Forget
+// Forget removes an item from memory
 func (m *memoryCacheStore) Forget(key string) {
-	m.usage.Delete(key)
+	entity, ok := m.loadMemoryCacheEntry(key)
+	if !ok {
+		return
+	}
+
+	entity.utcAbsExp = 0
+	entity.item.Priority = 0
+	m.pq.Update(entity.item)
 }
 
-// flushExpiredItems
+// flushExpiredItems remove has expired item from memory
 func (m *memoryCacheStore) flushExpiredItems() {
-
 	limit := time.Now().UTC().UnixNano()
-	num := 0
-	max := math.MaxInt32
-	m.usage.Range(func(key, val interface{}) bool {
-		e := val.(*memoryCacheEntry)
-		if e.utcAbsExp < limit {
-			//if atomic.CompareAndSwapInt32(&e.inEexpire, 0, 1) {
-			num++
-			m.expires.Enqueue(e.key)
-			//}
-
-			if num >= max {
-				return false
-			}
-		}
-		return true
-	})
-
+	num, max := 0, math.MaxInt32
 	for {
-		val, ok := m.expires.TryDequeue()
-		if !ok {
+		item, ok := m.pq.TryDequeue(limit)
+		if !ok || num >= max {
 			break
 		}
-		m.usage.Delete(val)
+		entity := item.Value.(*memoryCacheEntity)
+		m.usage.Delete(entity.key)
+		entity.item = nil
+		item.Value = nil
+		num++
 	}
 }
