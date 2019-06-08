@@ -17,7 +17,7 @@ func Test_memoryCacheStore_flushExpiredItems(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for i := 0; i < 1024; i++ {
-				tt.memoryCache.Remember(fmt.Sprintf("QQ-%v", i), i, -time.Duration(1*time.Second))
+				tt.memoryCache.Remember(fmt.Sprintf("QQ-%v", i), i, -1*time.Second)
 			}
 			tt.memoryCache.flushExpiredItems()
 
@@ -39,7 +39,7 @@ func Test_memoryCacheStore_Remember(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for i := 0; i < tt.want; i++ {
-				tt.memoryCache.Remember(fmt.Sprintf("QQ-%s-%v", tt.name, i), i, time.Duration(-1*time.Hour))
+				tt.memoryCache.Remember(fmt.Sprintf("QQ-%s-%v", tt.name, i), i, -1*time.Hour)
 			}
 			equal(t, tt.memoryCache.pq.Len(), tt.want)
 			tt.memoryCache.flushExpiredItems()
@@ -78,6 +78,11 @@ func Test_memoryCacheStore(t *testing.T) {
 				val, ok = tt.memoryCache.Read(v)
 				equal(t, ok, false)
 			}
+			tt.memoryCache.Forget("noKey")
+			_, ok := tt.memoryCache.Read("noKey")
+			equal(t, ok, false)
+			_, ok = tt.memoryCache.loadMemoryCacheEntry("noKey")
+			equal(t, ok, false)
 		})
 	}
 }
