@@ -10,28 +10,35 @@ import (
 
 func main() {
 	var f, t time.Time
-
-	robin.Memory().Remember("qq", "qQQQ", time.Duration(time.Second))
-	robin.Delay(997).Milliseconds().Do(func() {
-		val, ok := robin.Memory().Read("qq")
-		if ok {
-			log.Printf("qq is %v", val)
-		} else {
-			log.Printf("qq is empty")
-		}
-	})
-	robin.Delay(1000).Milliseconds().Do(func() {
-		val, ok := robin.Memory().Read("qq")
-		if ok {
-			log.Printf("qq is %v", val)
-		} else {
-			log.Printf("qq is empty")
-		}
-	})
-
 	now := time.Now()
 	log.Printf("Start at %v\n", now.Format("2006-01-02 15:04:05.000"))
-	untilTime := now.Add(time.Duration(26*time.Second + time.Millisecond))
+
+	robin.RightNow().Do(func() {
+		robin.Memory().Remember("qq", "Qoo", time.Second)
+		log.Printf("Memory remember qq.")
+	})
+	robin.Delay(100).Milliseconds().Do(func() {
+		val, ok := robin.Memory().Read("qq")
+		if ok {
+			log.Printf("Memory read key qq that value is %v.", val)
+		} else {
+			log.Printf("Memory read key qq that value empty.")
+		}
+	})
+	robin.Delay(200).Milliseconds().Do(func() {
+		robin.Memory().Forget("qq")
+		log.Printf("Memory forget qq.")
+	})
+	robin.Delay(300).Milliseconds().Do(func() {
+		ok := robin.Memory().Have("qq")
+		if ok {
+			log.Printf("Memory has qq.")
+		} else {
+			log.Printf("Memory doesn't have qq.")
+		}
+	})
+
+	untilTime := now.Add(26*time.Second + time.Millisecond)
 	robin.Until(untilTime).Do(runCron, fmt.Sprintf("until =>%s", untilTime.Format("2006-01-02 15:04:05.000")))
 	robin.Every(450).Milliseconds().Times(2).Do(runCron, "every 450 Milliseconds Times 2")
 	robin.Every(1).Seconds().Times(3).Do(runCron, "every 1 Seconds Times 3")
@@ -53,25 +60,25 @@ func main() {
 
 		log.Printf("the channel have %v subscribers.", channel.Count())
 		channel.Publish("The boss resurge first.")
-		<-time.After(time.Duration(10 * time.Millisecond))
+		<-time.After(10 * time.Millisecond)
 
 		p4Unsubscribe.Unsubscribe()
 		log.Printf("the channel have %v subscribers.", channel.Count())
 		channel.Publish("The boss resurge second.")
-		<-time.After(time.Duration(10 * time.Millisecond))
+		<-time.After(10 * time.Millisecond)
 
 		channel.Clear()
 		log.Printf("the channel have %v subscribers.", channel.Count())
 		channel.Publish("The boss resurge third.")
-		<-time.After(time.Duration(10 * time.Millisecond))
+		<-time.After(10 * time.Millisecond)
 
 		channel.Subscribe(p1.eventFinalBossResurge)
 		log.Printf("the channel have %v subscribers.", channel.Count())
 		channel.Publish("The boss resurge fourth.")
-		<-time.After(time.Duration(10 * time.Millisecond))
+		<-time.After(10 * time.Millisecond)
 	})
 
-	now = now.Add(time.Duration(17*time.Second + 100))
+	now = now.Add(17*time.Second + 100)
 	robin.EveryMonday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Monday")
 	robin.EveryTuesday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Tuesday")
 	robin.EveryWednesday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Wednesday")
@@ -80,13 +87,13 @@ func main() {
 	robin.EverySaturday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Saturday")
 	robin.EverySunday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Sunday")
 
-	now = now.Add(time.Duration(time.Second))
+	now = now.Add(time.Second)
 	robin.Every(1).Hours().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "every 1 Hours")
 
-	now = now.Add(time.Duration(time.Second))
+	now = now.Add(time.Second)
 	robin.Every(1).Days().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "every 1 Days")
 
-	now = now.Add(time.Duration(time.Second))
+	now = now.Add(time.Second)
 	robin.Everyday().At(now.Hour(), now.Minute(), now.Second()).Do(runCron, "Everyday")
 
 	now = now.Add(time.Second)

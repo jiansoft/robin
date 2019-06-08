@@ -61,7 +61,7 @@ func Test_memoryCacheStore(t *testing.T) {
 			var keyMap []string
 			for i := 0; i < tt.want; i++ {
 				key := fmt.Sprintf("QQ-%s-%v", tt.name, i)
-				tt.memoryCache.Remember(key, key, time.Duration(1*time.Hour))
+				tt.memoryCache.Remember(key, key, 1*time.Hour)
 				keyMap = append(keyMap, key)
 			}
 
