@@ -18,7 +18,7 @@ func Test_memoryCacheStore_flushExpiredItems(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for i := 0; i < 1024; i++ {
-				_ = tt.memoryCache.Remember(fmt.Sprintf("QQ-%v", i), i, -1*time.Second)
+				_ = tt.memoryCache.Keep(fmt.Sprintf("QQ-%v", i), i, -1*time.Second)
 			}
 			tt.memoryCache.flushExpiredItems()
 			equal(t, tt.memoryCache.pq.Len(), 0)
@@ -26,7 +26,7 @@ func Test_memoryCacheStore_flushExpiredItems(t *testing.T) {
 	}
 }
 
-func Test_memoryCacheStore_Remember(t *testing.T) {
+func Test_memoryCacheStore_Keep(t *testing.T) {
 	tests := []struct {
 		name        string
 		memoryCache *memoryCacheStore
@@ -35,9 +35,9 @@ func Test_memoryCacheStore_Remember(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_ = tt.memoryCache.Remember(fmt.Sprintf("QQ-%s-%v", tt.name, 1), 1, -1*time.Hour)
+			_ = tt.memoryCache.Keep(fmt.Sprintf("QQ-%s-%v", tt.name, 1), 1, -1*time.Hour)
 			equal(t, tt.memoryCache.pq.Len(), 0)
-			_ = tt.memoryCache.Remember(fmt.Sprintf("QQ-%s-%v", tt.name, 1), 1, 1*time.Hour)
+			_ = tt.memoryCache.Keep(fmt.Sprintf("QQ-%s-%v", tt.name, 1), 1, 1*time.Hour)
 			equal(t, tt.memoryCache.pq.Len(), 1)
 		})
 	}
@@ -57,7 +57,7 @@ func Test_memoryCacheStore(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			for i := 0; i < tt.want; i++ {
 				key := fmt.Sprintf("QQ-%s-%v", tt.name, i)
-				err := tt.memoryCache.Remember(key, key, 1*time.Hour)
+				err := tt.memoryCache.Keep(key, key, 1*time.Hour)
 				if err != nil {
 					t.Logf("err:%v", err)
 					continue
@@ -101,7 +101,7 @@ func Test_DataRace(t *testing.T) {
 			RightNow().Do(func(want int, m *memoryCacheStore, swg *sync.WaitGroup) {
 				for i := 0; i < want; i++ {
 					key := fmt.Sprintf("RightNow-1-%v", i)
-					_ = Memory().Remember(key, key, 1*time.Hour)
+					_ = Memory().Keep(key, key, 1*time.Hour)
 				}
 				m.flushExpiredItems()
 				swg.Done()
@@ -128,7 +128,7 @@ func Test_DataRace(t *testing.T) {
 			RightNow().Do(func(want int, m *memoryCacheStore, swg *sync.WaitGroup) {
 				for i := 0; i < want; i++ {
 					key := fmt.Sprintf("QQ-%v", i)
-					err := m.Remember(key, key, 1*time.Hour)
+					err := m.Keep(key, key, 1*time.Hour)
 					if err != nil {
 						t.Logf("err:%v", err)
 						continue
@@ -145,11 +145,11 @@ func Test_DataRace(t *testing.T) {
 
 			Every(10).Milliseconds().Times(10000).Do(tt.memoryCache.flushExpiredItems)
 			wg.Add(1)
-			RightNow().Do(remember, tt.want, tt.memoryCache, &wg, 1)
+			RightNow().Do(keep, tt.want, tt.memoryCache, &wg, 1)
 			wg.Add(1)
 			RightNow().Do(read, tt.want, tt.memoryCache, &wg, 1)
 			wg.Add(1)
-			RightNow().Do(remember, tt.want, tt.memoryCache, &wg, 2)
+			RightNow().Do(keep, tt.want, tt.memoryCache, &wg, 2)
 			wg.Add(1)
 			RightNow().Do(read, tt.want, tt.memoryCache, &wg, 2)
 
@@ -158,10 +158,10 @@ func Test_DataRace(t *testing.T) {
 	}
 }
 
-func remember(want int, m *memoryCacheStore, swg *sync.WaitGroup, index int) {
+func keep(want int, m *memoryCacheStore, swg *sync.WaitGroup, index int) {
 	for i := 0; i < want; i++ {
 		key := fmt.Sprintf("QQ-%v-%v", i, index)
-		_ = m.Remember(key, key, time.Duration(int64(10+i)*int64(time.Millisecond)))
+		_ = m.Keep(key, key, time.Duration(int64(10+i)*int64(time.Millisecond)))
 	}
 	swg.Done()
 }

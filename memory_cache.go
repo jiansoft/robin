@@ -10,7 +10,7 @@ import (
 const expirationInterval = 30
 
 type MemoryCach interface {
-	Remember(key string, value interface{}, ttl time.Duration) error
+	Keep(key string, value interface{}, ttl time.Duration) error
 	Forget(key string)
 	Read(string) (interface{}, bool)
 	Have(string) bool
@@ -79,8 +79,8 @@ func (m *memoryCacheStore) loadMemoryCacheEntry(key string) (*memoryCacheEntity,
 	return val.(*memoryCacheEntity), true
 }
 
-// Remember keeps an item into the memory
-func (m *memoryCacheStore) Remember(key string, val interface{}, ttl time.Duration) error {
+// Keep keeps an item into the memory
+func (m *memoryCacheStore) Keep(key string, val interface{}, ttl time.Duration) error {
 	nowUtc := time.Now().UTC().UnixNano()
 	utcAbsExp := nowUtc + ttl.Nanoseconds()
 	if utcAbsExp <= nowUtc {

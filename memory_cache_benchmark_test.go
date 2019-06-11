@@ -25,7 +25,7 @@ func BenchmarkMemoryCache_Set(b *testing.B) {
 			b.ResetTimer()
 			//for i := 0; i < b.N; i++ {
 			for i := 0; i < c.N; i++ {
-				Memory().Remember(base[i], base[i], 10)
+				Memory().Keep(base[i], base[i], 10)
 			}
 			//}
 
@@ -50,7 +50,7 @@ func BenchmarkMemoryCache_flushExpiredItems(b *testing.B) {
 			base := make([]string, c.N)
 			for i := 0; i < len(base); i++ {
 				base[i] = strconv.FormatInt(int64(i), 10)
-				Memory().Remember(base[i], base[i], 1)
+				Memory().Keep(base[i], base[i], 1)
 			}
 
 			b.ResetTimer()

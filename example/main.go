@@ -14,8 +14,8 @@ func main() {
 	log.Printf("Start at %v\n", now.Format("2006-01-02 15:04:05.000"))
 
 	robin.RightNow().Do(func() {
-		robin.Memory().Remember("qq", "Qoo", time.Second)
-		log.Printf("Memory remember qq.")
+		robin.Memory().Keep("qq", "Qoo", time.Second)
+		log.Printf("Memory keep qq.")
 	})
 	robin.Delay(100).Milliseconds().Do(func() {
 		val, ok := robin.Memory().Read("qq")
