@@ -2,6 +2,7 @@ package robin
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 )
@@ -17,32 +18,27 @@ func Test_memoryCacheStore_flushExpiredItems(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for i := 0; i < 1024; i++ {
-				tt.memoryCache.Remember(fmt.Sprintf("QQ-%v", i), i, -1*time.Second)
+				_ = tt.memoryCache.Remember(fmt.Sprintf("QQ-%v", i), i, -1*time.Second)
 			}
 			tt.memoryCache.flushExpiredItems()
-
 			equal(t, tt.memoryCache.pq.Len(), 0)
 		})
 	}
 }
 
 func Test_memoryCacheStore_Remember(t *testing.T) {
-	//m := memoryCache()
 	tests := []struct {
 		name        string
 		memoryCache *memoryCacheStore
-		want        int
 	}{
-		{"1", memoryCache(), 1024},
-		{"2", memoryCache(), 10240},
+		{"1", memoryCache()},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for i := 0; i < tt.want; i++ {
-				tt.memoryCache.Remember(fmt.Sprintf("QQ-%s-%v", tt.name, i), i, -1*time.Hour)
-			}
-			equal(t, tt.memoryCache.pq.Len(), tt.want)
-			tt.memoryCache.flushExpiredItems()
+			_ = tt.memoryCache.Remember(fmt.Sprintf("QQ-%s-%v", tt.name, 1), 1, -1*time.Hour)
+			equal(t, tt.memoryCache.pq.Len(), 0)
+			_ = tt.memoryCache.Remember(fmt.Sprintf("QQ-%s-%v", tt.name, 1), 1, 1*time.Hour)
+			equal(t, tt.memoryCache.pq.Len(), 1)
 		})
 	}
 }
@@ -54,28 +50,29 @@ func Test_memoryCacheStore(t *testing.T) {
 		want        int
 	}{
 		{"1", memoryCache(), 1024},
-		{"2", memoryCache(), 10240},
+		/* {"2", memoryCache(), 10240},
+		   {"3", memoryCache(), 102400},*/
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var keyMap []string
 			for i := 0; i < tt.want; i++ {
 				key := fmt.Sprintf("QQ-%s-%v", tt.name, i)
-				tt.memoryCache.Remember(key, key, 1*time.Hour)
-				keyMap = append(keyMap, key)
-			}
+				err := tt.memoryCache.Remember(key, key, 1*time.Hour)
+				if err != nil {
+					t.Logf("err:%v", err)
+					continue
+				}
 
-			for _, v := range keyMap {
-				ok := tt.memoryCache.Have(v)
+				yes := tt.memoryCache.Have(key)
+				equal(t, yes, true)
+				val, ok := tt.memoryCache.Read(key)
 				equal(t, ok, true)
-				val, ok := tt.memoryCache.Read(v)
-				equal(t, ok, true)
-				equal(t, val, v)
+				equal(t, val, key)
 
-				tt.memoryCache.Forget(v)
-				ok = tt.memoryCache.Have(v)
-				equal(t, ok, false)
-				val, ok = tt.memoryCache.Read(v)
+				tt.memoryCache.Forget(key)
+				yes = tt.memoryCache.Have(key)
+				equal(t, yes, false)
+				val, ok = tt.memoryCache.Read(key)
 				equal(t, ok, false)
 			}
 			tt.memoryCache.Forget("noKey")
@@ -85,4 +82,101 @@ func Test_memoryCacheStore(t *testing.T) {
 			equal(t, ok, false)
 		})
 	}
+}
+
+func Test_DataRace(t *testing.T) {
+	tests := []struct {
+		name        string
+		memoryCache *memoryCacheStore
+		want        int
+	}{
+		{"1", memoryCache(), 1024},
+		/* {"2", memoryCache(), 10240},
+		   {"3", memoryCache(), 102400},*/
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wg := sync.WaitGroup{}
+			wg.Add(4)
+			RightNow().Do(func(want int, m *memoryCacheStore, swg *sync.WaitGroup) {
+				for i := 0; i < want; i++ {
+					key := fmt.Sprintf("RightNow-1-%v", i)
+					_ = Memory().Remember(key, key, 1*time.Hour)
+				}
+				m.flushExpiredItems()
+				swg.Done()
+			}, tt.want, tt.memoryCache, &wg)
+
+			RightNow().Do(func(want int, m *memoryCacheStore, swg *sync.WaitGroup) {
+				for i := 0; i < want; i++ {
+					key := fmt.Sprintf("RightNow-1-%v", i)
+					m.Forget(key)
+				}
+				m.flushExpiredItems()
+				swg.Done()
+			}, tt.want, tt.memoryCache, &wg)
+
+			RightNow().Do(func(want int, m *memoryCacheStore, swg *sync.WaitGroup) {
+				for i := 0; i < want; i++ {
+					key := fmt.Sprintf("RightNow-1-%v", i)
+					_, _ = m.Read(key)
+				}
+				m.flushExpiredItems()
+				swg.Done()
+			}, tt.want, Memory(), &wg)
+
+			RightNow().Do(func(want int, m *memoryCacheStore, swg *sync.WaitGroup) {
+				for i := 0; i < want; i++ {
+					key := fmt.Sprintf("QQ-%v", i)
+					err := m.Remember(key, key, 1*time.Hour)
+					if err != nil {
+						t.Logf("err:%v", err)
+						continue
+					}
+
+					_ = m.Have(key)
+					_, _ = m.Read(key)
+					m.Forget(key)
+					_ = m.Have(key)
+					_, _ = m.Read(key)
+				}
+				swg.Done()
+			}, tt.want, tt.memoryCache, &wg)
+
+			Every(10).Milliseconds().Times(10000).Do(tt.memoryCache.flushExpiredItems)
+			wg.Add(1)
+			RightNow().Do(remember, tt.want, tt.memoryCache, &wg, 1)
+			wg.Add(1)
+			RightNow().Do(read, tt.want, tt.memoryCache, &wg, 1)
+			wg.Add(1)
+			RightNow().Do(remember, tt.want, tt.memoryCache, &wg, 2)
+			wg.Add(1)
+			RightNow().Do(read, tt.want, tt.memoryCache, &wg, 2)
+
+			wg.Wait()
+		})
+	}
+}
+
+func remember(want int, m *memoryCacheStore, swg *sync.WaitGroup, index int) {
+	for i := 0; i < want; i++ {
+		key := fmt.Sprintf("QQ-%v-%v", i, index)
+		_ = m.Remember(key, key, time.Duration(int64(10+i)*int64(time.Millisecond)))
+	}
+	swg.Done()
+}
+
+func read(want int, m *memoryCacheStore, swg *sync.WaitGroup, index int) {
+	for i := 0; i < want; i++ {
+		v := fmt.Sprintf("QQ-%v-%v", i, index)
+
+		m.Forget(v)
+		_ = m.Have(v)
+		_, _ = m.Read(v)
+
+		m.Forget(v)
+		_ = m.Have(v)
+		_, _ = m.Read(v)
+	}
+	swg.Done()
 }

@@ -9,10 +9,19 @@ var (
 	lock sync.Mutex
 )
 
+// Item store data in the PriorityQueue
 type Item struct {
 	Value    interface{}
 	Priority int64
 	Index    int
+	sync.Mutex
+}
+
+// expired set the item has expired
+func (item *Item) expired() {
+	item.Lock()
+	item.Priority = 0
+	item.Unlock()
 }
 
 // A PriorityQueue implements heap.Interface and holds Items.
@@ -29,6 +38,12 @@ func (pq PriorityQueue) Len() int {
 }
 
 func (pq PriorityQueue) Less(i, j int) bool {
+	pq[i].Lock()
+	pq[j].Lock()
+	defer func() {
+		pq[j].Unlock()
+		pq[i].Unlock()
+	}()
 	return pq[i].Priority < pq[j].Priority
 }
 
@@ -52,12 +67,6 @@ func (pq *PriorityQueue) Push(x interface{}) {
 	(*pq)[n] = item
 }
 
-func (pq *PriorityQueue) PushItem(item *Item) {
-	lock.Lock()
-	heap.Push(pq, item)
-	lock.Unlock()
-}
-
 func (pq *PriorityQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)
@@ -67,6 +76,12 @@ func (pq *PriorityQueue) Pop() interface{} {
 	return item
 }
 
+func (pq *PriorityQueue) PushItem(item *Item) {
+	lock.Lock()
+	heap.Push(pq, item)
+	lock.Unlock()
+}
+
 // update modifies the priority of an Item in the queue.
 func (pq *PriorityQueue) Update(item *Item) {
 	lock.Lock()
@@ -74,6 +89,7 @@ func (pq *PriorityQueue) Update(item *Item) {
 	lock.Unlock()
 }
 
+// TryDequeue
 func (pq *PriorityQueue) TryDequeue(limit int64) (*Item, bool) {
 	lock.Lock()
 	defer lock.Unlock()
@@ -82,6 +98,8 @@ func (pq *PriorityQueue) TryDequeue(limit int64) (*Item, bool) {
 	}
 
 	item := (*pq)[0]
+	item.Lock()
+	defer item.Unlock()
 	if item.Priority > limit {
 		return nil, false
 	}
