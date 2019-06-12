@@ -37,8 +37,13 @@ func Test_memoryCacheStore_Keep(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			_ = tt.memoryCache.Keep(fmt.Sprintf("QQ-%s-%v", tt.name, 1), 1, -1*time.Hour)
 			equal(t, tt.memoryCache.pq.Len(), 0)
-			_ = tt.memoryCache.Keep(fmt.Sprintf("QQ-%s-%v", tt.name, 1), 1, 1*time.Hour)
+			_ = tt.memoryCache.Keep("QQ-1-1", 1, 1*time.Hour)
 			equal(t, tt.memoryCache.pq.Len(), 1)
+			v1, _ := tt.memoryCache.Read("QQ-1-1")
+			equal(t, v1, 1)
+			_ = tt.memoryCache.Keep("QQ-1-1", 11, 1*time.Minute)
+			v2, _ := tt.memoryCache.Read("QQ-1-1")
+			equal(t, v2, 11)
 		})
 	}
 }
@@ -152,7 +157,8 @@ func Test_DataRace(t *testing.T) {
 			RightNow().Do(keep, tt.want, tt.memoryCache, &wg, 2)
 			wg.Add(1)
 			RightNow().Do(read, tt.want, tt.memoryCache, &wg, 2)
-
+			wg.Add(1)
+			RightNow().Do(keep, tt.want, tt.memoryCache, &wg, 3)
 			wg.Wait()
 		})
 	}
@@ -168,15 +174,15 @@ func keep(want int, m *memoryCacheStore, swg *sync.WaitGroup, index int) {
 
 func read(want int, m *memoryCacheStore, swg *sync.WaitGroup, index int) {
 	for i := 0; i < want; i++ {
-		v := fmt.Sprintf("QQ-%v-%v", i, index)
+		key := fmt.Sprintf("QQ-%v-%v", i, index)
 
-		m.Forget(v)
-		_ = m.Have(v)
-		_, _ = m.Read(v)
+		m.Forget(key)
+		_ = m.Have(key)
+		_, _ = m.Read(key)
 
-		m.Forget(v)
-		_ = m.Have(v)
-		_, _ = m.Read(v)
+		m.Forget(key)
+		_ = m.Have(key)
+		_, _ = m.Read(key)
 	}
 	swg.Done()
 }

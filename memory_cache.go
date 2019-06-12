@@ -87,11 +87,25 @@ func (m *memoryCacheStore) Keep(key string, val interface{}, ttl time.Duration) 
 		return errNewCacheHasExpired
 	}
 
-	cacheEntity := &memoryCacheEntity{key: key, value: val, utcCreated: nowUtc, utcAbsExp: utcAbsExp}
-	item := &Item{Value: cacheEntity, Priority: cacheEntity.utcAbsExp}
-	cacheEntity.item = item
-	m.usage.Store(cacheEntity.key, cacheEntity)
-	m.pq.PushItem(item)
+	if e, exist := m.loadMemoryCacheEntry(key); exist {
+		e.Lock()
+		e.utcCreated = nowUtc
+		e.utcAbsExp = utcAbsExp
+		e.value = val
+		e.Unlock()
+		e.item.Lock()
+		e.item.Value = e
+		e.item.Priority = e.utcAbsExp
+		e.item.Unlock()
+		m.pq.Update(e.item)
+	} else {
+		cacheEntity := &memoryCacheEntity{key: key, value: val, utcCreated: nowUtc, utcAbsExp: utcAbsExp}
+		item := &Item{Value: cacheEntity, Priority: cacheEntity.utcAbsExp}
+		cacheEntity.item = item
+		m.usage.Store(cacheEntity.key, cacheEntity)
+		m.pq.PushItem(item)
+	}
+
 	return nil
 }
 
