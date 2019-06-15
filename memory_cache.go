@@ -9,7 +9,7 @@ import (
 
 const expirationInterval = 30
 
-type MemoryCach interface {
+type MemoryCache interface {
 	Keep(key string, value interface{}, ttl time.Duration) error
 	Forget(key string)
 	Read(string) (interface{}, bool)
@@ -41,7 +41,7 @@ var (
 )
 
 // Memory returns memoryCacheStore instance.
-func Memory() MemoryCach {
+func Memory() MemoryCache {
 	return memoryCache()
 }
 
