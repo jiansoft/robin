@@ -108,7 +108,6 @@ func Test_DataRace(t *testing.T) {
 					key := fmt.Sprintf("RightNow-1-%v", i)
 					_ = Memory().Keep(key, key, 1*time.Hour)
 				}
-				m.flushExpiredItems()
 				swg.Done()
 			}, tt.want, tt.memoryCache, &wg)
 
@@ -117,7 +116,6 @@ func Test_DataRace(t *testing.T) {
 					key := fmt.Sprintf("RightNow-1-%v", i)
 					m.Forget(key)
 				}
-				m.flushExpiredItems()
 				swg.Done()
 			}, tt.want, tt.memoryCache, &wg)
 
@@ -126,7 +124,6 @@ func Test_DataRace(t *testing.T) {
 					key := fmt.Sprintf("RightNow-1-%v", i)
 					_, _ = m.Read(key)
 				}
-				m.flushExpiredItems()
 				swg.Done()
 			}, tt.want, Memory(), &wg)
 
@@ -148,7 +145,7 @@ func Test_DataRace(t *testing.T) {
 				swg.Done()
 			}, tt.want, tt.memoryCache, &wg)
 
-			Every(10).Milliseconds().Times(10000).Do(tt.memoryCache.flushExpiredItems)
+			Every(100).Milliseconds().Times(10000).Do(tt.memoryCache.flushExpiredItems)
 			wg.Add(1)
 			RightNow().Do(keep, tt.want, tt.memoryCache, &wg, 1)
 			wg.Add(1)

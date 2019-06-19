@@ -68,11 +68,16 @@ func (pq *PriorityQueue) Push(x interface{}) {
 }
 
 func (pq *PriorityQueue) Pop() interface{} {
-	old := *pq
-	n := len(old)
-	item := old[n-1]
-	item.Index = -1 // for safety
-	*pq = old[0 : n-1]
+	n, c := len(*pq), cap(*pq)
+	if n < (c/2) && c > 64 {
+		npq := make(PriorityQueue, n, c/2)
+		copy(npq, *pq)
+		*pq = npq
+	}
+	item := (*pq)[n-1]
+	item.Index = -1
+	*pq = (*pq)[0 : n-1]
+
 	return item
 }
 

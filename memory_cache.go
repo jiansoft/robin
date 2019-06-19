@@ -55,8 +55,8 @@ func memoryCache() *memoryCacheStore {
 	return store
 }
 
-// hasExpired returns true if the item has expired with the locker..
-func (m *memoryCacheEntity) hasExpired() bool {
+// isExpired returns true if the item has expired with the locker..
+func (m *memoryCacheEntity) isExpired() bool {
 	m.Lock()
 	defer m.Unlock()
 	return time.Now().UTC().UnixNano() > m.utcAbsExp
@@ -87,20 +87,19 @@ func (m *memoryCacheStore) Keep(key string, val interface{}, ttl time.Duration) 
 		return errNewCacheHasExpired
 	}
 
-	if e, exist := m.loadMemoryCacheEntry(key); exist {
+	if e, exist := m.loadMemoryCacheEntry(key); exist && !e.isExpired() {
 		e.Lock()
 		e.utcCreated = nowUtc
 		e.utcAbsExp = utcAbsExp
 		e.value = val
 		e.Unlock()
 		e.item.Lock()
-		e.item.Value = e
 		e.item.Priority = e.utcAbsExp
 		e.item.Unlock()
 		m.pq.Update(e.item)
 	} else {
 		cacheEntity := &memoryCacheEntity{key: key, value: val, utcCreated: nowUtc, utcAbsExp: utcAbsExp}
-		item := &Item{Value: cacheEntity, Priority: cacheEntity.utcAbsExp}
+		item := &Item{Value: key, Priority: cacheEntity.utcAbsExp}
 		cacheEntity.item = item
 		m.usage.Store(cacheEntity.key, cacheEntity)
 		m.pq.PushItem(item)
@@ -119,7 +118,7 @@ func (m *memoryCacheStore) Read(key string) (interface{}, bool) {
 		return nil, false
 	}
 
-	if cacheEntity.hasExpired() {
+	if cacheEntity.isExpired() {
 		return nil, false
 	}
 
@@ -151,8 +150,8 @@ func (m *memoryCacheStore) flushExpiredItems() {
 			break
 		}
 
-		if cacheEntity, ok := item.Value.(*memoryCacheEntity); ok {
-			m.usage.Delete(cacheEntity.key)
+		if key, ok := item.Value.(string); ok {
+			m.usage.Delete(key)
 			num++
 		}
 	}
