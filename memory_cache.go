@@ -79,7 +79,7 @@ func (m *memoryCacheStore) loadMemoryCacheEntry(key string) (*memoryCacheEntity,
 	return val.(*memoryCacheEntity), true
 }
 
-// Keep keeps an item into the memory
+// Keep insert an item into the memory
 func (m *memoryCacheStore) Keep(key string, val interface{}, ttl time.Duration) error {
 	nowUtc := time.Now().UTC().UnixNano()
 	utcAbsExp := nowUtc + ttl.Nanoseconds()
