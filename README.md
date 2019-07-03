@@ -20,14 +20,16 @@ Cron
 -------
 Golang job scheduling for humans. It is inspired by [schedule](<https://github.com/dbader/schedule>).
   
-
+Memory Cache  
+-------
+Implements an in-memory cache key:value (similar to C# MemoryCache) 
 
 Usage
 ================
 
 ### Quick Start
 
-1.Instsall
+1.Install
 ~~~
   go get github.com/jiansoft/robin
 ~~~
@@ -42,6 +44,16 @@ import (
 )
 
 func main() {
+    
+    //Keep an item in memory 
+    robin.Memory().Keep("qq", "Qoo", time.Second)
+    //Read returns the value if the key exists in the cache and it's not expired.
+    val, ok := robin.Memory().Read("qq")
+    //Have eturns true if the memory has the item and it's not expired.
+    yes := robin.Memory().Have("qq")
+    //Removes an item from the memory
+    robin.Memory().Forget("qq")
+
     //The method is going to execute only once after 2000 ms.
     robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
     
