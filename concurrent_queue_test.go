@@ -143,3 +143,28 @@ func TestConcurrentQueue_Random(t *testing.T) {
 		})
 	}
 }
+
+func TestConcurrentQueue_Clean(t *testing.T) {
+	concurrentQueue := NewConcurrentQueue()
+	type args struct {
+		item interface{}
+	}
+	tests := []struct {
+		name   string
+		fields *ConcurrentQueue
+		args   []args
+	}{
+		{"Test_ConcurrentQueue_Enqueue_1", concurrentQueue, []args{{item: "a"}, {item: "b"}, {item: "c"}, {item: "d"}, {item: "e"}}},
+		{"Test_ConcurrentQueue_Enqueue_2", concurrentQueue, []args{{item: "1"}, {item: "2"}, {item: "3"}, {item: "4"}, {item: "5"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for ttt := range tt.args {
+				tt.fields.Enqueue(ttt)
+			}
+			equal(t, tt.fields.Count(), 5)
+			tt.fields.Clean()
+			equal(t, tt.fields.Count(), 0)
+		})
+	}
+}

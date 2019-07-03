@@ -58,3 +58,14 @@ func (c ConcurrentQueue) Count() int {
 	defer c.lock.Unlock()
 	return c.container.Len()
 }
+
+// Clean remove all element in the ConcurrentQueue.
+func (c ConcurrentQueue) Clean() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	var next *list.Element
+	for e := c.container.Front(); e != nil; e = next {
+		next = e.Next()
+		c.container.Remove(e)
+	}
+}
