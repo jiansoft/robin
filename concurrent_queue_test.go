@@ -24,7 +24,9 @@ func TestConcurrentQueue_Enqueue(t *testing.T) {
 			for ttt := range tt.args {
 				tt.fields.Enqueue(ttt)
 			}
-			t.Logf("%v count:%v", tt.name, tt.fields.Count())
+			equal(t, tt.fields.Count(), 5)
+			tt.fields.Clean()
+			//t.Logf("%v count:%v", tt.name, tt.fields.Count())
 		})
 	}
 }
