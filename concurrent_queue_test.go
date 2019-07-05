@@ -25,7 +25,7 @@ func TestConcurrentQueue_Enqueue(t *testing.T) {
 				tt.fields.Enqueue(ttt)
 			}
 			equal(t, tt.fields.Count(), 5)
-			tt.fields.Clean()
+			tt.fields.Clear()
 			//t.Logf("%v count:%v", tt.name, tt.fields.Count())
 		})
 	}
@@ -157,16 +157,50 @@ func TestConcurrentQueue_Clean(t *testing.T) {
 		args   []args
 	}{
 		{"Test_ConcurrentQueue_Enqueue_1", concurrentQueue, []args{{item: "a"}, {item: "b"}, {item: "c"}, {item: "d"}, {item: "e"}}},
-		{"Test_ConcurrentQueue_Enqueue_2", concurrentQueue, []args{{item: "1"}, {item: "2"}, {item: "3"}, {item: "4"}, {item: "5"}}},
+		//{"Test_ConcurrentQueue_Enqueue_2", concurrentQueue, []args{{item: "1"}, {item: "2"}, {item: "3"}, {item: "4"}, {item: "5"}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for ttt := range tt.args {
-				tt.fields.Enqueue(ttt)
+			for _, val := range tt.args {
+				tt.fields.Enqueue(val.item)
 			}
+			/* count := tt.fields.Count()
+			   for i := 0; i < count; i++ {
+			       if item, ok := tt.fields.TryDequeue(); ok {
+			           equal(t, item.(string), tt.args[i].item.(string))
+			       }
+			   }*/
+			//count = tt.fields.Count()
 			equal(t, tt.fields.Count(), 5)
-			tt.fields.Clean()
+			tt.fields.Clear()
 			equal(t, tt.fields.Count(), 0)
+		})
+	}
+}
+
+func TestConcurrentQueue_ToArray(t *testing.T) {
+	concurrentQueue := NewConcurrentQueue()
+	type args struct {
+		item interface{}
+	}
+	tests := []struct {
+		name   string
+		fields *ConcurrentQueue
+		args   []args
+	}{
+		{"Test_ConcurrentQueue_Enqueue_1", concurrentQueue, []args{{item: "a"}, {item: "b"}, {item: "c"}, {item: "d"}, {item: "e"}}},
+		//{"Test_ConcurrentQueue_Enqueue_2", concurrentQueue, []args{{item: "1"}, {item: "2"}, {item: "3"}, {item: "4"}, {item: "5"}}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, val := range tt.args {
+				tt.fields.Enqueue(val.item)
+			}
+
+			r := tt.fields.ToArray()
+			equal(t, len(tt.args), len(r))
+			equal(t, len(tt.args), tt.fields.Count())
 		})
 	}
 }

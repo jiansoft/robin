@@ -5,20 +5,17 @@ import (
 	"sync"
 )
 
-// ConcurrentQueue a "thread" safe string to anything items.
+// ConcurrentQueue represents a thread-safe first in-first out (FIFO) collection.
 type ConcurrentQueue struct {
 	sync.Mutex
 	container *list.List
 }
 
-func (c *ConcurrentQueue) init() *ConcurrentQueue {
+// NewConcurrentQueue new a ConcurrentQueue instance
+func NewConcurrentQueue() *ConcurrentQueue {
+	c := new(ConcurrentQueue)
 	c.container = list.New()
 	return c
-}
-
-// NewConcurrentQueue ConcurrentQueue Constructors
-func NewConcurrentQueue() *ConcurrentQueue {
-	return new(ConcurrentQueue).init()
 }
 
 // Enqueue Adds an object to the end of the ConcurrentQueue.
@@ -32,7 +29,7 @@ func (c *ConcurrentQueue) Enqueue(item interface{}) {
 func (c *ConcurrentQueue) TryPeek() (interface{}, bool) {
 	c.Lock()
 	defer c.Unlock()
-	lastItem := c.container.Back()
+	lastItem := c.container.Front()
 	if lastItem == nil {
 		return nil, false
 	}
@@ -43,12 +40,13 @@ func (c *ConcurrentQueue) TryPeek() (interface{}, bool) {
 func (c *ConcurrentQueue) TryDequeue() (interface{}, bool) {
 	c.Lock()
 	defer c.Unlock()
-	lastItem := c.container.Back()
+	lastItem := c.container.Front()
 	if lastItem == nil {
 		return nil, false
 	}
-	item := c.container.Remove(lastItem)
-	return item, true
+
+	c.container.Remove(lastItem)
+	return lastItem.Value, true
 }
 
 // Count Gets the number of elements contained in the ConcurrentQueue.
@@ -58,8 +56,8 @@ func (c ConcurrentQueue) Count() int {
 	return c.container.Len()
 }
 
-// Clean remove all element in the ConcurrentQueue.
-func (c ConcurrentQueue) Clean() {
+// Clear remove all element in the ConcurrentQueue.
+func (c *ConcurrentQueue) Clear() {
 	c.Lock()
 	var next *list.Element
 	for e := c.container.Front(); e != nil; e = next {
@@ -67,4 +65,16 @@ func (c ConcurrentQueue) Clean() {
 		c.container.Remove(e)
 	}
 	c.Unlock()
+}
+
+//ToArray copies the elements stored in the ConcurrentQueue to a new array.
+func (c *ConcurrentQueue) ToArray() (elements []interface{}) {
+	c.Lock()
+	defer c.Unlock()
+	count := c.container.Len()
+	elements = make([]interface{}, count)
+	for temp, i := c.container.Front(), 0; temp != nil; temp, i = temp.Next(), i+1 {
+		elements[i] = temp.Value
+	}
+	return
 }
