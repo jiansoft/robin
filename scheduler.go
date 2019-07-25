@@ -13,13 +13,12 @@ type IScheduler interface {
 	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
 	Enqueue(taskFun interface{}, params ...interface{})
 	EnqueueWithTask(task Task)
-	Remove(d Disposable)
+	Remove(d *timerTask)
 	Dispose()
 }
 
 type scheduler struct {
 	fiber     Fiber
-	running   bool
 	isDispose bool
 	sync.Map
 }
@@ -27,7 +26,6 @@ type scheduler struct {
 func newScheduler(executionState Fiber) *scheduler {
 	s := new(scheduler)
 	s.fiber = executionState
-	s.running = true
 	return s
 }
 
@@ -57,16 +55,15 @@ func (s *scheduler) EnqueueWithTask(task Task) {
 	s.fiber.EnqueueWithTask(task)
 }
 
-//Implement SchedulerRegistry.Forget
-func (s *scheduler) Remove(d Disposable) {
+//Implement SchedulerRegistry.Remove
+func (s *scheduler) Remove(d *timerTask) {
 	s.Delete(d)
 }
 
 func (s *scheduler) Dispose() {
 	s.isDispose = true
 	s.Range(func(k, v interface{}) bool {
-		s.Delete(k)
-		v.(Disposable).Dispose()
+		v.(*timerTask).Dispose()
 		return true
 	})
 }
