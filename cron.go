@@ -37,7 +37,7 @@ type UntilJob struct {
 	untilTime time.Time
 }
 
-// Job store some infomartion for cron use.
+// Job store some information for cron use.
 type Job struct {
 	task         Task
 	taskDisposer Disposable

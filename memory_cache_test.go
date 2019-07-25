@@ -85,6 +85,12 @@ func Test_memoryCacheStore(t *testing.T) {
 			equal(t, ok, false)
 			_, ok = tt.memoryCache.loadMemoryCacheEntry("noKey")
 			equal(t, ok, false)
+
+			_ = tt.memoryCache.Keep(1, 1, 1*time.Hour)
+			yes := tt.memoryCache.Have(1)
+			equal(t, yes, true)
+			val, _ := tt.memoryCache.Read(1)
+			equal(t, val, 1)
 		})
 	}
 }
