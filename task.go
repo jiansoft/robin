@@ -29,9 +29,9 @@ func (t Task) execute() {
 
 type timerTask struct {
 	scheduler    IScheduler
+	task         Task
 	firstInMs    int64
 	intervalInMs int64
-	task         Task
 	disposed     int32
 	exitC        chan bool
 }
@@ -58,20 +58,22 @@ func (t *timerTask) schedule() {
 		return
 	}
 
-	go func(first time.Duration, exitC chan bool) {
+	go func(firstTime time.Duration, exitC chan bool) {
+		first := time.NewTimer(firstTime)
 		select {
-		case <-time.After(first):
+		case <-first.C:
 			t.next()
 		case <-exitC:
-			return
 		}
+
+		first.Stop()
 	}(time.Duration(firstInMs)*time.Millisecond, t.exitC)
 }
 
 func (t *timerTask) next() {
 	t.executeOnFiber()
 	intervalInMs := atomic.LoadInt64(&t.intervalInMs)
-	if intervalInMs <= 0 {
+	if intervalInMs <= 0 || atomic.LoadInt32(&t.disposed) == 1 {
 		t.Dispose()
 		return
 	}

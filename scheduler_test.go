@@ -63,7 +63,7 @@ func schedulerTest(t *testing.T, fiber Fiber) {
 	s.isDispose = true
 	d := s.ScheduleOnInterval(0, 10, taskFun, "remove", t)
 	d.Dispose()
-	s.Remove(d)
+	//s.Remove(d)
 
 	wg.Wait()
 	s.Dispose()
