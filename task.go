@@ -8,23 +8,27 @@ import (
 
 //Task a struct
 type Task struct {
-	doFunc      interface{}
 	funcCache   reflect.Value
 	paramsCache []reflect.Value
 }
 
 func newTask(f interface{}, p ...interface{}) Task {
-	var paramLen = len(p)
-	task := Task{doFunc: f, funcCache: reflect.ValueOf(f), paramsCache: make([]reflect.Value, paramLen)}
-	for k, param := range p {
-		task.paramsCache[k] = reflect.ValueOf(param)
-	}
+	task := Task{funcCache: reflect.ValueOf(f)}
+	task.params(p...)
 	return task
 }
 
+func (t *Task) params(p ...interface{}) {
+	var paramLen = len(p)
+	t.paramsCache = make([]reflect.Value, paramLen)
+	for k, param := range p {
+		t.paramsCache[k] = reflect.ValueOf(param)
+	}
+}
+
 func (t Task) execute() {
-	t.funcCache.Call(t.paramsCache)
-	//func(in []reflect.Value) { _ = t.funcCache.Call(in) }(t.paramsCache)
+	_ = t.funcCache.Call(t.paramsCache)
+	//func(f reflect.Value, in []reflect.Value) { _ = f.Call(in) }(t.funcCache, t.paramsCache)
 }
 
 type timerTask struct {
@@ -49,6 +53,7 @@ func (t *timerTask) Dispose() {
 
 	t.scheduler.Remove(t)
 	close(t.exitC)
+	t.scheduler = nil
 }
 
 func (t *timerTask) schedule() {
@@ -58,16 +63,15 @@ func (t *timerTask) schedule() {
 		return
 	}
 
-	go func(firstTime time.Duration, exitC chan bool) {
-		first := time.NewTimer(firstTime)
+	go func(ft int64, tk *timerTask) {
+		first := time.NewTimer(time.Duration(ft) * time.Millisecond)
 		select {
 		case <-first.C:
-			t.next()
-		case <-exitC:
+			tk.next()
+		case <-tk.exitC:
 		}
-
 		first.Stop()
-	}(time.Duration(firstInMs)*time.Millisecond, t.exitC)
+	}(firstInMs, t)
 }
 
 func (t *timerTask) next() {
@@ -78,18 +82,18 @@ func (t *timerTask) next() {
 		return
 	}
 
-	ticker := time.NewTicker(time.Duration(intervalInMs) * time.Millisecond)
-	go func(ticker *time.Ticker, exitC chan bool) {
+	go func(interval int64, tk *timerTask) {
+		ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
 		for atomic.LoadInt32(&t.disposed) == 0 {
 			select {
 			case <-ticker.C:
 				t.executeOnFiber()
-			case <-exitC:
+			case <-tk.exitC:
 				break
 			}
 		}
 		ticker.Stop()
-	}(ticker, t.exitC)
+	}(intervalInMs, t)
 }
 
 func (t *timerTask) executeOnFiber() {

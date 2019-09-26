@@ -25,7 +25,8 @@ func (c *Channel) Publish(msg ...interface{}) {
 	fiber.Enqueue(func(c *Channel) {
 		c.Range(func(k, v interface{}) bool {
 			if s, ok := v.(*Subscriber); ok {
-				fiber.Enqueue(s.receiver.doFunc, msg...)
+				s.receiver.params(msg...)
+				fiber.EnqueueWithTask(s.receiver)
 			}
 			return true
 		})
