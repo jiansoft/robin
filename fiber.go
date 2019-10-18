@@ -27,7 +27,7 @@ type GoroutineMulti struct {
 	scheduler      IScheduler
 	executor       executor
 	executionState executionState
-	locker         *sync.Mutex
+	locker         sync.Mutex
 	flushPending   bool
 }
 
@@ -37,7 +37,7 @@ type GoroutineSingle struct {
 	scheduler      IScheduler
 	executor       executor
 	executionState executionState
-	locker         *sync.Mutex
+	locker         sync.Mutex
 	cond           *sync.Cond
 }
 
@@ -48,7 +48,6 @@ func NewGoroutineMulti() *GoroutineMulti {
 	g.executionState = created
 	g.scheduler = newScheduler(g)
 	g.executor = newDefaultExecutor()
-	g.locker = new(sync.Mutex)
 	return g
 }
 
@@ -90,7 +89,6 @@ func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 	}
 	g.flushPending = true
 	g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
-	//go g.flush()
 }
 
 // Schedule execute the task once at the specified time
@@ -131,8 +129,7 @@ func NewGoroutineSingle() *GoroutineSingle {
 	g.queue = newDefaultQueue()
 	g.scheduler = newScheduler(g)
 	g.executor = newDefaultExecutor()
-	g.locker = new(sync.Mutex)
-	g.cond = sync.NewCond(g.locker)
+	g.cond = sync.NewCond(&g.locker)
 	return g
 }
 
