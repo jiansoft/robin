@@ -93,9 +93,10 @@ func (mcs *memoryCacheStore) Keep(key interface{}, val interface{}, ttl time.Dur
 		e.utcAbsExp = utcAbsExp
 		e.value = val
 		e.Unlock()
-		e.item.Lock()
+		/*e.item.Lock()
 		e.item.Priority = e.utcAbsExp
-		e.item.Unlock()
+		e.item.Unlock()*/
+		e.item.setPriority(e.utcAbsExp)
 		mcs.pq.Update(e.item)
 	} else {
 		cacheEntity := &memoryCacheEntity{key: key, value: val, utcCreated: nowUtc, utcAbsExp: utcAbsExp}

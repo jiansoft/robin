@@ -15,7 +15,7 @@ import (
 func equal(t *testing.T, got, want interface{}) {
 	if !reflect.DeepEqual(got, want) {
 		_, file, line, _ := runtime.Caller(1)
-		t.Logf("\033[31m%s:%d:\n got: %#v\nwant: %#v\033[39m\n ", filepath.Base(file), line, got, want)
+		t.Logf("\033[37m%s:%d:\n got: %#v\nwant: %#v\033[39m\n ", filepath.Base(file), line, got, want)
 		t.FailNow()
 	}
 }
@@ -46,7 +46,9 @@ func TestRemove(t *testing.T) {
 	count := len(*pq) - 1
 	for i := 0; i < count; i++ {
 		item := heap.Pop(pq).(*Item)
-		equal(t, lastItem.Priority < item.Priority, true)
+		lastItemPriority := lastItem.getPriority()
+		itemPriority := item.getPriority()
+		equal(t, lastItemPriority < itemPriority, true)
 		lastItem = item
 	}
 }
@@ -63,7 +65,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	for i, j := 0, len(items); i < len(items); i, j = i+1, j-1 {
-		items[i].Priority = int64(j)
+		items[i].setPriority(int64(j))
 		pq.Update(items[i])
 	}
 
@@ -71,7 +73,9 @@ func TestUpdate(t *testing.T) {
 	count := len(*pq) - 1
 	for i := 0; i < count; i++ {
 		item := heap.Pop(pq).(*Item)
-		equal(t, lastItem.Priority < item.Priority, true)
+		lastItemPriority := lastItem.getPriority()
+		itemPriority := item.getPriority()
+		equal(t, lastItemPriority < itemPriority, true)
 		lastItem = item
 	}
 }
@@ -115,11 +119,12 @@ func TestPriorityQueue(t *testing.T) {
 					if !ok {
 						continue
 					}
-					lessThan(t, item.Priority, limit)
+					priority := item.getPriority()
+					lessThan(t, priority, limit)
 				}
 			}, tt.pq)
 
-			timeout := time.NewTimer(time.Duration(500) * time.Millisecond)
+			timeout := time.NewTimer(time.Duration(1500) * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}

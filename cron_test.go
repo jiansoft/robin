@@ -105,7 +105,7 @@ func TestEvery(t *testing.T) {
 			EverySunday().Do(func(s string) { t.Logf("s:%v", s) }, "Sunday")
 			EverySunday().At(hh, mm, ss+1).Do(func(s string) { t.Logf("s:%v", s) }, "Sunday")
 
-			timeout.Reset(time.Duration(1500) * time.Millisecond)
+			timeout.Reset(time.Duration(2500) * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}
@@ -167,7 +167,7 @@ func TestDelay(t *testing.T) {
 				}, "Milliseconds 20", unixMillisecond)
 			}, "Milliseconds 10", unixMillisecond)
 
-			timeout := time.NewTimer(time.Duration(1200) * time.Millisecond)
+			timeout := time.NewTimer(time.Duration(2500) * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}

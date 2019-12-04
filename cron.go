@@ -1,7 +1,6 @@
 package robin
 
 import (
-	"math"
 	"sync"
 	"time"
 )
@@ -351,10 +350,10 @@ func (j *Job) run() {
 	j.schedule()
 }
 
-func (j *Job) remainTime() int64 {
-	diff := j.nextTime.UnixNano() - time.Now().UnixNano()
-	remainMs := int64(math.Ceil(float64(diff) / float64(time.Millisecond)))
-	return remainMs
+func (j *Job) remainTime() (remainMs int64) {
+	var diff = j.nextTime.Sub(time.Now())
+	remainMs = diff.Milliseconds()
+	return
 }
 
 func (j *Job) schedule() {

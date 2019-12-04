@@ -3,6 +3,7 @@ package robin
 import (
 	"container/heap"
 	"sync"
+	"sync/atomic"
 )
 
 var (
@@ -14,14 +15,20 @@ type Item struct {
 	Value    interface{}
 	Priority int64
 	Index    int
-	sync.Mutex
 }
 
 // expired set the item has expired
 func (item *Item) expired() {
-	item.Lock()
-	item.Priority = 0
-	item.Unlock()
+	item.setPriority(0)
+}
+
+func (item *Item) setPriority(newVal int64) {
+	atomic.StoreInt64(&item.Priority, newVal)
+}
+
+func (item *Item) getPriority() (priority int64) {
+	priority = atomic.LoadInt64(&item.Priority)
+	return
 }
 
 // A PriorityQueue implements heap.Interface and holds Items.
@@ -38,13 +45,8 @@ func (pq PriorityQueue) Len() int {
 }
 
 func (pq PriorityQueue) Less(i, j int) bool {
-	pq[i].Lock()
-	pq[j].Lock()
-	defer func() {
-		pq[j].Unlock()
-		pq[i].Unlock()
-	}()
-	return pq[i].Priority < pq[j].Priority
+	var isLess = pq[i].getPriority() < pq[j].getPriority()
+	return isLess
 }
 
 func (pq PriorityQueue) Swap(i, j int) {
@@ -83,29 +85,31 @@ func (pq *PriorityQueue) Pop() interface{} {
 
 func (pq *PriorityQueue) PushItem(item *Item) {
 	lock.Lock()
+	defer lock.Unlock()
+
 	heap.Push(pq, item)
-	lock.Unlock()
 }
 
 // update modifies the priority of an Item in the queue.
 func (pq *PriorityQueue) Update(item *Item) {
 	lock.Lock()
+	defer lock.Unlock()
+
 	heap.Fix(pq, item.Index)
-	lock.Unlock()
 }
 
 // TryDequeue
 func (pq *PriorityQueue) TryDequeue(limit int64) (*Item, bool) {
 	lock.Lock()
 	defer lock.Unlock()
+
 	if pq.Len() == 0 {
 		return nil, false
 	}
 
 	item := (*pq)[0]
-	item.Lock()
-	defer item.Unlock()
-	if item.Priority > limit {
+	priority := item.getPriority()
+	if priority > limit {
 		return nil, false
 	}
 

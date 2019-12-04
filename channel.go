@@ -22,15 +22,17 @@ func (c *Channel) Subscribe(taskFun interface{}, params ...interface{}) *Subscri
 
 // Publish a message to all subscribers
 func (c *Channel) Publish(msg ...interface{}) {
-	fiber.Enqueue(func(c *Channel) {
+	fiber.Enqueue(func(c *Channel, message []interface{}) {
 		c.Range(func(k, v interface{}) bool {
 			if s, ok := v.(*Subscriber); ok {
+				s.locker.Lock()
 				s.receiver.params(msg...)
 				fiber.EnqueueWithTask(s.receiver)
+				s.locker.Unlock()
 			}
 			return true
 		})
-	}, c)
+	}, c, msg)
 }
 
 // Clear empty the subscribers
@@ -60,6 +62,7 @@ func (c *Channel) Unsubscribe(subscriber interface{}) {
 type Subscriber struct {
 	channel  *Channel
 	receiver Task
+	locker   sync.Mutex
 }
 
 // Unsubscribe remove the subscriber from the channel

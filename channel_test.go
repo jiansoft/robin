@@ -107,7 +107,7 @@ func TestChannelConcurrency(t *testing.T) {
 			lock.Lock()
 			count := 0
 			lock.Unlock()
-			loop := 2
+			loop := 8
 			wg.Add(loop * loop)
 			for i := 0; i < loop; i++ {
 				RightNow().Do(func(c *Channel) {
