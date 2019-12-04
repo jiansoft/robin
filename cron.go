@@ -320,7 +320,7 @@ func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
 // run the job can be execute or not
 func (j *Job) run() {
 	adjustTime := j.remainTime()
-	if adjustTime <= 0 {
+	if adjustTime < 0 {
 		if (!j.toTime.IsZero() && j.toTime.UnixNano() >= time.Now().UnixNano()) || (j.fromTime.IsZero() || j.toTime.IsZero()) {
 			if j.afterCalculate {
 				s := time.Now()
@@ -352,7 +352,7 @@ func (j *Job) run() {
 
 func (j *Job) remainTime() (remainMs int64) {
 	var diff = j.nextTime.Sub(time.Now())
-	remainMs = diff.Milliseconds()
+	remainMs = int64(diff) / 1e6
 	return
 }
 
