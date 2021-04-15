@@ -5,8 +5,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestScheduler(t *testing.T) {
@@ -56,7 +54,10 @@ func schedulerTest(t *testing.T, fiber Fiber) {
 	interval := s.ScheduleOnInterval(0, 100, taskFun, "first", t)
 	wg.Wait()
 	interval.Dispose()
-	assert.Equal(t, int32(4), atomic.LoadInt32(&loop), "they should be equal")
+
+	if int32(4) != atomic.LoadInt32(&loop) {
+		t.Fatal("they should be equal")
+	}
 
 	wg.Add(4)
 	s.ScheduleOnInterval(0, 10, taskFun, "second", t)

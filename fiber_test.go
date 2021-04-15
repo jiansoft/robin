@@ -4,8 +4,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestFiber(t *testing.T) {
@@ -60,7 +58,9 @@ func TestFiber(t *testing.T) {
 			}
 			wg.Wait()
 
-			assert.Equal(t, int32(loop*loop*2*2), atomic.LoadInt32(&tt.count), "they should be equal")
+			if int32(loop*loop*2*2) != atomic.LoadInt32(&tt.count) {
+				t.Fatal("they should be equal")
+			}
 
 			wg.Add(loop)
 			gmd := gm.ScheduleOnInterval(10, 10, func() {
@@ -69,7 +69,11 @@ func TestFiber(t *testing.T) {
 			})
 			wg.Wait()
 			gmd.Dispose()
-			assert.Equal(t, int32(loop), atomic.LoadInt32(&tt.intervalCount), "they should be equal")
+			//assert.Equal(t, int32(loop), atomic.LoadInt32(&tt.intervalCount), "they should be equal")
+			if int32(loop) != atomic.LoadInt32(&tt.intervalCount) {
+				t.Fatal("they should be equal")
+			}
+
 			atomic.SwapInt32(&tt.intervalCount, 0)
 
 			wg.Add(loop)
@@ -80,8 +84,10 @@ func TestFiber(t *testing.T) {
 
 			wg.Wait()
 			gsd.Dispose()
-			assert.Equal(t, int32(loop), atomic.LoadInt32(&tt.intervalCount), "they should be equal")
-
+			//assert.Equal(t, int32(loop), atomic.LoadInt32(&tt.intervalCount), "they should be equal")
+			if int32(loop) != atomic.LoadInt32(&tt.intervalCount) {
+				t.Fatal("they should be equal")
+			}
 			gm.Stop()
 			gs.Stop()
 
@@ -98,8 +104,10 @@ func TestFiber(t *testing.T) {
 			}))
 
 			_, got := gs.dequeueAll()
-			assert.Equal(t, false, got, "GoroutineSingle.dequeueAll() got = %v, want %v", got, false)
-
+			//assert.Equal(t, false, got, "GoroutineSingle.dequeueAll() got = %v, want %v", got, false)
+			if false != got {
+				t.Fatalf("GoroutineSingle.dequeueAll() got = %v, want %v", got, false)
+			}
 			gm.Dispose()
 			gs.Dispose()
 		})
