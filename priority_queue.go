@@ -40,19 +40,19 @@ func NewPriorityQueue(capacity int) *PriorityQueue {
 	return &pg
 }
 
-func (pq PriorityQueue) Len() int {
-	return len(pq)
+func (pq *PriorityQueue) Len() int {
+	return len(*pq)
 }
 
-func (pq PriorityQueue) Less(i, j int) bool {
-	var isLess = pq[i].getPriority() < pq[j].getPriority()
+func (pq *PriorityQueue) Less(i, j int) bool {
+	var isLess = (*pq)[i].getPriority() < (*pq)[j].getPriority()
 	return isLess
 }
 
-func (pq PriorityQueue) Swap(i, j int) {
-	pq[i], pq[j] = pq[j], pq[i]
-	pq[i].Index = i
-	pq[j].Index = j
+func (pq *PriorityQueue) Swap(i, j int) {
+	(*pq)[i], (*pq)[j] = (*pq)[j], (*pq)[i]
+	(*pq)[i].Index = i
+	(*pq)[j].Index = j
 }
 
 func (pq *PriorityQueue) Push(x interface{}) {
@@ -90,7 +90,7 @@ func (pq *PriorityQueue) PushItem(item *Item) {
 	heap.Push(pq, item)
 }
 
-// update modifies the priority of an Item in the queue.
+// Update modifies the priority of an Item in the queue.
 func (pq *PriorityQueue) Update(item *Item) {
 	lock.Lock()
 	defer lock.Unlock()

@@ -14,6 +14,7 @@ type MemoryCache interface {
 	Read(key interface{}) (value interface{}, ok bool)
 	Have(key interface{}) (ok bool)
 	Forget(key interface{})
+	ForgetAll()
 }
 
 type memoryCacheEntity struct {
@@ -93,9 +94,6 @@ func (mcs *memoryCacheStore) Keep(key interface{}, val interface{}, ttl time.Dur
 		e.utcAbsExp = utcAbsExp
 		e.value = val
 		e.Unlock()
-		/*e.item.Lock()
-		e.item.Priority = e.utcAbsExp
-		e.item.Unlock()*/
 		e.item.setPriority(e.utcAbsExp)
 		mcs.pq.Update(e.item)
 	} else {
@@ -140,6 +138,14 @@ func (mcs *memoryCacheStore) Forget(key interface{}) {
 		mcs.pq.Update(e.item)
 		mcs.Unlock()
 	}
+}
+
+// ForgetAll removes all items from the memory
+func (mcs *memoryCacheStore) ForgetAll() {
+	mcs.usage.Range(func(k, v interface{}) bool {
+		mcs.Forget(k)
+		return true
+	})
 }
 
 // flushExpiredItems remove has expired item from the memory

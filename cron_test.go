@@ -17,7 +17,7 @@ func TestEvery(t *testing.T) {
 			tuesday := EveryTuesday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Tuesday")
 			wednesday := EveryWednesday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Wednesday")
 			thursday := EveryThursday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Thursday")
-			firday := EveryFriday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Friday")
+			friday := EveryFriday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Friday")
 			saturday := EverySaturday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Saturday")
 			sunday := EverySunday().At(0, 0, 0).Do(func(s string) { t.Logf("s:%v", s) }, "Sunday")
 
@@ -31,7 +31,7 @@ func TestEvery(t *testing.T) {
 			after := Every(60).Milliseconds().AfterExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "After")
 			before := Every(60).Milliseconds().BeforeExecuteTask().Do(func(s string) { t.Logf("s:%v", s) }, "Before")
 
-			timeout := time.NewTimer(time.Duration(100) * time.Millisecond)
+			timeout := time.NewTimer(time.Duration(1000) * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}
@@ -39,7 +39,7 @@ func TestEvery(t *testing.T) {
 			tuesday.Dispose()
 			wednesday.Dispose()
 			thursday.Dispose()
-			firday.Dispose()
+			friday.Dispose()
 			saturday.Dispose()
 			sunday.Dispose()
 
