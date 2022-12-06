@@ -19,10 +19,10 @@ func TestScheduler(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   string
 		fields fields
+		name   string
 	}{
-		{"Test_Scheduler_ScheduleOnInterval", fields{gs: gs, gm: gm}},
+		{fields{gs: gs, gm: gm}, "Test_Scheduler_ScheduleOnInterval"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -18,10 +18,10 @@ type IScheduler interface {
 }
 
 type scheduler struct {
-	fiber     Fiber
+	fiber Fiber
+	sync.Map
 	running   bool
 	isDispose bool
-	sync.Map
 }
 
 func newScheduler(executionState Fiber) *scheduler {

@@ -22,7 +22,7 @@ func main() {
 		if ok {
 			log.Printf("Memory read key qq that value is %v.", val)
 		} else {
-			log.Printf("Memory read key qq that value empty.")
+			log.Fatalf("Memory read key qq that value empty.")
 		}
 	})
 	robin.Delay(200).Milliseconds().Do(func() {
@@ -34,7 +34,7 @@ func main() {
 		if ok {
 			log.Printf("Memory has qq.")
 		} else {
-			log.Printf("Memory doesn't have qq.")
+			log.Fatalf("Memory doesn't have qq.")
 		}
 	})
 

@@ -18,17 +18,17 @@ type MemoryCache interface {
 }
 
 type memoryCacheEntity struct {
-	utcCreated int64
-	utcAbsExp  int64
 	key        any
 	value      any
 	item       *Item
+	utcCreated int64
+	utcAbsExp  int64
 	sync.Mutex
 }
 
 type memoryCacheStore struct {
-	usage sync.Map
 	pq    *PriorityQueue
+	usage sync.Map
 	sync.Mutex
 }
 

@@ -7,8 +7,8 @@ import (
 
 // ConcurrentQueue represents a thread-safe first in-first out (FIFO) collection.
 type ConcurrentQueue struct {
-	sync.Mutex
 	container *list.List
+	sync.Mutex
 }
 
 // NewConcurrentQueue new a ConcurrentQueue instance
@@ -91,8 +91,8 @@ func (c *ConcurrentQueue) ToArray() (elements []any) {
 
 // ConcurrentStack represents a thread-safe last in-first out (LIFO) collection.
 type ConcurrentStack struct {
-	sync.Mutex
 	container *list.List
+	sync.Mutex
 }
 
 // NewConcurrentStack new a ConcurrentStack instance
@@ -175,8 +175,8 @@ func (c *ConcurrentStack) ToArray() (elements []any) {
 
 // ConcurrentBag represents a thread-safe, unordered collection of element.
 type ConcurrentBag struct {
-	sync.Mutex
 	container []any
+	sync.Mutex
 }
 
 // NewConcurrentBag new a ConcurrentStack instance

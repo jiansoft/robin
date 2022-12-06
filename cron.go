@@ -38,27 +38,23 @@ type UntilJob struct {
 
 // Job store some information for cron use.
 type Job struct {
-	task         Task
+	nextTime     time.Time
+	toTime       time.Time
+	fromTime     time.Time
 	taskDisposer Disposable
-
-	weekday  time.Weekday
-	atHour   int
-	atMinute int
-	atSecond int
-	interval int64
-
-	afterCalculate bool
-	maximumTimes   int64
-	disposed       bool
-
-	duration time.Duration
-	nextTime time.Time
-	fromTime time.Time
-	toTime   time.Time
-
+	task         Task
+	atMinute     int
+	interval     int64
+	maximumTimes int64
+	duration     time.Duration
+	atSecond     int
+	atHour       int
+	weekday      time.Weekday
 	jobModel
 	intervalUnit
 	sync.Mutex
+	afterCalculate bool
+	disposed       bool
 }
 
 func init() {

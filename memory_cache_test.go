@@ -10,10 +10,10 @@ import (
 func Test_memoryCacheStore_flushExpiredItems(t *testing.T) {
 	m := memoryCache()
 	tests := []struct {
-		name        string
 		memoryCache *memoryCacheStore
+		name        string
 	}{
-		{"1", m},
+		{m, "1"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -28,10 +28,10 @@ func Test_memoryCacheStore_flushExpiredItems(t *testing.T) {
 
 func Test_memoryCacheStore_Keep(t *testing.T) {
 	tests := []struct {
-		name        string
 		memoryCache *memoryCacheStore
+		name        string
 	}{
-		{"1", memoryCache()},
+		{memoryCache(), "1"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -50,11 +50,11 @@ func Test_memoryCacheStore_Keep(t *testing.T) {
 
 func Test_memoryCacheStore(t *testing.T) {
 	tests := []struct {
-		name        string
 		memoryCache *memoryCacheStore
+		name        string
 		want        int
 	}{
-		{"1", memoryCache(), 1024},
+		{memoryCache(), "1", 1024},
 		/* {"2", memoryCache(), 10240},
 		   {"3", memoryCache(), 102400},*/
 	}
@@ -97,11 +97,11 @@ func Test_memoryCacheStore(t *testing.T) {
 
 func Test_DataRace(t *testing.T) {
 	tests := []struct {
-		name        string
 		memoryCache *memoryCacheStore
+		name        string
 		want        int
 	}{
-		{"1", memoryCache(), 1024},
+		{memoryCache(), "1", 1024},
 		/* {"2", memoryCache(), 10240},
 		   {"3", memoryCache(), 102400},*/
 	}

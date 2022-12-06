@@ -34,11 +34,11 @@ func (t *Task) execute() {
 
 type timerTask struct {
 	scheduler    IScheduler
+	exitC        chan bool
 	task         Task
 	firstInMs    int64
 	intervalInMs int64
 	disposed     int32
-	exitC        chan bool
 }
 
 func newTimerTask(scheduler IScheduler, task Task, firstInMs int64, intervalInMs int64) *timerTask {

@@ -12,12 +12,12 @@ func Test_timerTask_schedule(t *testing.T) {
 	g := NewGoroutineMulti()
 	g.Start()
 	tests := []struct {
-		name   string
 		fields *timerTask
+		name   string
 	}{
-		{"Test_timerTask_schedule_1", newTimerTask(g.scheduler.(*scheduler), newTask(func() {
+		{newTimerTask(g.scheduler.(*scheduler), newTask(func() {
 			atomic.AddInt32(&runCount, 1)
-		}), 0, 5)},
+		}), 0, 5), "Test_timerTask_schedule_1"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

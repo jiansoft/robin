@@ -96,11 +96,11 @@ func TestPriorityQueue(t *testing.T) {
 	pg := NewPriorityQueue(1024)
 	running := int32(1)
 	tests := []struct {
-		name string
 		pq   *PriorityQueue
+		name string
 	}{
-		{"1", pg},
-		{"2", pg},
+		{pg, "1"},
+		{pg, "2"},
 	}
 
 	for _, tt := range tests {

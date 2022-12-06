@@ -36,9 +36,9 @@ type GoroutineSingle struct {
 	queue          taskQueue
 	scheduler      IScheduler
 	executor       executor
+	cond           *sync.Cond
 	executionState executionState
 	mu             sync.Mutex
-	cond           *sync.Cond
 }
 
 // NewGoroutineMulti create a GoroutineMulti instance
