@@ -7,23 +7,23 @@ type Channel struct {
 	sync.Map
 }
 
-//NewChannel new a Channel instance
+// NewChannel new a Channel instance
 func NewChannel() *Channel {
 	c := &Channel{}
 	return c
 }
 
 // Subscribe to register a receiver to receive the Channel's message
-func (c *Channel) Subscribe(taskFun interface{}, params ...interface{}) *Subscriber {
-	s := &Subscriber{channel: c, receiver: newTask(taskFun, params...)}
+func (c *Channel) Subscribe(taskFunc any, params ...any) *Subscriber {
+	s := &Subscriber{channel: c, receiver: newTask(taskFunc, params...)}
 	c.Store(s, s)
 	return s
 }
 
 // Publish a message to all subscribers
-func (c *Channel) Publish(msg ...interface{}) {
-	fiber.Enqueue(func(c *Channel, message []interface{}) {
-		c.Range(func(k, v interface{}) bool {
+func (c *Channel) Publish(msg ...any) {
+	fiber.Enqueue(func(c *Channel, message []any) {
+		c.Range(func(k, v any) bool {
 			if s, ok := v.(*Subscriber); ok {
 				s.locker.Lock()
 				s.receiver.params(msg...)
@@ -37,7 +37,7 @@ func (c *Channel) Publish(msg ...interface{}) {
 
 // Clear empty the subscribers
 func (c *Channel) Clear() {
-	c.Range(func(k, v interface{}) bool {
+	c.Range(func(k, v any) bool {
 		c.Delete(k)
 		return true
 	})
@@ -46,7 +46,7 @@ func (c *Channel) Clear() {
 // Count returns a number that how many subscribers in the Channel.
 func (c *Channel) Count() int {
 	count := 0
-	c.Range(func(k, v interface{}) bool {
+	c.Range(func(k, v any) bool {
 		count++
 		return true
 	})
@@ -54,7 +54,7 @@ func (c *Channel) Count() int {
 }
 
 // Unsubscribe remove the subscriber from the channel
-func (c *Channel) Unsubscribe(subscriber interface{}) {
+func (c *Channel) Unsubscribe(subscriber any) {
 	c.Delete(subscriber)
 }
 

@@ -6,19 +6,20 @@ import (
 	"time"
 )
 
-//Task a struct
+// Task a struct
 type Task struct {
 	funcCache   reflect.Value
 	paramsCache []reflect.Value
 }
 
-func newTask(f interface{}, p ...interface{}) Task {
+// newTask returns a Task instance.
+func newTask(f any, p ...any) Task {
 	task := Task{funcCache: reflect.ValueOf(f)}
 	task.params(p...)
 	return task
 }
 
-func (t *Task) params(p ...interface{}) {
+func (t *Task) params(p ...any) {
 	var paramLen = len(p)
 	t.paramsCache = make([]reflect.Value, paramLen)
 	for k, param := range p {
@@ -26,7 +27,7 @@ func (t *Task) params(p ...interface{}) {
 	}
 }
 
-func (t Task) execute() {
+func (t *Task) execute() {
 	_ = t.funcCache.Call(t.paramsCache)
 	//func(f reflect.Value, in []reflect.Value) { _ = f.Call(in) }(t.funcCache, t.paramsCache)
 }

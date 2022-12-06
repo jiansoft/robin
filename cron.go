@@ -6,7 +6,7 @@ import (
 )
 
 type Worker interface {
-	Do(interface{}, ...interface{}) Disposable
+	Do(taskFunc any, params ...any) Disposable
 }
 
 type intervalUnit int64
@@ -78,7 +78,7 @@ func Until(time time.Time) Worker {
 }
 
 // Do
-func (u *UntilJob) Do(fun interface{}, params ...interface{}) Disposable {
+func (u *UntilJob) Do(fun any, params ...any) Disposable {
 	j := newJob()
 	j.jobModel = jobUntil
 	j.nextTime = u.untilTime
@@ -258,7 +258,7 @@ func (j *Job) Between(f time.Time, t time.Time) *Job {
 }
 
 // Do some job needs to execute.
-func (j *Job) Do(fun interface{}, params ...interface{}) Disposable {
+func (j *Job) Do(fun any, params ...any) Disposable {
 	j.task = newTask(fun, params...)
 	j.duration = time.Duration(j.interval*int64(j.intervalUnit)) * time.Millisecond
 	now := time.Now()

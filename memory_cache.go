@@ -10,18 +10,18 @@ import (
 const expirationInterval = 30
 
 type MemoryCache interface {
-	Keep(key interface{}, value interface{}, ttl time.Duration) (err error)
-	Read(key interface{}) (value interface{}, ok bool)
-	Have(key interface{}) (ok bool)
-	Forget(key interface{})
+	Keep(key any, value any, ttl time.Duration) (err error)
+	Read(key any) (value any, ok bool)
+	Have(key any) (ok bool)
+	Forget(key any)
 	ForgetAll()
 }
 
 type memoryCacheEntity struct {
 	utcCreated int64
 	utcAbsExp  int64
-	key        interface{}
-	value      interface{}
+	key        any
+	value      any
 	item       *Item
 	sync.Mutex
 }
@@ -56,14 +56,14 @@ func memoryCache() *memoryCacheStore {
 	return store
 }
 
-// isExpired returns true if the item has expired with the locker..
+// isExpired returns true if the item has expired with the mu..
 func (mce *memoryCacheEntity) isExpired() bool {
 	mce.Lock()
 	defer mce.Unlock()
 	return time.Now().UTC().UnixNano() > mce.utcAbsExp
 }
 
-// expired to set the item has expired with the locker.
+// expired to set the item has expired with the mu.
 func (mce *memoryCacheEntity) expired() {
 	mce.Lock()
 	mce.utcAbsExp = 0
@@ -72,7 +72,7 @@ func (mce *memoryCacheEntity) expired() {
 }
 
 // loadMemoryCacheEntry returns memoryCacheEntity if it exists in the cache
-func (mcs *memoryCacheStore) loadMemoryCacheEntry(key interface{}) (*memoryCacheEntity, bool) {
+func (mcs *memoryCacheStore) loadMemoryCacheEntry(key any) (*memoryCacheEntity, bool) {
 	val, yes := mcs.usage.Load(key)
 	if !yes {
 		return nil, false
@@ -81,7 +81,7 @@ func (mcs *memoryCacheStore) loadMemoryCacheEntry(key interface{}) (*memoryCache
 }
 
 // Keep insert an item into the memory
-func (mcs *memoryCacheStore) Keep(key interface{}, val interface{}, ttl time.Duration) error {
+func (mcs *memoryCacheStore) Keep(key any, val any, ttl time.Duration) error {
 	nowUtc := time.Now().UTC().UnixNano()
 	utcAbsExp := nowUtc + ttl.Nanoseconds()
 	if utcAbsExp <= nowUtc {
@@ -108,7 +108,7 @@ func (mcs *memoryCacheStore) Keep(key interface{}, val interface{}, ttl time.Dur
 }
 
 // Read returns the value if the key exists in the cache
-func (mcs *memoryCacheStore) Read(key interface{}) (interface{}, bool) {
+func (mcs *memoryCacheStore) Read(key any) (any, bool) {
 	mcs.Lock()
 	defer mcs.Unlock()
 
@@ -125,13 +125,13 @@ func (mcs *memoryCacheStore) Read(key interface{}) (interface{}, bool) {
 }
 
 // Have returns true if the memory has the item and it's not expired.
-func (mcs *memoryCacheStore) Have(key interface{}) bool {
+func (mcs *memoryCacheStore) Have(key any) bool {
 	_, exist := mcs.Read(key)
 	return exist
 }
 
 // Forget removes an item from the memory
-func (mcs *memoryCacheStore) Forget(key interface{}) {
+func (mcs *memoryCacheStore) Forget(key any) {
 	if e, exist := mcs.loadMemoryCacheEntry(key); exist {
 		mcs.Lock()
 		e.expired()
@@ -142,7 +142,7 @@ func (mcs *memoryCacheStore) Forget(key interface{}) {
 
 // ForgetAll removes all items from the memory
 func (mcs *memoryCacheStore) ForgetAll() {
-	mcs.usage.Range(func(k, v interface{}) bool {
+	mcs.usage.Range(func(k, v any) bool {
 		mcs.Forget(k)
 		return true
 	})

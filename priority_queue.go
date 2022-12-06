@@ -12,7 +12,7 @@ var (
 
 // Item store data in the PriorityQueue
 type Item struct {
-	Value    interface{}
+	Value    any
 	Priority int64
 	Index    int
 }
@@ -55,7 +55,7 @@ func (pq *PriorityQueue) Swap(i, j int) {
 	(*pq)[j].Index = j
 }
 
-func (pq *PriorityQueue) Push(x interface{}) {
+func (pq *PriorityQueue) Push(x any) {
 	n, c := len(*pq), cap(*pq)
 	if n >= c {
 		npq := make(PriorityQueue, n, c*2)
@@ -69,7 +69,7 @@ func (pq *PriorityQueue) Push(x interface{}) {
 	(*pq)[n] = item
 }
 
-func (pq *PriorityQueue) Pop() interface{} {
+func (pq *PriorityQueue) Pop() any {
 	n, c := len(*pq), cap(*pq)
 	if n < (c/2) && c > 64 {
 		npq := make(PriorityQueue, n, c/2)

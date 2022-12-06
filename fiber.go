@@ -15,10 +15,10 @@ type Fiber interface {
 	Start()
 	Stop()
 	Dispose()
-	Enqueue(taskFun interface{}, params ...interface{})
+	Enqueue(taskFunc any, params ...any)
 	EnqueueWithTask(task Task)
-	Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
-	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable)
+	Schedule(firstInMs int64, taskFunc any, params ...any) (d Disposable)
+	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFunc any, params ...any) (d Disposable)
 }
 
 // GoroutineMulti a fiber backed by more goroutine. Each job is executed by a new goroutine.
@@ -27,7 +27,7 @@ type GoroutineMulti struct {
 	scheduler      IScheduler
 	executor       executor
 	executionState executionState
-	locker         sync.Mutex
+	mu             sync.Mutex
 	flushPending   bool
 }
 
@@ -37,7 +37,7 @@ type GoroutineSingle struct {
 	scheduler      IScheduler
 	executor       executor
 	executionState executionState
-	locker         sync.Mutex
+	mu             sync.Mutex
 	cond           *sync.Cond
 }
 
@@ -72,8 +72,8 @@ func (g *GoroutineMulti) Dispose() {
 }
 
 // Enqueue use the fiber to execute a task
-func (g *GoroutineMulti) Enqueue(taskFun interface{}, params ...interface{}) {
-	g.EnqueueWithTask(newTask(taskFun, params...))
+func (g *GoroutineMulti) Enqueue(taskFunc any, params ...any) {
+	g.EnqueueWithTask(newTask(taskFunc, params...))
 }
 
 // EnqueueWithTask use the fiber to execute a task
@@ -82,8 +82,8 @@ func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 		return
 	}
 	g.queue.Enqueue(task)
-	g.locker.Lock()
-	defer g.locker.Unlock()
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	if g.flushPending {
 		return
 	}
@@ -93,19 +93,19 @@ func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 
 // Schedule execute the task once at the specified time
 // that depends on parameter firstInMs.
-func (g *GoroutineMulti) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
-	return g.scheduler.Schedule(firstInMs, taskFun, params...)
+func (g *GoroutineMulti) Schedule(firstInMs int64, taskFunc any, params ...any) (d Disposable) {
+	return g.scheduler.Schedule(firstInMs, taskFunc, params...)
 }
 
 // ScheduleOnInterval execute the task once at the specified time
 // that depends on parameters both firstInMs and regularInMs.
-func (g *GoroutineMulti) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
-	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)
+func (g *GoroutineMulti) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFunc any, params ...any) (d Disposable) {
+	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFunc, params...)
 }
 
 func (g *GoroutineMulti) flush() {
-	g.locker.Lock()
-	defer g.locker.Unlock()
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	toDoTasks, ok := g.queue.DequeueAll()
 	if !ok {
 		g.flushPending = false
@@ -129,14 +129,14 @@ func NewGoroutineSingle() *GoroutineSingle {
 	g.queue = newDefaultQueue()
 	g.scheduler = newScheduler(g)
 	g.executor = newDefaultExecutor()
-	g.cond = sync.NewCond(&g.locker)
+	g.cond = sync.NewCond(&g.mu)
 	return g
 }
 
 // Start the fiber work now
 func (g *GoroutineSingle) Start() {
-	g.locker.Lock()
-	defer g.locker.Unlock()
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	if g.executionState == running {
 		return
 	}
@@ -149,25 +149,25 @@ func (g *GoroutineSingle) Start() {
 
 // Stop the fiber work
 func (g *GoroutineSingle) Stop() {
-	g.locker.Lock()
+	g.mu.Lock()
 	g.executionState = stopped
 	g.cond.Broadcast()
-	g.locker.Unlock()
+	g.mu.Unlock()
 }
 
 // Dispose stop the fiber and release resource
 func (g *GoroutineSingle) Dispose() {
-	g.locker.Lock()
+	g.mu.Lock()
 	g.executionState = stopped
 	g.cond.Broadcast()
-	g.locker.Unlock()
+	g.mu.Unlock()
 	g.scheduler.Dispose()
 	g.queue.Dispose()
 }
 
 // Enqueue use the fiber to execute a task
-func (g *GoroutineSingle) Enqueue(taskFun interface{}, params ...interface{}) {
-	g.EnqueueWithTask(newTask(taskFun, params...))
+func (g *GoroutineSingle) Enqueue(taskFunc any, params ...any) {
+	g.EnqueueWithTask(newTask(taskFunc, params...))
 }
 
 // EnqueueWithTask enqueue the parameter task
@@ -183,14 +183,14 @@ func (g *GoroutineSingle) EnqueueWithTask(task Task) {
 
 // Schedule execute the task once at the specified time
 // that depends on parameter firstInMs.
-func (g *GoroutineSingle) Schedule(firstInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
-	return g.scheduler.Schedule(firstInMs, taskFun, params...)
+func (g *GoroutineSingle) Schedule(firstInMs int64, taskFunc any, params ...any) (d Disposable) {
+	return g.scheduler.Schedule(firstInMs, taskFunc, params...)
 }
 
 // ScheduleOnInterval execute the task once at the specified time
 // that depends on parameters both firstInMs and regularInMs.
-func (g *GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFun interface{}, params ...interface{}) (d Disposable) {
-	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFun, params...)
+func (g *GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFunc any, params ...any) (d Disposable) {
+	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFunc, params...)
 }
 
 func (g *GoroutineSingle) executeNextBatch() bool {
@@ -202,8 +202,8 @@ func (g *GoroutineSingle) executeNextBatch() bool {
 }
 
 func (g *GoroutineSingle) dequeueAll() ([]Task, bool) {
-	g.locker.Lock()
-	defer g.locker.Unlock()
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	if !g.readyToDequeue() {
 		return nil, false
 	}

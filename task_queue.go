@@ -18,7 +18,7 @@ type defaultQueue struct {
 	sync.Mutex
 }
 
-//newDefaultQueue return a new defaultQueue
+// newDefaultQueue return a new defaultQueue
 func newDefaultQueue() *defaultQueue {
 	q := &defaultQueue{toDoTasks: []Task{}, paddingTasks: []Task{}}
 	return q

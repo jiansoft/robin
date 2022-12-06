@@ -10,10 +10,10 @@ func TestConcurrent(t *testing.T) {
 	}
 	tests := []struct {
 		name   string
-		fields []interface{}
+		fields []any
 		args   []args
 	}{
-		{"Test_Concurrent", []interface{}{NewConcurrentQueue(), NewConcurrentStack(), NewConcurrentBag()}, []args{{item: "a"}, {item: "b"}, {item: "c"}, {item: "d"}, {item: "e"}}},
+		{"Test_Concurrent", []any{NewConcurrentQueue(), NewConcurrentStack(), NewConcurrentBag()}, []args{{item: "a"}, {item: "b"}, {item: "c"}, {item: "d"}, {item: "e"}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
