@@ -1,7 +1,6 @@
 package robin
 
 import (
-	"errors"
 	"math"
 	"sync"
 	"time"
@@ -10,7 +9,7 @@ import (
 const expirationInterval = 30
 
 type MemoryCache interface {
-	Keep(key any, value any, ttl time.Duration) (err error)
+	Keep(key any, value any, ttl time.Duration)
 	Read(key any) (value any, ok bool)
 	Have(key any) (ok bool)
 	Forget(key any)
@@ -37,29 +36,24 @@ var (
 	once  sync.Once
 )
 
-var (
-	errNewCacheHasExpired = errors.New("memory cache: the TTL(Time To Live) is less than the current time")
-)
-
 // Memory returns memoryCacheStore instance.
 func Memory() MemoryCache {
 	return memoryCache()
 }
 
-// memoryCache returns memoryCacheStore dingleton instance
+// memoryCache returns memoryCacheStore singleton instance
 func memoryCache() *memoryCacheStore {
 	once.Do(func() {
 		store = new(memoryCacheStore)
 		store.pq = NewPriorityQueue(1024)
 		Every(expirationInterval).Seconds().AfterExecuteTask().Do(store.flushExpiredItems)
 	})
+
 	return store
 }
 
-// isExpired returns true if the item has expired with the mu..
+// isExpired returns true if the item has expired with the mu.
 func (mce *memoryCacheEntity) isExpired() bool {
-	mce.Lock()
-	defer mce.Unlock()
 	return time.Now().UTC().UnixNano() > mce.utcAbsExp
 }
 
@@ -81,11 +75,11 @@ func (mcs *memoryCacheStore) loadMemoryCacheEntry(key any) (*memoryCacheEntity, 
 }
 
 // Keep insert an item into the memory
-func (mcs *memoryCacheStore) Keep(key any, val any, ttl time.Duration) error {
+func (mcs *memoryCacheStore) Keep(key any, val any, ttl time.Duration) {
 	nowUtc := time.Now().UTC().UnixNano()
 	utcAbsExp := nowUtc + ttl.Nanoseconds()
 	if utcAbsExp <= nowUtc {
-		return errNewCacheHasExpired
+		return
 	}
 
 	if e, exist := mcs.loadMemoryCacheEntry(key); exist && !e.isExpired() {
@@ -95,16 +89,18 @@ func (mcs *memoryCacheStore) Keep(key any, val any, ttl time.Duration) error {
 		e.value = val
 		e.Unlock()
 		e.item.setPriority(e.utcAbsExp)
+		mcs.Lock()
 		mcs.pq.Update(e.item)
+		mcs.Unlock()
 	} else {
-		cacheEntity := &memoryCacheEntity{key: key, value: val, utcCreated: nowUtc, utcAbsExp: utcAbsExp}
-		item := &Item{Value: key, Priority: cacheEntity.utcAbsExp}
-		cacheEntity.item = item
-		mcs.usage.Store(cacheEntity.key, cacheEntity)
+		e = &memoryCacheEntity{key: key, value: val, utcCreated: nowUtc, utcAbsExp: utcAbsExp}
+		item := &Item{Value: key, Priority: e.utcAbsExp}
+		e.item = item
+		mcs.usage.Store(e.key, e)
+		mcs.Lock()
 		mcs.pq.PushItem(item)
+		mcs.Unlock()
 	}
-
-	return nil
 }
 
 // Read returns the value if the key exists in the cache
@@ -124,7 +120,7 @@ func (mcs *memoryCacheStore) Read(key any) (any, bool) {
 	return cacheEntity.value, true
 }
 
-// Have returns true if the memory has the item and it's not expired.
+// Have returns true if the memory has the item, and it's not expired.
 func (mcs *memoryCacheStore) Have(key any) bool {
 	_, exist := mcs.Read(key)
 	return exist
@@ -132,12 +128,15 @@ func (mcs *memoryCacheStore) Have(key any) bool {
 
 // Forget removes an item from the memory
 func (mcs *memoryCacheStore) Forget(key any) {
-	if e, exist := mcs.loadMemoryCacheEntry(key); exist {
-		mcs.Lock()
-		e.expired()
-		mcs.pq.Update(e.item)
-		mcs.Unlock()
+	e, exist := mcs.loadMemoryCacheEntry(key)
+	if !exist {
+		return
 	}
+
+	e.expired()
+	mcs.Lock()
+	mcs.pq.Update(e.item)
+	mcs.Unlock()
 }
 
 // ForgetAll removes all items from the memory
@@ -152,7 +151,10 @@ func (mcs *memoryCacheStore) ForgetAll() {
 func (mcs *memoryCacheStore) flushExpiredItems() {
 	num, max, limit := 0, math.MaxInt32, time.Now().UTC().UnixNano()
 	for num < max {
-		item, yes := mcs.pq.TryDequeue(limit)
+		mcs.Lock()
+		item, yes := mcs.pq.PopItem(limit)
+		mcs.Unlock()
+
 		if !yes {
 			break
 		}
@@ -160,4 +162,5 @@ func (mcs *memoryCacheStore) flushExpiredItems() {
 		mcs.usage.Delete(item.Value)
 		num++
 	}
+
 }

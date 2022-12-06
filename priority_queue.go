@@ -2,12 +2,7 @@ package robin
 
 import (
 	"container/heap"
-	"sync"
 	"sync/atomic"
-)
-
-var (
-	lock sync.Mutex
 )
 
 // Item store data in the PriorityQueue
@@ -69,6 +64,15 @@ func (pq *PriorityQueue) Push(x any) {
 	(*pq)[n] = item
 }
 
+func (pq *PriorityQueue) PushItem(item *Item) {
+	heap.Push(pq, item)
+}
+
+// Update modifies the priority of an Item in the queue.
+func (pq *PriorityQueue) Update(item *Item) {
+	heap.Fix(pq, item.Index)
+}
+
 func (pq *PriorityQueue) Pop() any {
 	n, c := len(*pq), cap(*pq)
 	if n < (c/2) && c > 64 {
@@ -83,26 +87,7 @@ func (pq *PriorityQueue) Pop() any {
 	return item
 }
 
-func (pq *PriorityQueue) PushItem(item *Item) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	heap.Push(pq, item)
-}
-
-// Update modifies the priority of an Item in the queue.
-func (pq *PriorityQueue) Update(item *Item) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	heap.Fix(pq, item.Index)
-}
-
-// TryDequeue
-func (pq *PriorityQueue) TryDequeue(limit int64) (*Item, bool) {
-	lock.Lock()
-	defer lock.Unlock()
-
+func (pq *PriorityQueue) PopItem(limit int64) (*Item, bool) {
 	if pq.Len() == 0 {
 		return nil, false
 	}

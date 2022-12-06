@@ -115,7 +115,7 @@ func TestPriorityQueue(t *testing.T) {
 			RightNow().Do(func(pq *PriorityQueue) {
 				for atomic.LoadInt32(&running) == 1 {
 					limit := time.Now().UnixNano()
-					item, ok := pq.TryDequeue(limit)
+					item, ok := pq.PopItem(limit)
 					if !ok {
 						continue
 					}
@@ -131,4 +131,10 @@ func TestPriorityQueue(t *testing.T) {
 			atomic.StoreInt32(&running, 0)
 		})
 	}
+}
+
+func TestArray(t *testing.T) {
+	var result = make([]int, 0, 10)
+	result = append(result, 1)
+	t.Logf("%v", result)
 }

@@ -14,7 +14,7 @@ func main() {
 	log.Printf("Start at %v\n", now.Format("2006-01-02 15:04:05.000"))
 
 	robin.RightNow().Do(func() {
-		_ = robin.Memory().Keep("qq", "Qoo", time.Second)
+		robin.Memory().Keep("qq", "Qoo", time.Second)
 		log.Printf("Memory keep qq.")
 	})
 	robin.Delay(100).Milliseconds().Do(func() {
@@ -32,9 +32,9 @@ func main() {
 	robin.Delay(300).Milliseconds().Do(func() {
 		ok := robin.Memory().Have("qq")
 		if ok {
-			log.Printf("Memory has qq.")
+			log.Fatalf("Memory has qq.")
 		} else {
-			log.Fatalf("Memory doesn't have qq.")
+			log.Printf("Memory doesn't have qq.")
 		}
 	})
 
@@ -53,28 +53,28 @@ func main() {
 		p4 := player{NickName: "Player 4"}
 		channel := robin.NewChannel()
 
-		channel.Subscribe(p1.eventFinalBossResurge)
-		channel.Subscribe(p2.eventFinalBossResurge)
-		channel.Subscribe(p3.eventFinalBossResurge)
-		p4Unsubscribe := channel.Subscribe(p4.eventFinalBossResurge)
+		channel.Subscribe(p1.eventFinalBossResurrect)
+		channel.Subscribe(p2.eventFinalBossResurrect)
+		channel.Subscribe(p3.eventFinalBossResurrect)
+		p4Unsubscribe := channel.Subscribe(p4.eventFinalBossResurrect)
 
 		log.Printf("the channel have %v subscribers.", channel.Count())
-		channel.Publish("The boss resurge first.")
+		channel.Publish("The boss resurrect  first.")
 		<-time.After(10 * time.Millisecond)
 
 		p4Unsubscribe.Unsubscribe()
 		log.Printf("the channel have %v subscribers.", channel.Count())
-		channel.Publish("The boss resurge second.")
+		channel.Publish("The boss resurrect  second.")
 		<-time.After(10 * time.Millisecond)
 
 		channel.Clear()
 		log.Printf("the channel have %v subscribers.", channel.Count())
-		channel.Publish("The boss resurge third.")
+		channel.Publish("The boss resurrect  third.")
 		<-time.After(10 * time.Millisecond)
 
-		channel.Subscribe(p1.eventFinalBossResurge)
+		channel.Subscribe(p1.eventFinalBossResurrect)
 		log.Printf("the channel have %v subscribers.", channel.Count())
-		channel.Publish("The boss resurge fourth.")
+		channel.Publish("The boss resurrect  fourth.")
 		<-time.After(10 * time.Millisecond)
 	})
 
@@ -129,10 +129,10 @@ func main() {
 		//log.Printf("runCronFiber 3\n")
 	})
 
-	//Make a cron that will be executed everyday at 15:30:04(HH:mm:ss)
+	//Make a cron that will be executed every n day at 15:30:04(HH:mm:ss)
 	b := robin.Every(1).Days().At(15, 30, 4).Do(runCron, "Will be cancel")
 
-	//After one second, a & b crons well be canceled by fiber
+	//After one second, a & b cron well be canceled by fiber
 	runCronFiber.Schedule(1000, func() {
 		log.Printf("a & b are dispose\n")
 		b.Dispose()
@@ -191,6 +191,6 @@ type player struct {
 	NickName string
 }
 
-func (p player) eventFinalBossResurge(someBossInfo string) {
+func (p player) eventFinalBossResurrect(someBossInfo string) {
 	log.Printf("%s receive a message : %s", p.NickName, someBossInfo)
 }
