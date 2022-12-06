@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -102,20 +103,24 @@ func TestPriorityQueue(t *testing.T) {
 		{pg, "1"},
 		{pg, "2"},
 	}
-
+	var mu sync.Mutex
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			RightNow().Do(func(pq *PriorityQueue) {
 				for atomic.LoadInt32(&running) == 1 {
 					item := &Item{Value: time.Now().UnixNano(), Priority: time.Now().UnixNano()}
+					mu.Lock()
 					pq.PushItem(item)
+					mu.Unlock()
 				}
 			}, tt.pq)
 
 			RightNow().Do(func(pq *PriorityQueue) {
 				for atomic.LoadInt32(&running) == 1 {
 					limit := time.Now().UnixNano()
+					mu.Lock()
 					item, ok := pq.PopItem(limit)
+					mu.Unlock()
 					if !ok {
 						continue
 					}
