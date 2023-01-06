@@ -13,31 +13,6 @@ func main() {
 	now := time.Now()
 	log.Printf("Start at %v\n", now.Format("2006-01-02 15:04:05.000"))
 
-	robin.RightNow().Do(func() {
-		robin.Memory().Keep("qq", "Qoo", time.Second)
-		log.Printf("Memory keep qq.")
-	})
-	robin.Delay(100).Milliseconds().Do(func() {
-		val, ok := robin.Memory().Read("qq")
-		if ok {
-			log.Printf("Memory read key qq that value is %v.", val)
-		} else {
-			log.Fatalf("Memory read key qq that value empty.")
-		}
-	})
-	robin.Delay(200).Milliseconds().Do(func() {
-		robin.Memory().Forget("qq")
-		log.Printf("Memory forget qq.")
-	})
-	robin.Delay(300).Milliseconds().Do(func() {
-		ok := robin.Memory().Have("qq")
-		if ok {
-			log.Fatalf("Memory has qq.")
-		} else {
-			log.Printf("Memory doesn't have qq.")
-		}
-	})
-
 	untilTime := now.Add(26*time.Second + time.Millisecond)
 	robin.Until(untilTime).Do(runCron, fmt.Sprintf("until =>%s", untilTime.Format("2006-01-02 15:04:05.000")))
 	robin.Every(450).Milliseconds().Times(2).Do(runCron, "every 450 Milliseconds Times 2")
