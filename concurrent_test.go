@@ -1,8 +1,19 @@
 package robin
 
 import (
+	"path/filepath"
+	"reflect"
+	"runtime"
 	"testing"
 )
+
+func equal(t *testing.T, got, want any) {
+	if !reflect.DeepEqual(got, want) {
+		_, file, line, _ := runtime.Caller(1)
+		t.Logf("\033[37m%s:%d:\n got: %#v\nwant: %#v\033[39m\n ", filepath.Base(file), line, got, want)
+		t.FailNow()
+	}
+}
 
 func TestConcurrent(t *testing.T) {
 	type args struct {
