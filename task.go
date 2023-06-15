@@ -47,59 +47,65 @@ func newTimerTask(scheduler IScheduler, task Task, firstInMs int64, intervalInMs
 }
 
 // Dispose release resources
-func (t *timerTask) Dispose() {
-	if !atomic.CompareAndSwapInt32(&t.disposed, 0, 1) {
+func (tk *timerTask) Dispose() {
+	if !atomic.CompareAndSwapInt32(&tk.disposed, 0, 1) {
 		return
 	}
 
-	t.scheduler.Remove(t)
-	close(t.exitC)
-	t.scheduler = nil
+	tk.scheduler.Remove(tk)
+	close(tk.exitC)
+	tk.scheduler = nil
 }
 
-func (t *timerTask) schedule() {
-	firstInMs := atomic.LoadInt64(&t.firstInMs)
+func (tk *timerTask) schedule() {
+	firstInMs := atomic.LoadInt64(&tk.firstInMs)
 	if firstInMs <= 0 {
-		t.next()
+		tk.next()
 		return
 	}
 
-	go func(ft int64, tk *timerTask) {
-		first := time.NewTimer(time.Duration(ft) * time.Millisecond)
+	tk.scheduler.Enqueue(func(tk *timerTask) {
+		first := time.NewTimer(time.Duration(tk.firstInMs) * time.Millisecond)
 		select {
 		case <-first.C:
 			tk.next()
 		case <-tk.exitC:
 		}
-		first.Stop()
-	}(firstInMs, t)
+
+		if !first.Stop() {
+			<-first.C
+		}
+	}, tk)
 }
 
-func (t *timerTask) next() {
-	t.executeOnFiber()
-	intervalInMs := atomic.LoadInt64(&t.intervalInMs)
-	if intervalInMs <= 0 || atomic.LoadInt32(&t.disposed) == 1 {
-		t.Dispose()
+func (tk *timerTask) next() {
+	tk.executeOnFiber()
+	if atomic.LoadInt64(&tk.intervalInMs) <= 0 {
+		tk.Dispose()
 		return
 	}
 
-	go func(interval int64, tk *timerTask) {
-		ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
-		for atomic.LoadInt32(&t.disposed) == 0 {
+	if atomic.LoadInt32(&tk.disposed) == 1 {
+		return
+	}
+
+	tk.scheduler.Enqueue(func(tk *timerTask) {
+		ticker := time.NewTicker(time.Duration(tk.intervalInMs) * time.Millisecond)
+		for atomic.LoadInt32(&tk.disposed) == 0 {
 			select {
 			case <-ticker.C:
-				t.executeOnFiber()
+				tk.executeOnFiber()
 			case <-tk.exitC:
+				ticker.Stop()
 				break
 			}
 		}
-		ticker.Stop()
-	}(intervalInMs, t)
+	}, tk)
 }
 
-func (t *timerTask) executeOnFiber() {
-	if atomic.LoadInt32(&t.disposed) == 1 {
+func (tk *timerTask) executeOnFiber() {
+	if atomic.LoadInt32(&tk.disposed) == 1 {
 		return
 	}
-	t.scheduler.EnqueueWithTask(t.task)
+	tk.scheduler.EnqueueWithTask(tk.task)
 }

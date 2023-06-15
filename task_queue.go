@@ -39,7 +39,7 @@ func (d *defaultQueue) Enqueue(task Task) {
 	d.Unlock()
 }
 
-// DequeueAll return currrent tasks
+// DequeueAll return current tasks
 func (d *defaultQueue) DequeueAll() ([]Task, bool) {
 	d.Lock()
 	defer d.Unlock()

@@ -24,9 +24,9 @@ type scheduler struct {
 	isDispose bool
 }
 
-func newScheduler(executionState Fiber) *scheduler {
+func newScheduler(fiber Fiber) *scheduler {
 	s := new(scheduler)
-	s.fiber = executionState
+	s.fiber = fiber
 	s.running = true
 	return s
 }

@@ -1,6 +1,7 @@
 package robin
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -8,6 +9,28 @@ import (
 )
 
 func Test_timerTask_schedule(t *testing.T) {
+	g := NewGoroutineMulti()
+	g.Start()
+	tests := []struct {
+		timerTask *timerTask
+		name      string
+	}{
+		{newTimerTask(g.scheduler.(*scheduler), newTask(func() {
+			fmt.Printf("go... %v\n", time.Now())
+		}), -100, 1000), "Test_timerTask_schedule"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.timerTask.schedule()
+			<-time.After(time.Duration(6) * time.Second)
+			tt.timerTask.Dispose()
+			<-time.After(time.Duration(10) * time.Second)
+
+		})
+	}
+}
+
+func Test_timerTask(t *testing.T) {
 	var runCount int32
 	g := NewGoroutineMulti()
 	g.Start()
