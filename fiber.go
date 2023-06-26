@@ -1,18 +1,14 @@
 package robin
 
-import "sync"
-
-const (
-	created executionState = iota
-	running
-	stopped
+import (
+	"sync"
 )
-
-type executionState int
 
 // Fiber define some function
 type Fiber interface {
+	//Deprecated: This method is no longer used.
 	Start()
+	// Deprecated: This method is no longer used.
 	Stop()
 	Dispose()
 	Enqueue(taskFunc any, params ...any)
@@ -21,52 +17,50 @@ type Fiber interface {
 	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFunc any, params ...any) (d Disposable)
 }
 
+type fiberCommon struct {
+	queue      taskQueue
+	scheduler  IScheduler
+	executor   executor
+	mu         sync.Mutex
+	isDisposed bool
+}
+
 // GoroutineMulti a fiber backed by more goroutine. Each job is executed by a new goroutine.
 type GoroutineMulti struct {
-	queue          taskQueue
-	scheduler      IScheduler
-	executor       executor
-	executionState executionState
-	mu             sync.Mutex
-	flushPending   bool
+	fiberCommon
+	flushPending bool
 }
 
 // GoroutineSingle a fiber backed by a dedicated goroutine. Every job is executed by a goroutine.
 type GoroutineSingle struct {
-	queue          taskQueue
-	scheduler      IScheduler
-	executor       executor
-	cond           *sync.Cond
-	executionState executionState
-	mu             sync.Mutex
+	cond *sync.Cond
+	fiberCommon
 }
 
 // NewGoroutineMulti create a GoroutineMulti instance
 func NewGoroutineMulti() *GoroutineMulti {
 	g := new(GoroutineMulti)
 	g.queue = newDefaultQueue()
-	g.executionState = created
 	g.scheduler = newScheduler(g)
 	g.executor = newDefaultExecutor()
+
 	return g
 }
 
-// Start the fiber work now
+// Deprecated: This method is no longer used.
 func (g *GoroutineMulti) Start() {
-	if g.executionState == running {
-		return
-	}
-	g.executionState = running
 }
 
-// Stop the fiber work
+// Deprecated: This method is no longer used.
 func (g *GoroutineMulti) Stop() {
-	g.executionState = stopped
 }
 
 // Dispose stop the fiber and release resource
 func (g *GoroutineMulti) Dispose() {
-	g.Stop()
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	g.isDisposed = true
 	g.scheduler.Dispose()
 	g.queue.Dispose()
 }
@@ -78,17 +72,24 @@ func (g *GoroutineMulti) Enqueue(taskFunc any, params ...any) {
 
 // EnqueueWithTask use the fiber to execute a task
 func (g *GoroutineMulti) EnqueueWithTask(task Task) {
-	if g.executionState != running {
-		return
-	}
-	g.queue.Enqueue(task)
+	flushTask := newTask(g.flush)
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
+
+	if g.isDisposed {
+		return
+	}
+
+	g.queue.Enqueue(task)
+
 	if g.flushPending {
 		return
 	}
+
 	g.flushPending = true
-	g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
+
+	g.executor.ExecuteTaskWithGoroutine(flushTask)
 }
 
 // Schedule execute the task once at the specified time
@@ -106,61 +107,54 @@ func (g *GoroutineMulti) ScheduleOnInterval(firstInMs int64, regularInMs int64, 
 func (g *GoroutineMulti) flush() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	toDoTasks, ok := g.queue.DequeueAll()
-	if !ok {
-		g.flushPending = false
-		return
-	}
-	g.executor.ExecuteTasksWithGoroutine(toDoTasks)
-	if g.queue.Count() > 0 {
-		//It has new Task enqueue when clear tasks
-		g.executor.ExecuteTaskWithGoroutine(newTask(g.flush))
-		//go g.flush()
-	} else {
-		//Task is empty
-		g.flushPending = false
+
+	for {
+		toDoTasks, ok := g.queue.DequeueAll()
+		if !ok {
+			g.flushPending = false
+			return
+		}
+
+		g.executor.ExecuteTasksWithGoroutine(toDoTasks)
+
+		if g.queue.Count() == 0 {
+			g.flushPending = false
+			return
+		}
 	}
 }
 
 // NewGoroutineSingle create a GoroutineSingle instance
 func NewGoroutineSingle() *GoroutineSingle {
 	g := new(GoroutineSingle)
-	g.executionState = created
 	g.queue = newDefaultQueue()
 	g.scheduler = newScheduler(g)
 	g.executor = newDefaultExecutor()
 	g.cond = sync.NewCond(&g.mu)
-	return g
-}
 
-// Start the fiber work now
-func (g *GoroutineSingle) Start() {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.executionState == running {
-		return
-	}
-	g.executionState = running
 	go func() {
 		for g.executeNextBatch() {
 		}
 	}()
+
+	return g
 }
 
-// Stop the fiber work
+// Deprecated: This method is no longer used.
+func (g *GoroutineSingle) Start() {
+}
+
+// Deprecated: This method is no longer used.
 func (g *GoroutineSingle) Stop() {
-	g.mu.Lock()
-	g.executionState = stopped
-	g.cond.Broadcast()
-	g.mu.Unlock()
 }
 
 // Dispose stop the fiber and release resource
 func (g *GoroutineSingle) Dispose() {
-	g.mu.Lock()
-	g.executionState = stopped
-	g.cond.Broadcast()
-	g.mu.Unlock()
+	g.cond.L.Lock()
+	defer g.cond.L.Unlock()
+
+	g.isDisposed = true
+	g.cond.Signal()
 	g.scheduler.Dispose()
 	g.queue.Dispose()
 }
@@ -173,12 +167,16 @@ func (g *GoroutineSingle) Enqueue(taskFunc any, params ...any) {
 // EnqueueWithTask enqueue the parameter task
 // into the queue waiting for executing.
 func (g *GoroutineSingle) EnqueueWithTask(task Task) {
-	if g.executionState != running {
+	g.cond.L.Lock()
+	defer g.cond.L.Unlock()
+
+	if g.isDisposed {
 		return
 	}
+
 	g.queue.Enqueue(task)
 	//Wake up the waiting goroutine
-	g.cond.Broadcast()
+	g.cond.Signal()
 }
 
 // Schedule execute the task once at the specified time
@@ -198,23 +196,30 @@ func (g *GoroutineSingle) executeNextBatch() bool {
 	if ok {
 		g.executor.ExecuteTasks(tasks)
 	}
+
 	return ok
 }
 
 func (g *GoroutineSingle) dequeueAll() ([]Task, bool) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if !g.readyToDequeue() {
+	g.cond.L.Lock()
+	defer g.cond.L.Unlock()
+
+	g.waitingForTask()
+
+	if g.isDisposed {
 		return nil, false
 	}
+
 	return g.queue.DequeueAll()
 }
 
-func (g *GoroutineSingle) readyToDequeue() bool {
+func (g *GoroutineSingle) waitingForTask() {
 	//若貯列中已沒有任務要執行時，將 Goroutine 進入等侯訊號的狀態
-	tmp := g.executionState == running
-	for g.queue.Count() == 0 && tmp {
+	for g.queue.Count() == 0 {
+		if g.isDisposed {
+			return
+		}
+
 		g.cond.Wait()
 	}
-	return tmp
 }

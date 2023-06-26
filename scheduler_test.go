@@ -10,8 +10,6 @@ import (
 func TestScheduler(t *testing.T) {
 	gs := NewGoroutineSingle()
 	gm := NewGoroutineMulti()
-	gs.Start()
-	gm.Start()
 
 	type fields struct {
 		gs Fiber
@@ -68,31 +66,4 @@ func schedulerTest(t *testing.T, fiber Fiber) {
 
 	wg.Wait()
 	s.Dispose()
-}
-
-func TestGoroutineSingle(t *testing.T) {
-	gs := NewGoroutineSingle()
-
-	gs.Start()
-
-	type fields struct {
-		gs Fiber
-	}
-
-	tests := []struct {
-		fields fields
-		name   string
-	}{
-		{fields{gs: gs}, "Test_Scheduler_ScheduleOnInterval"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.fields.gs.ScheduleOnInterval(100, 100, func() { t.Logf("ScheduleOnInterval 100,100") })
-
-			timeout := time.NewTimer(time.Duration(10) * time.Second)
-			select {
-			case <-timeout.C:
-			}
-		})
-	}
 }

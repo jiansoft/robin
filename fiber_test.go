@@ -4,6 +4,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestFiber(t *testing.T) {
@@ -19,16 +20,11 @@ func TestFiber(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gm := NewGoroutineMulti()
 			gs := NewGoroutineSingle()
-
-			gm.Start()
-			gm.Start()
-			gs.Start()
-			gs.Start()
-
 			loop := 100
 			atomic.SwapInt32(&tt.count, 0)
 			atomic.SwapInt32(&tt.intervalCount, 0)
-			wg.Add(loop * loop * 2 * 2)
+			totalCount := loop * loop * 2 * 2
+			wg.Add(totalCount)
 			for ii := 0; ii < loop; ii++ {
 				gm.Schedule(10, func() {
 					for i := 0; i < loop; i++ {
@@ -58,8 +54,8 @@ func TestFiber(t *testing.T) {
 			}
 			wg.Wait()
 
-			if int32(loop*loop*2*2) != atomic.LoadInt32(&tt.count) {
-				t.Fatal("they should be equal")
+			if int32(totalCount) != atomic.LoadInt32(&tt.count) {
+				t.Fatalf("they should be equal %v %v", totalCount, tt.count)
 			}
 
 			wg.Add(loop)
@@ -88,8 +84,8 @@ func TestFiber(t *testing.T) {
 			if int32(loop) != atomic.LoadInt32(&tt.intervalCount) {
 				t.Fatal("they should be equal")
 			}
-			gm.Stop()
-			gs.Stop()
+			/*gm.Stop()
+			gs.Stop()*/
 
 			gm.EnqueueWithTask(newTask(func() {
 				atomic.AddInt32(&tt.count, 1)
@@ -103,13 +99,87 @@ func TestFiber(t *testing.T) {
 
 			}))
 
-			_, got := gs.dequeueAll()
-			//assert.Equal(t, false, got, "GoroutineSingle.dequeueAll() got = %v, want %v", got, false)
-			if false != got {
-				t.Fatalf("GoroutineSingle.dequeueAll() got = %v, want %v", got, false)
-			}
 			gm.Dispose()
 			gs.Dispose()
+			//_, got := gs.dequeueAll()
+			//assert.Equal(t, false, got, "GoroutineSingle.dequeueAll() got = %v, want %v", got, false)
+			//if false != got {
+			//	t.Fatalf("GoroutineSingle.dequeueAll() got = %v, want %v", got, false)
+			//}
+
+		})
+	}
+}
+
+func TestFiberSchedule(t *testing.T) {
+	type fields struct {
+		fiber Fiber
+	}
+
+	tests := []struct {
+		fields fields
+		name   string
+		want   int32
+	}{
+		{fields{NewGoroutineSingle()}, "GoroutineSingle", 7},
+		{fields{NewGoroutineMulti()}, "GoroutineMulti", 7},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			loop := int32(0)
+			tt.fields.fiber.ScheduleOnInterval(400, 400, func() {
+				atomic.AddInt32(&loop, 1)
+			})
+
+			tt.fields.fiber.ScheduleOnInterval(800, 800, func() {
+				t.Logf("%s ScheduleOnInterval 800,800", tt.name)
+			})
+
+			tt.fields.fiber.Schedule(2500, func() {
+				t.Logf("%s Schedule 2500", tt.name)
+			})
+
+			timeout := time.NewTimer(time.Duration(3) * time.Second)
+
+			select {
+			case <-timeout.C:
+			}
+			tt.fields.fiber.Dispose()
+
+			if tt.want != loop {
+				t.Fatalf("%s ScheduleOnInterval error want %v got:%v", tt.name, tt.want, loop)
+			}
+		})
+	}
+}
+
+func TestFiber_GoroutineSingle_executeNextBatch(t *testing.T) {
+	tests := []struct {
+		name  string
+	}{
+		{ "GoroutineSingle"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := new(GoroutineSingle)
+			g.queue = newDefaultQueue()
+			g.scheduler = newScheduler(g)
+			g.executor = newDefaultExecutor()
+			g.cond = sync.NewCond(&g.mu)
+
+			exit := false
+			go func() {
+				for g.executeNextBatch() {
+				}
+				exit = true
+			}()
+
+			g.Dispose()
+			<-time.After(time.Duration(200) * time.Millisecond)
+
+			if !exit {
+				t.Fatalf("%s executeNextBatch is not exit Goroutine", tt.name)
+			}
 		})
 	}
 }

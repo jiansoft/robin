@@ -66,10 +66,6 @@ type Job struct {
     disposed       bool
 }
 
-func init() {
-    fiber.Start()
-}
-
 // newUntilJob Constructors
 func newUntilJob() *UntilJob {
     return new(UntilJob)

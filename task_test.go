@@ -10,7 +10,6 @@ import (
 
 func Test_timerTask_schedule(t *testing.T) {
 	g := NewGoroutineMulti()
-	g.Start()
 	tests := []struct {
 		timerTask *timerTask
 		name      string
@@ -33,7 +32,6 @@ func Test_timerTask_schedule(t *testing.T) {
 func Test_timerTask(t *testing.T) {
 	var runCount int32
 	g := NewGoroutineMulti()
-	g.Start()
 	tests := []struct {
 		fields *timerTask
 		name   string
