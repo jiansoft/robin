@@ -101,3 +101,32 @@ func Test_timerTask(t *testing.T) {
 		})
 	}
 }
+
+func Test_T(t *testing.T) {
+
+	tests := []struct {
+		name string
+		task Task
+	}{
+		{task: newTask(exampleFunc1, "QQQQ"), name: "Test_timerTask_schedule"},
+		{task: newTask(exampleFunc2), name: "Test_timerTask_schedule"},
+//		{task: newTask(exampleFunc2, "AAAA"), name: "Test_timerTask_schedule"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.task.execute()
+			//tt.timerTask.schedule()
+			//<-time.After(time.Duration(6) * time.Second)
+			//tt.timerTask.Dispose()
+			//<-time.After(time.Duration(10) * time.Second)
+
+		})
+	}
+}
+
+func exampleFunc1(args ...string) {
+	fmt.Printf("exampleFunc1 %v", args)
+}
+func exampleFunc2() {
+	fmt.Printf("exampleFunc2 ")
+}

@@ -27,8 +27,8 @@ func newDefaultQueue() *defaultQueue {
 // Dispose dispose defaultQueue
 func (d *defaultQueue) Dispose() {
 	d.Lock()
-	d.paddingTasks = d.paddingTasks[:0]
-	d.toDoTasks = d.paddingTasks[:0]
+	d.paddingTasks = nil
+	d.toDoTasks = nil
 	d.Unlock()
 }
 
@@ -45,12 +45,15 @@ func (d *defaultQueue) DequeueAll() ([]Task, bool) {
 	defer d.Unlock()
 	d.toDoTasks, d.paddingTasks = d.paddingTasks, d.toDoTasks
 	d.paddingTasks = d.paddingTasks[:0]
+
 	return d.toDoTasks, len(d.toDoTasks) > 0
 }
 
 // Count return padding tasks length
 func (d *defaultQueue) Count() int {
 	d.Lock()
-	defer d.Unlock()
-	return len(d.paddingTasks)
+	count := len(d.paddingTasks)
+	d.Unlock()
+
+	return count
 }
