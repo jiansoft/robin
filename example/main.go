@@ -81,8 +81,6 @@ func main() {
 
 	var runCronFiber = robin.NewGoroutineSingle()
 	var runCronFiber2 = robin.NewGoroutineSingle()
-	runCronFiber.Start()
-	runCronFiber2.Start()
 
 	runCronFiber.Schedule(0, func() {
 		log.Printf("just test\n")

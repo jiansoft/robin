@@ -21,9 +21,34 @@ func Test_timerTask_schedule(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.timerTask.schedule()
-			<-time.After(time.Duration(6) * time.Second)
+			<-time.After(time.Duration(3) * time.Second)
 			tt.timerTask.Dispose()
-			<-time.After(time.Duration(10) * time.Second)
+			t1 := newTimerTask(g.scheduler.(*scheduler), newTask(func() {
+				fmt.Printf("go... %v\n", time.Now())
+			}), 1000, 1000)
+			t1.Dispose()
+			<-time.After(time.Duration(1) * time.Second)
+
+		})
+	}
+}
+
+func Test_timerTask_schedule_runFirst(t *testing.T) {
+	g := NewGoroutineMulti()
+	tests := []struct {
+		timerTask *timerTask
+		name      string
+	}{
+		{newTimerTask(g.scheduler.(*scheduler), newTask(func() {
+			fmt.Printf("go... %v\n", time.Now())
+		}), 100000, 10000), "Test_timerTask_schedule"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.timerTask.schedule()
+			<-time.After(time.Duration(1) * time.Second)
+			tt.timerTask.Dispose()
+			<-time.After(time.Duration(1) * time.Second)
 
 		})
 	}
@@ -110,7 +135,7 @@ func Test_T(t *testing.T) {
 	}{
 		{task: newTask(exampleFunc1, "QQQQ"), name: "Test_timerTask_schedule"},
 		{task: newTask(exampleFunc2), name: "Test_timerTask_schedule"},
-//		{task: newTask(exampleFunc2, "AAAA"), name: "Test_timerTask_schedule"},
+		//		{task: newTask(exampleFunc2, "AAAA"), name: "Test_timerTask_schedule"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

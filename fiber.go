@@ -6,7 +6,7 @@ import (
 
 // Fiber define some function
 type Fiber interface {
-	//Deprecated: This method is no longer used.
+	// Deprecated: This method is no longer used.
 	Start()
 	// Deprecated: This method is no longer used.
 	Stop()
