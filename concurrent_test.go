@@ -1,10 +1,13 @@
 package robin
 
 import (
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func equal(t *testing.T, got, want any) {
@@ -24,7 +27,16 @@ func TestConcurrent(t *testing.T) {
 		fields []any
 		args   []args
 	}{
-		{"Test_Concurrent", []any{NewConcurrentQueue(), NewConcurrentStack(), NewConcurrentBag()}, []args{{item: "a"}, {item: "b"}, {item: "c"}, {item: "d"}, {item: "e"}}},
+		{"Test_Concurrent", []any{
+			NewConcurrentQueue(),
+			NewConcurrentStack(),
+			NewConcurrentBag()},
+			[]args{
+				{item: "a"},
+				{item: "b"},
+				{item: "c"},
+				{item: "d"},
+				{item: "e"}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -54,7 +66,17 @@ func TestConcurrent(t *testing.T) {
 							equal(t, tt.args[i].item, v.(string))
 						}
 					}
+
+					for i := 0; i < 200; i++ {
+						c.Enqueue(fmt.Sprintf("item%d", i))
+					}
+
 					c.Clear()
+					// 移除大量元素，导致容器缩小
+					for i := 0; i < 210; i++ {
+						c.TryPeek()
+						c.TryDequeue()
+					}
 					equal(t, 0, c.Len())
 
 					break
@@ -84,7 +106,18 @@ func TestConcurrent(t *testing.T) {
 						}
 					}
 
+					for i := 0; i < 200; i++ {
+						c.Push(fmt.Sprintf("item%d", i))
+					}
+
 					c.Clear()
+					// 移除大量元素，导致容器缩小
+					for i := 0; i < 210; i++ {
+						c.TryPeek()
+						c.TryPop()
+					}
+
+
 					equal(t, 0, c.Len())
 					break
 				case *ConcurrentBag:
@@ -94,7 +127,7 @@ func TestConcurrent(t *testing.T) {
 					}
 
 					total := c.ToArray()
-					equal(t, len(tt.args), len(total))
+					assert.Equal(t, len(tt.args), len(total), "Expected len is eq")
 
 					for i := 0; i < len(total); i++ {
 						if v, ok := c.TryTake(); !ok {
@@ -102,11 +135,22 @@ func TestConcurrent(t *testing.T) {
 						} else {
 							//t.Logf("unordered collection v:%s remain:%v", v.(string) , c.Len())
 							equal(t, tt.args[i].item, v.(string))
+							assert.Equal(t, tt.args[i].item, v.(string), "Expected items are eq")
 						}
 					}
 
+
+					for i := 0; i < 200; i++ {
+						c.Add(fmt.Sprintf("item%d", i))
+					}
+
+					// 移除大量元素，导致容器缩小
+					for i := 0; i < 210; i++ {
+						c.TryTake()
+					}
+
 					c.Clear()
-					equal(t, 0, c.Len())
+					assert.Equal(t, 0,c.Len(), "Expected len is eq")
 					break
 				}
 			}
