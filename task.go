@@ -2,6 +2,7 @@ package robin
 
 import (
 	"reflect"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -38,7 +39,8 @@ type timerTask struct {
 	task         Task
 	firstInMs    int64
 	intervalInMs int64
-	disposed     int32
+	sync.Mutex
+	disposed int32
 }
 
 func newTimerTask(scheduler IScheduler, task Task, firstInMs int64, intervalInMs int64) *timerTask {
@@ -53,9 +55,11 @@ func (tk *timerTask) Dispose() {
 		return
 	}
 
-	tk.scheduler.Remove(tk)
 	close(tk.exitC)
+	tk.scheduler.Remove(tk)
+	tk.Lock()
 	tk.scheduler = nil
+	tk.Unlock()
 }
 
 // schedule starts the execution of the timerTask.
@@ -124,5 +128,8 @@ func (tk *timerTask) executeOnFiber() {
 	if atomic.LoadInt32(&tk.disposed) == 1 {
 		return
 	}
+
+	tk.Lock()
 	tk.scheduler.EnqueueWithTask(tk.task)
+	tk.Unlock()
 }

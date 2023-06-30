@@ -119,16 +119,17 @@ func TestFiberSchedule(t *testing.T) {
 	tests := []struct {
 		fields fields
 		name   string
+		loop   int32
 		want   int32
 	}{
-		{fields{NewGoroutineSingle()}, "GoroutineSingle", 7},
-		{fields{NewGoroutineMulti()}, "GoroutineMulti", 7},
+		{fields{NewGoroutineSingle()}, "GoroutineSingle", 0, 7},
+		{fields{NewGoroutineMulti()}, "GoroutineMulti", 0, 7},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			loop := int32(0)
+			atomic.SwapInt32(&tt.loop, 0)
 			tt.fields.fiber.ScheduleOnInterval(400, 400, func() {
-				atomic.AddInt32(&loop, 1)
+				atomic.AddInt32(&tt.loop, 1)
 			})
 
 			tt.fields.fiber.ScheduleOnInterval(800, 800, func() {
@@ -139,13 +140,9 @@ func TestFiberSchedule(t *testing.T) {
 				t.Logf("%s Schedule 2500", tt.name)
 			})
 
-			timeout := time.NewTimer(time.Duration(3) * time.Second)
-
-			select {
-			case <-timeout.C:
-			}
+			<-time.After(time.Duration(3) * time.Second)
 			tt.fields.fiber.Dispose()
-
+			loop := atomic.LoadInt32(&tt.loop)
 			if tt.want != loop {
 				t.Fatalf("%s ScheduleOnInterval error want %v got:%v", tt.name, tt.want, loop)
 			}
@@ -155,9 +152,10 @@ func TestFiberSchedule(t *testing.T) {
 
 func TestFiber_GoroutineSingle_executeNextBatch(t *testing.T) {
 	tests := []struct {
-		name  string
+		name string
+		exit int32
 	}{
-		{ "GoroutineSingle"},
+		{"GoroutineSingle", 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -167,17 +165,16 @@ func TestFiber_GoroutineSingle_executeNextBatch(t *testing.T) {
 			g.executor = newDefaultExecutor()
 			g.cond = sync.NewCond(&g.mu)
 
-			exit := false
 			go func() {
 				for g.executeNextBatch() {
 				}
-				exit = true
+				atomic.SwapInt32(&tt.exit, 1)
 			}()
 
 			g.Dispose()
 			<-time.After(time.Duration(200) * time.Millisecond)
 
-			if !exit {
+			if atomic.LoadInt32(&tt.exit) != 1 {
 				t.Fatalf("%s executeNextBatch is not exit Goroutine", tt.name)
 			}
 		})
