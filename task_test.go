@@ -127,14 +127,14 @@ func Test_timerTask(t *testing.T) {
 	}
 }
 
-func Test_T(t *testing.T) {
+func Test_Task_execute(t *testing.T) {
 
 	tests := []struct {
 		name string
 		task Task
 	}{
-		{task: newTask(exampleFunc1, "QQQQ"), name: "Test_timerTask_schedule"},
-		{task: newTask(exampleFunc2), name: "Test_timerTask_schedule"},
+		{task: newTask(exampleFunc1, "QQQQ","aaa"), name: "Test_newTask_exampleFunc1"},
+		{task: newTask(exampleFunc2), name: "Test_newTask_exampleFunc2"},
 		//		{task: newTask(exampleFunc2, "AAAA"), name: "Test_timerTask_schedule"},
 	}
 	for _, tt := range tests {

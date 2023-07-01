@@ -89,7 +89,7 @@ func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 
 	g.flushPending = true
 
-	g.executor.ExecuteTaskWithGoroutine(flushTask)
+	g.executor.executeTaskWithGoroutine(flushTask)
 }
 
 // Schedule execute the task once at the specified time
@@ -115,7 +115,7 @@ func (g *GoroutineMulti) flush() {
 			return
 		}
 
-		g.executor.ExecuteTasksWithGoroutine(toDoTasks)
+		g.executor.executeTasksWithGoroutine(toDoTasks)
 
 		if g.queue.Count() == 0 {
 			g.flushPending = false
@@ -194,7 +194,7 @@ func (g *GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64,
 func (g *GoroutineSingle) executeNextBatch() bool {
 	tasks, ok := g.dequeueAll()
 	if ok {
-		g.executor.ExecuteTasks(tasks)
+		g.executor.executeTasks(tasks)
 	}
 
 	return ok

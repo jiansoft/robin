@@ -24,12 +24,12 @@ func Test_defaultExecutor_ExecuteTasks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			wg.Add(1)
-			tt.d.ExecuteTasks(tt.args.tasks)
+			tt.d.executeTasks(tt.args.tasks)
 			wg.Add(1)
-			tt.d.ExecuteTasksWithGoroutine(tt.args.tasks)
+			tt.d.executeTasksWithGoroutine(tt.args.tasks)
 			wg.Add(1)
 			for _, value := range tt.args.tasks {
-				tt.d.ExecuteTaskWithGoroutine(value)
+				tt.d.executeTaskWithGoroutine(value)
 			}
 			wg.Wait()
 		})

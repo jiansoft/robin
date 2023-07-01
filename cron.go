@@ -251,9 +251,9 @@ func (j *Job) Between(f time.Time, t time.Time) *Job {
     }
 
     now := time.Now()
-    year, month, day := now.Year(), now.Month(), now.Day()
-    j.fromTime = time.Date(year, month, day, f.Hour(), f.Minute(), f.Second(), f.Nanosecond(), time.Local)
-    j.toTime = time.Date(year, month, day, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.Local)
+    y, m, d := now.Year(), now.Month(), now.Day()
+    j.fromTime = time.Date(y, m, d, f.Hour(), f.Minute(), f.Second(), f.Nanosecond(), time.Local)
+    j.toTime = time.Date(y, m, d, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.Local)
 
     return j
 }
@@ -325,11 +325,11 @@ func (j *Job) run() {
         if (!j.toTime.IsZero() && j.toTime.UnixNano() >= time.Now().UnixNano()) || (j.fromTime.IsZero() || j.toTime.IsZero()) {
             if j.afterCalculate {
                 s := time.Now()
-                fiber.executor.ExecuteTask(j.task)
+                fiber.executor.executeTask(j.task)
                 d := time.Now().Sub(s)
                 j.nextTime = j.nextTime.Add(d)
             } else {
-                fiber.executor.ExecuteTaskWithGoroutine(j.task)
+                fiber.executor.executeTaskWithGoroutine(j.task)
             }
 
             j.maximumTimes += -1
