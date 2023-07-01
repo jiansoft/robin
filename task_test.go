@@ -68,7 +68,7 @@ func Test_timerTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fields.schedule()
-			for true {
+			for {
 				if atomic.LoadInt32(&runCount) >= 10 {
 					tt.fields.Dispose()
 					break

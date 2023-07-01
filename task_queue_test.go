@@ -2,6 +2,8 @@ package robin
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultQueue(t *testing.T) {
@@ -26,17 +28,23 @@ func TestDefaultQueue(t *testing.T) {
 			for _, ttt := range tt.args {
 				d.enqueue(ttt.task)
 			}
+
 			if len(tt.args) != d.count() {
 				t.Fatal("they should be equal")
 			}
+
 			if got, ok := d.dequeueAll(); ok {
 				if tt.want != len(got) {
 					t.Fatal("they should be equal")
 				}
 			}
-			if 0 != d.count() {
-				t.Fatal("they should be equal")
+
+			assert.Equal(t, 0, d.count(), "they should be equal")
+
+			for _, ttt := range tt.args {
+				d.enqueue(ttt.task)
 			}
+
 			d.dispose()
 		})
 	}
