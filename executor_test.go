@@ -8,14 +8,14 @@ import (
 func Test_defaultExecutor_ExecuteTasks(t *testing.T) {
 	var wg sync.WaitGroup
 	type args struct {
-		tasks []Task
+		tasks []task
 	}
 	tests := []struct {
 		name string
 		d    defaultExecutor
 		args args
 	}{
-		{"TestExecuteTasks", defaultExecutor{}, args{tasks: []Task{newTask(func(s string) {
+		{"TestExecuteTasks", defaultExecutor{}, args{tasks: []task{newTask(func(s string) {
 			//t.Logf("s:%v", s)
 			wg.Done()
 		}, "ExecuteTasks")}}},

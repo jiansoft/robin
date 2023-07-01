@@ -20,7 +20,7 @@ func main() {
 	robin.Every(10).Minutes().Do(runCron, "every 10 Minutes")
 	robin.Every(10).Minutes().AfterExecuteTask().Do(runCronAndSleep, "every 10 Minutes and AfterExecuteTask(didn't work)", 4*60*1000)
 	robin.Every(600).Seconds().AfterExecuteTask().Do(runCronAndSleep, "every 600 Seconds and sleep 4 Minutes", 4*60*1000)
-	robin.Delay(4000).Times(4).Do(runCron, "Delay 4000 ms Times 4")
+	robin.Delay(4000).Times(4).Do(runCron, "Delay 4000 ms and execute a total of 4 times  each interval 4000 ms")
 	robin.Delay(21).Seconds().Do(func() {
 		p1 := player{NickName: "Player 1"}
 		p2 := player{NickName: "Player 2"}

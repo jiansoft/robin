@@ -51,7 +51,7 @@ type Job struct {
     toTime       time.Time
     fromTime     time.Time
     taskDisposer Disposable
-    task         Task
+    task         task
     duration     time.Duration
     interval     int64
     maximumTimes int64

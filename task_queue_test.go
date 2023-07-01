@@ -6,7 +6,7 @@ import (
 
 func TestDefaultQueue(t *testing.T) {
 	type args struct {
-		task Task
+		task task
 	}
 	params := []args{
 		{newTask(func(s string) { t.Logf("s:%v", s) }, "enqueue 1")},

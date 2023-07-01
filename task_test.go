@@ -128,10 +128,9 @@ func Test_timerTask(t *testing.T) {
 }
 
 func Test_Task_execute(t *testing.T) {
-
 	tests := []struct {
 		name string
-		task Task
+		task task
 	}{
 		{task: newTask(exampleFunc1, "QQQQ","aaa"), name: "Test_newTask_exampleFunc1"},
 		{task: newTask(exampleFunc2), name: "Test_newTask_exampleFunc2"},

@@ -27,7 +27,7 @@ func (c *Channel) Publish(msg ...any) {
 			if s, ok := v.(*Subscriber); ok {
 				s.locker.Lock()
 				s.receiver.params(msg...)
-				fiber.EnqueueWithTask(s.receiver)
+				fiber.enqueueTask(s.receiver)
 				s.locker.Unlock()
 			}
 			return true
@@ -61,7 +61,7 @@ func (c *Channel) Unsubscribe(subscriber any) {
 // Subscriber is a struct for register to a channel
 type Subscriber struct {
 	channel  *Channel
-	receiver Task
+	receiver task
 	locker   sync.Mutex
 }
 

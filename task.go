@@ -7,28 +7,28 @@ import (
 	"time"
 )
 
-// Task a struct
-type Task struct {
+// task a struct
+type task struct {
 	funcCache   reflect.Value
 	paramsCache []reflect.Value
 }
 
-// newTask returns a Task instance.
-func newTask(f any, p ...any) Task {
-	task := Task{funcCache: reflect.ValueOf(f)}
-	task.params(p...)
-	return task
+// newTask returns a task instance.
+func newTask(f any, p ...any) task {
+	t := task{funcCache: reflect.ValueOf(f)}
+	t.params(p...)
+
+	return t
 }
 
-func (t *Task) params(p ...any) {
-	var paramLen = len(p)
-	t.paramsCache = make([]reflect.Value, paramLen)
+func (t *task) params(p ...any) {
+	t.paramsCache = make([]reflect.Value,  len(p))
 	for k, param := range p {
 		t.paramsCache[k] = reflect.ValueOf(param)
 	}
 }
 
-func (t *Task) execute() {
+func (t *task) execute() {
 	_ = t.funcCache.Call(t.paramsCache)
 	//func(f reflect.Value, in []reflect.Value) { _ = f.Call(in) }(t.funcCache, t.paramsCache)
 }
@@ -36,14 +36,14 @@ func (t *Task) execute() {
 type timerTask struct {
 	scheduler    IScheduler
 	exitC        chan bool
-	task         Task
+	task         task
 	firstInMs    int64
 	intervalInMs int64
 	sync.Mutex
 	disposed int32
 }
 
-func newTimerTask(scheduler IScheduler, task Task, firstInMs int64, intervalInMs int64) *timerTask {
+func newTimerTask(scheduler IScheduler, task task, firstInMs int64, intervalInMs int64) *timerTask {
 	var t = &timerTask{scheduler: scheduler, task: task, firstInMs: firstInMs, intervalInMs: intervalInMs, exitC: make(chan bool)}
 	return t
 }
@@ -71,6 +71,7 @@ func (tk *timerTask) schedule() {
 		return
 	}
 
+	//This goroutine is for the time.NewTimer in runFirst function
 	go tk.runFirst()
 }
 
@@ -103,6 +104,7 @@ func (tk *timerTask) next() {
 		return
 	}
 
+	//This goroutine is for the time.NewTicker in runInterval function
 	go tk.runInterval()
 }
 
@@ -130,6 +132,6 @@ func (tk *timerTask) executeOnFiber() {
 	}
 
 	tk.Lock()
-	tk.scheduler.EnqueueWithTask(tk.task)
+	tk.scheduler.enqueueTask(tk.task)
 	tk.Unlock()
 }

@@ -32,7 +32,7 @@ func TestFiber(t *testing.T) {
 							atomic.AddInt32(&tt.count, 1)
 							wg.Done()
 						}, i)
-						gm.EnqueueWithTask(newTask(func() {
+						gm.enqueueTask(newTask(func() {
 							atomic.AddInt32(&tt.count, 1)
 							wg.Done()
 						}))
@@ -45,7 +45,7 @@ func TestFiber(t *testing.T) {
 							wg.Done()
 						}, i)
 
-						gs.EnqueueWithTask(newTask(func() {
+						gs.enqueueTask(newTask(func() {
 							atomic.AddInt32(&tt.count, 1)
 							wg.Done()
 						}))
@@ -87,14 +87,14 @@ func TestFiber(t *testing.T) {
 			/*gm.Stop()
 			gs.Stop()*/
 
-			gm.EnqueueWithTask(newTask(func() {
+			gm.enqueueTask(newTask(func() {
 				atomic.AddInt32(&tt.count, 1)
 
 			}))
 
 			gm.flush()
 
-			gs.EnqueueWithTask(newTask(func() {
+			gs.enqueueTask(newTask(func() {
 				atomic.AddInt32(&tt.count, 1)
 
 			}))
@@ -113,7 +113,7 @@ func TestFiber(t *testing.T) {
 
 func TestFiberSchedule(t *testing.T) {
 	type fields struct {
-		fiber Fiber
+		fiber IFiber
 	}
 
 	tests := []struct {

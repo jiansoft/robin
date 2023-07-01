@@ -12,8 +12,8 @@ func TestScheduler(t *testing.T) {
 	gm := NewGoroutineMulti()
 
 	type fields struct {
-		gs Fiber
-		gm Fiber
+		gs IFiber
+		gm IFiber
 	}
 
 	tests := []struct {
@@ -34,7 +34,7 @@ func TestScheduler(t *testing.T) {
 	}
 }
 
-func schedulerTest(t *testing.T, fiber Fiber) {
+func schedulerTest(t *testing.T, fiber IFiber) {
 	wg := sync.WaitGroup{}
 	wg.Add(4)
 	loop := int32(0)
@@ -47,7 +47,7 @@ func schedulerTest(t *testing.T, fiber Fiber) {
 	}
 
 	s.Enqueue(taskFun, "Enqueue", t)
-	s.EnqueueWithTask(newTask(taskFun, "EnqueueWithTask", t))
+	s.enqueueTask(newTask(taskFun, "enqueueTask", t))
 	s.Schedule(0, taskFun, "Schedule", t)
 	interval := s.ScheduleOnInterval(0, 100, taskFun, "first", t)
 	wg.Wait()

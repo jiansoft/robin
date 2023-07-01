@@ -4,15 +4,15 @@ import (
 	"sync"
 )
 
-// Fiber define some function
-type Fiber interface {
+// IFiber define some function
+type IFiber interface {
 	// Deprecated: This method is no longer used.
 	Start()
 	// Deprecated: This method is no longer used.
 	Stop()
 	Dispose()
 	Enqueue(taskFunc any, params ...any)
-	EnqueueWithTask(task Task)
+	enqueueTask(task task)
 	Schedule(firstInMs int64, taskFunc any, params ...any) (d Disposable)
 	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFunc any, params ...any) (d Disposable)
 }
@@ -67,11 +67,11 @@ func (g *GoroutineMulti) Dispose() {
 
 // Enqueue use the fiber to execute a task
 func (g *GoroutineMulti) Enqueue(taskFunc any, params ...any) {
-	g.EnqueueWithTask(newTask(taskFunc, params...))
+	g.enqueueTask(newTask(taskFunc, params...))
 }
 
 // EnqueueWithTask use the fiber to execute a task
-func (g *GoroutineMulti) EnqueueWithTask(task Task) {
+func (g *GoroutineMulti) enqueueTask(task task) {
 	flushTask := newTask(g.flush)
 
 	g.mu.Lock()
@@ -161,12 +161,12 @@ func (g *GoroutineSingle) Dispose() {
 
 // Enqueue use the fiber to execute a task
 func (g *GoroutineSingle) Enqueue(taskFunc any, params ...any) {
-	g.EnqueueWithTask(newTask(taskFunc, params...))
+	g.enqueueTask(newTask(taskFunc, params...))
 }
 
 // EnqueueWithTask enqueue the parameter task
 // into the queue waiting for executing.
-func (g *GoroutineSingle) EnqueueWithTask(task Task) {
+func (g *GoroutineSingle) enqueueTask(task task) {
 	g.cond.L.Lock()
 	defer g.cond.L.Unlock()
 
@@ -200,7 +200,7 @@ func (g *GoroutineSingle) executeNextBatch() bool {
 	return ok
 }
 
-func (g *GoroutineSingle) dequeueAll() ([]Task, bool) {
+func (g *GoroutineSingle) dequeueAll() ([]task, bool) {
 	g.cond.L.Lock()
 	defer g.cond.L.Unlock()
 

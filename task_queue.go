@@ -6,21 +6,21 @@ import (
 
 type taskQueue interface {
 	count() int
-	dequeueAll() ([]Task, bool)
+	dequeueAll() ([]task, bool)
 	dispose()
-	enqueue(t Task)
+	enqueue(t task)
 }
 
 // defaultQueue struct
 type defaultQueue struct {
-	paddingTasks []Task
-	toDoTasks    []Task
+	paddingTasks []task
+	toDoTasks    []task
 	sync.Mutex
 }
 
 // newDefaultQueue return a new defaultQueue
 func newDefaultQueue() *defaultQueue {
-	q := &defaultQueue{toDoTasks: []Task{}, paddingTasks: []Task{}}
+	q := &defaultQueue{toDoTasks: []task{}, paddingTasks: []task{}}
 	return q
 }
 
@@ -33,14 +33,14 @@ func (d *defaultQueue) dispose() {
 }
 
 // Enqueue put a task into queue
-func (d *defaultQueue) enqueue(task Task) {
+func (d *defaultQueue) enqueue(task task) {
 	d.Lock()
 	d.paddingTasks = append(d.paddingTasks, task)
 	d.Unlock()
 }
 
 // DequeueAll return current tasks
-func (d *defaultQueue) dequeueAll() ([]Task, bool) {
+func (d *defaultQueue) dequeueAll() ([]task, bool) {
 	d.Lock()
 	defer d.Unlock()
 	d.toDoTasks, d.paddingTasks = d.paddingTasks, d.toDoTasks
