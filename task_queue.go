@@ -5,10 +5,10 @@ import (
 )
 
 type taskQueue interface {
-	Count() int
-	DequeueAll() ([]Task, bool)
-	Dispose()
-	Enqueue(t Task)
+	count() int
+	dequeueAll() ([]Task, bool)
+	dispose()
+	enqueue(t Task)
 }
 
 // defaultQueue struct
@@ -25,7 +25,7 @@ func newDefaultQueue() *defaultQueue {
 }
 
 // Dispose dispose defaultQueue
-func (d *defaultQueue) Dispose() {
+func (d *defaultQueue) dispose() {
 	d.Lock()
 	d.paddingTasks = nil
 	d.toDoTasks = nil
@@ -33,14 +33,14 @@ func (d *defaultQueue) Dispose() {
 }
 
 // Enqueue put a task into queue
-func (d *defaultQueue) Enqueue(task Task) {
+func (d *defaultQueue) enqueue(task Task) {
 	d.Lock()
 	d.paddingTasks = append(d.paddingTasks, task)
 	d.Unlock()
 }
 
 // DequeueAll return current tasks
-func (d *defaultQueue) DequeueAll() ([]Task, bool) {
+func (d *defaultQueue) dequeueAll() ([]Task, bool) {
 	d.Lock()
 	defer d.Unlock()
 	d.toDoTasks, d.paddingTasks = d.paddingTasks, d.toDoTasks
@@ -50,7 +50,7 @@ func (d *defaultQueue) DequeueAll() ([]Task, bool) {
 }
 
 // Count return padding tasks length
-func (d *defaultQueue) Count() int {
+func (d *defaultQueue) count() int {
 	d.Lock()
 	count := len(d.paddingTasks)
 	d.Unlock()

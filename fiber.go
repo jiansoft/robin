@@ -62,7 +62,7 @@ func (g *GoroutineMulti) Dispose() {
 
 	g.isDisposed = true
 	g.scheduler.Dispose()
-	g.queue.Dispose()
+	g.queue.dispose()
 }
 
 // Enqueue use the fiber to execute a task
@@ -81,7 +81,7 @@ func (g *GoroutineMulti) EnqueueWithTask(task Task) {
 		return
 	}
 
-	g.queue.Enqueue(task)
+	g.queue.enqueue(task)
 
 	if g.flushPending {
 		return
@@ -109,7 +109,7 @@ func (g *GoroutineMulti) flush() {
 	defer g.mu.Unlock()
 
 	for {
-		toDoTasks, ok := g.queue.DequeueAll()
+		toDoTasks, ok := g.queue.dequeueAll()
 		if !ok {
 			g.flushPending = false
 			return
@@ -117,7 +117,7 @@ func (g *GoroutineMulti) flush() {
 
 		g.executor.executeTasksWithGoroutine(toDoTasks)
 
-		if g.queue.Count() == 0 {
+		if g.queue.count() == 0 {
 			g.flushPending = false
 			return
 		}
@@ -156,7 +156,7 @@ func (g *GoroutineSingle) Dispose() {
 	g.isDisposed = true
 	g.cond.Signal()
 	g.scheduler.Dispose()
-	g.queue.Dispose()
+	g.queue.dispose()
 }
 
 // Enqueue use the fiber to execute a task
@@ -174,7 +174,7 @@ func (g *GoroutineSingle) EnqueueWithTask(task Task) {
 		return
 	}
 
-	g.queue.Enqueue(task)
+	g.queue.enqueue(task)
 	//Wake up the waiting goroutine
 	g.cond.Signal()
 }
@@ -210,12 +210,12 @@ func (g *GoroutineSingle) dequeueAll() ([]Task, bool) {
 		return nil, false
 	}
 
-	return g.queue.DequeueAll()
+	return g.queue.dequeueAll()
 }
 
 func (g *GoroutineSingle) waitingForTask() {
 	//若貯列中已沒有任務要執行時，將 Goroutine 進入等侯訊號的狀態
-	for g.queue.Count() == 0 {
+	for g.queue.count() == 0 {
 		if g.isDisposed {
 			return
 		}

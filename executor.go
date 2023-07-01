@@ -14,22 +14,22 @@ func newDefaultExecutor() defaultExecutor {
 	return defaultExecutor{}
 }
 
-func (d defaultExecutor) executeTasks(tasks []Task) {
+func (de defaultExecutor) executeTasks(tasks []Task) {
 	for _, task := range tasks {
-		d.executeTask(task)
+		task.execute()
 	}
 }
 
-func (d defaultExecutor) executeTask(task Task) {
+func (de defaultExecutor) executeTask(task Task) {
 	task.execute()
 }
 
-func (d defaultExecutor) executeTasksWithGoroutine(tasks []Task) {
+func (de defaultExecutor) executeTasksWithGoroutine(tasks []Task) {
 	for _, task := range tasks {
-		d.executeTaskWithGoroutine(task)
+		de.executeTaskWithGoroutine(task)
 	}
 }
 
-func (d defaultExecutor) executeTaskWithGoroutine(task Task) {
+func (de defaultExecutor) executeTaskWithGoroutine(task Task) {
 	go task.execute()
 }

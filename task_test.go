@@ -142,7 +142,7 @@ func Test_Task_execute(t *testing.T) {
 			tt.task.execute()
 			//tt.timerTask.schedule()
 			//<-time.After(time.Duration(6) * time.Second)
-			//tt.timerTask.Dispose()
+			//tt.timerTask.dispose()
 			//<-time.After(time.Duration(10) * time.Second)
 
 		})

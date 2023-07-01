@@ -9,9 +9,9 @@ func TestDefaultQueue(t *testing.T) {
 		task Task
 	}
 	params := []args{
-		{newTask(func(s string) { t.Logf("s:%v", s) }, "Enqueue 1")},
-		{newTask(func(s string) { t.Logf("s:%v", s) }, "Enqueue 2")},
-		{newTask(func(s string) { t.Logf("s:%v", s) }, "Enqueue 3")}}
+		{newTask(func(s string) { t.Logf("s:%v", s) }, "enqueue 1")},
+		{newTask(func(s string) { t.Logf("s:%v", s) }, "enqueue 2")},
+		{newTask(func(s string) { t.Logf("s:%v", s) }, "enqueue 3")}}
 
 	tests := []struct {
 		name string
@@ -24,20 +24,20 @@ func TestDefaultQueue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			d := newDefaultQueue()
 			for _, ttt := range tt.args {
-				d.Enqueue(ttt.task)
+				d.enqueue(ttt.task)
 			}
-			if len(tt.args) != d.Count() {
+			if len(tt.args) != d.count() {
 				t.Fatal("they should be equal")
 			}
-			if got, ok := d.DequeueAll(); ok {
+			if got, ok := d.dequeueAll(); ok {
 				if tt.want != len(got) {
 					t.Fatal("they should be equal")
 				}
 			}
-			if 0 != d.Count() {
+			if 0 != d.count() {
 				t.Fatal("they should be equal")
 			}
-			d.Dispose()
+			d.dispose()
 		})
 	}
 }
