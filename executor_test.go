@@ -2,8 +2,23 @@ package robin
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 )
+
+func TestDefaultExecutorExecuteTask(t *testing.T) {
+	var called int32
+	de := newDefaultExecutor()
+	tk := newTask(func() {
+		atomic.AddInt32(&called, 1)
+	})
+
+	de.executeTask(tk)
+
+	if got := atomic.LoadInt32(&called); got != 1 {
+		t.Errorf("executeTask() called %d times, want 1", got)
+	}
+}
 
 func Test_defaultExecutor_ExecuteTasks(t *testing.T) {
 	var wg sync.WaitGroup

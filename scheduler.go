@@ -1,14 +1,17 @@
 package robin
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 // Disposable an interface just has only one function
 type Disposable interface {
 	Dispose()
 }
 
-// IScheduler an interface that for GoroutineMulti and GoroutineSingle use.
-type IScheduler interface {
+// Scheduler is an interface for scheduling and managing tasks on fibers.
+type Scheduler interface {
 	Schedule(firstInMs int64, taskFunc any, params ...any) (d Disposable)
 	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFunc any, params ...any) (d Disposable)
 	Enqueue(taskFunc any, params ...any)
@@ -18,17 +21,13 @@ type IScheduler interface {
 }
 
 type scheduler struct {
-	fiber IFiber
-	sync.Map
-	running   bool
-	isDispose bool
+	fiber    Fiber
+	tasks    sync.Map
+	disposed atomic.Bool
 }
 
-func newScheduler(fiber IFiber) *scheduler {
-	s := new(scheduler)
-	s.fiber = fiber
-	s.running = true
-	return s
+func newScheduler(fiber Fiber) *scheduler {
+	return &scheduler{fiber: fiber}
 }
 
 // Schedule delay n millisecond then execute once the function
@@ -40,15 +39,15 @@ func (s *scheduler) Schedule(firstInMs int64, taskFunc any, params ...any) (d Di
 // then interval N millisecond repeat execute the function.
 func (s *scheduler) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFunc any, params ...any) (d Disposable) {
 	pending := newTimerTask(s, newTask(taskFunc, params...), firstInMs, regularInMs)
-	if s.isDispose {
+	if s.disposed.Load() {
 		return pending
 	}
-	s.Store(pending, pending)
+	s.tasks.Store(pending, pending)
 	pending.schedule()
 	return pending
 }
 
-// Enqueue Implement SchedulerRegistry.Enqueue
+// Enqueue enqueues a task for execution.
 func (s *scheduler) Enqueue(taskFunc any, params ...any) {
 	s.enqueueTask(newTask(taskFunc, params...))
 }
@@ -57,15 +56,16 @@ func (s *scheduler) enqueueTask(task task) {
 	s.fiber.enqueueTask(task)
 }
 
-// Remove Implement SchedulerRegistry.Forget
+// Remove removes a disposable from the scheduler.
 func (s *scheduler) Remove(d Disposable) {
-	s.Delete(d)
+	s.tasks.Delete(d)
 }
 
+// Dispose disposes of all scheduled tasks.
 func (s *scheduler) Dispose() {
-	s.isDispose = true
-	s.Range(func(k, v any) bool {
-		s.Delete(k)
+	s.disposed.Store(true)
+	s.tasks.Range(func(k, v any) bool {
+		s.tasks.Delete(k)
 		v.(Disposable).Dispose()
 		return true
 	})

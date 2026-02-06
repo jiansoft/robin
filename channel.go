@@ -1,71 +1,73 @@
 package robin
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
-// Channel is a struct that has a member variable to store subscribers
+// Channel is a pub/sub messaging channel with thread-safe subscriber management.
 type Channel struct {
-	sync.Map
+	subscribers sync.Map
+	count       atomic.Int64
 }
 
-// NewChannel new a Channel instance
+// NewChannel creates a new Channel instance.
 func NewChannel() *Channel {
-	c := &Channel{}
-	return c
+	return &Channel{}
 }
 
-// Subscribe to register a receiver to receive the Channel's message
+// Subscribe registers a receiver to receive the Channel's messages.
 func (c *Channel) Subscribe(taskFunc any, params ...any) *Subscriber {
 	s := &Subscriber{channel: c, receiver: newTask(taskFunc, params...)}
-	c.Store(s, s)
+	c.subscribers.Store(s, s)
+	c.count.Add(1)
 	return s
 }
 
-// Publish a message to all subscribers
+// Publish sends a message to all subscribers.
 func (c *Channel) Publish(msg ...any) {
-	fiber.Enqueue(func(c *Channel, message []any) {
-		c.Range(func(k, v any) bool {
+	fiber.Enqueue(func(ch *Channel, message []any) {
+		ch.subscribers.Range(func(k, v any) bool {
 			if s, ok := v.(*Subscriber); ok {
-				s.locker.Lock()
-				s.receiver.params(msg...)
+				s.mu.Lock()
+				s.receiver.params(message...)
 				fiber.enqueueTask(s.receiver)
-				s.locker.Unlock()
+				s.mu.Unlock()
 			}
 			return true
 		})
 	}, c, msg)
 }
 
-// Clear empty the subscribers
+// Clear removes all subscribers from the channel.
 func (c *Channel) Clear() {
-	c.Range(func(k, v any) bool {
-		c.Delete(k)
+	c.subscribers.Range(func(k, v any) bool {
+		c.subscribers.Delete(k)
+		c.count.Add(-1)
 		return true
 	})
 }
 
-// Count returns a number that how many subscribers in the Channel.
+// Count returns the number of subscribers in the Channel.
 func (c *Channel) Count() int {
-	count := 0
-	c.Range(func(k, v any) bool {
-		count++
-		return true
-	})
-	return count
+	return int(c.count.Load())
 }
 
-// Unsubscribe remove the subscriber from the channel
+// Unsubscribe removes a subscriber from the channel.
 func (c *Channel) Unsubscribe(subscriber any) {
-	c.Delete(subscriber)
+	if _, loaded := c.subscribers.LoadAndDelete(subscriber); loaded {
+		c.count.Add(-1)
+	}
 }
 
-// Subscriber is a struct for register to a channel
+// Subscriber is a struct for registering to a channel.
 type Subscriber struct {
 	channel  *Channel
 	receiver task
-	locker   sync.Mutex
+	mu       sync.Mutex
 }
 
-// Unsubscribe remove the subscriber from the channel
-func (c *Subscriber) Unsubscribe() {
-	c.channel.Unsubscribe(c)
+// Unsubscribe removes the subscriber from the channel.
+func (s *Subscriber) Unsubscribe() {
+	s.channel.Unsubscribe(s)
 }

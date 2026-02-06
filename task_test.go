@@ -14,21 +14,20 @@ func Test_timerTask_schedule(t *testing.T) {
 		timerTask *timerTask
 		name      string
 	}{
-		{newTimerTask(g.scheduler.(*scheduler), newTask(func() {
+		{newTimerTask(g.scheduler, newTask(func() {
 			fmt.Printf("go... %v\n", time.Now())
 		}), -100, 1000), "Test_timerTask_schedule"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.timerTask.schedule()
-			<-time.After(time.Duration(3) * time.Second)
+			<-time.After(3 * time.Second)
 			tt.timerTask.Dispose()
-			t1 := newTimerTask(g.scheduler.(*scheduler), newTask(func() {
+			t1 := newTimerTask(g.scheduler, newTask(func() {
 				fmt.Printf("go... %v\n", time.Now())
 			}), 1000, 1000)
 			t1.Dispose()
-			<-time.After(time.Duration(1) * time.Second)
-
+			<-time.After(1 * time.Second)
 		})
 	}
 }
@@ -39,17 +38,16 @@ func Test_timerTask_schedule_runFirst(t *testing.T) {
 		timerTask *timerTask
 		name      string
 	}{
-		{newTimerTask(g.scheduler.(*scheduler), newTask(func() {
+		{newTimerTask(g.scheduler, newTask(func() {
 			fmt.Printf("go... %v\n", time.Now())
 		}), 100000, 10000), "Test_timerTask_schedule"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.timerTask.schedule()
-			<-time.After(time.Duration(1) * time.Second)
+			<-time.After(1 * time.Second)
 			tt.timerTask.Dispose()
-			<-time.After(time.Duration(1) * time.Second)
-
+			<-time.After(1 * time.Second)
 		})
 	}
 }
@@ -61,7 +59,7 @@ func Test_timerTask(t *testing.T) {
 		fields *timerTask
 		name   string
 	}{
-		{newTimerTask(g.scheduler.(*scheduler), newTask(func() {
+		{newTimerTask(g.scheduler, newTask(func() {
 			atomic.AddInt32(&runCount, 1)
 		}), 0, 5), "Test_timerTask_schedule_1"},
 	}
@@ -89,7 +87,7 @@ func Test_timerTask(t *testing.T) {
 			})
 			wg.Wait()
 			t1.Dispose()
-			<-time.After(time.Duration(30) * time.Millisecond)
+			<-time.After(30 * time.Millisecond)
 			if int32(2) != atomic.LoadInt32(&runT1Count) {
 				t.Fatal("they should be equal")
 			}
@@ -99,7 +97,7 @@ func Test_timerTask(t *testing.T) {
 				atomic.AddInt32(&runT2Count, 1)
 			})
 			t2.Dispose()
-			<-time.After(time.Duration(30) * time.Millisecond)
+			<-time.After(30 * time.Millisecond)
 			if int32(0) != atomic.LoadInt32(&runT2Count) {
 				t.Fatal("they should be equal")
 			}
@@ -109,7 +107,7 @@ func Test_timerTask(t *testing.T) {
 				atomic.AddInt32(&runT3Count, 1)
 			})
 			t3.Dispose()
-			<-time.After(time.Duration(30) * time.Millisecond)
+			<-time.After(30 * time.Millisecond)
 			if int32(0) != atomic.LoadInt32(&runT3Count) {
 				t.Fatal("they should be equal")
 			}
@@ -119,7 +117,7 @@ func Test_timerTask(t *testing.T) {
 				atomic.AddInt32(&runT4Count, 1)
 			})
 			t4.Dispose()
-			<-time.After(time.Duration(30) * time.Millisecond)
+			<-time.After(30 * time.Millisecond)
 			if int32(1) != atomic.LoadInt32(&runT4Count) {
 				t.Fatal("they should be equal")
 			}
@@ -132,18 +130,12 @@ func Test_Task_execute(t *testing.T) {
 		name string
 		task task
 	}{
-		{task: newTask(exampleFunc1, "QQQQ","aaa"), name: "Test_newTask_exampleFunc1"},
+		{task: newTask(exampleFunc1, "QQQQ", "aaa"), name: "Test_newTask_exampleFunc1"},
 		{task: newTask(exampleFunc2), name: "Test_newTask_exampleFunc2"},
-		//		{task: newTask(exampleFunc2, "AAAA"), name: "Test_timerTask_schedule"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.task.execute()
-			//tt.timerTask.schedule()
-			//<-time.After(time.Duration(6) * time.Second)
-			//tt.timerTask.dispose()
-			//<-time.After(time.Duration(10) * time.Second)
-
 		})
 	}
 }

@@ -8,119 +8,199 @@
 [![build-test](https://github.com/jiansoft/robin/actions/workflows/go.yml/badge.svg)](https://github.com/jiansoft/robin/actions/workflows/go.yml)
 [![codecov](https://codecov.io/gh/jiansoft/robin/branch/master/graph/badge.svg)](https://codecov.io/gh/jiansoft/robin)
 [![](https://img.shields.io/github/tag/jiansoft/robin.svg)](https://github.com/jiansoft/robin/releases)
-### Features
 
-Fiber  
--------
-* GoroutineSingle - a fiber backed by a dedicated goroutine. Every job is executed by a goroutine.
-* GoroutineMulti - a fiber backed by more goroutine. Each job is executed by a new goroutine.
+A Go library providing **Fiber (actor model)**, **Cron (job scheduling)**, **Channel (pub/sub)**, and **Concurrent
+Collections** — all in a single package with zero external dependencies.
 
-Channels
--------
-* Channels callback is executed for each message received.
+Requires **Go 1.22+**.
 
-Cron
--------
-Golang job scheduling for humans. It is inspired by [schedule](<https://github.com/dbader/schedule>).
+## Features
 
-Usage
-================
+### Fiber
 
-### Quick Start
+Task execution fibers backed by goroutines.
 
-1.Install
-~~~
-  go get github.com/jiansoft/robin
-~~~
+- **GoroutineSingle** — dedicated goroutine, tasks execute serially in order.
+- **GoroutineMulti** — each task batch spawns new goroutines for concurrent execution.
 
-2.Use examples
-~~~ golang
-import (
-    "log"
-    "time"
-    
-    "github.com/jiansoft/robin"
-)
+```go
+gm := robin.NewGoroutineMulti()
+defer gm.Dispose()
 
-func main() {
-    //The method is going to execute only once after 2000 ms.
-    //指定的方法將在2000亳秒之後執行一次
-    robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
-    
-    minute := 11
-    second := 50
-    
-    //It will execute once at 14:11:50 every Friday.
-    //每星期五在14:11:50時將執行一次
-    robin.EveryFriday().At(14, minute, second).Do(runCron, "Friday")
+gm.Enqueue(func (msg string) {
+fmt.Println(msg)
+}, "hello")
 
-    //It will execute once every N days at 14:11:50
-    //每 N 天在14:11:50時將執行一次
-    robin.Every(1).Days().At(14, minute, second).Do(runCron, "Days")
-    
-    //It will execute once at 11 minutes and 50 seconds past every N hours.
-    //每過 N 小時在11分50秒時將執行一次
-    robin.Every(1).Hours().At(0, minute, second).Do(runCron, "Every 1 Hours")
+gm.Schedule(1000, func () {
+fmt.Println("executed after 1 second")
+})
 
-    //It will execute once at the 50th second of every N minutes.
-    //每過 N 分鐘在第50秒時將執行一次
-    robin.Every(1).Minutes().At(0, 0, second).Do(runCron, "Every 1 Minutes")
+d := gm.ScheduleOnInterval(0, 500, func () {
+fmt.Println("every 500ms")
+})
+// d.Dispose() to cancel
+```
 
-    //Every N seconds is going to execute once
-    //每過 N 秒將執行一次
-    robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
-    
-    p1 := player{Nickname: "Player 1"}
-    p2 := player{Nickname: "Player 2"}
-    p3 := player{Nickname: "Player 3"}
-    p4 := player{Nickname: "Player 4"}
-    
-    //Create a channel
-    //建立一個頻道
-    channel := robin.NewChannel()
-    
-    //Four player subscribe the channel
-    //建立四個玩家訂閱頻道
-    channel.Subscribe(p1.eventFinalBossResurge)
-    channel.Subscribe(p2.eventFinalBossResurge)
-    p3Subscribe := channel.Subscribe(p3.eventFinalBossResurge)
-    p4Subscribe := channel.Subscribe(p4.eventFinalBossResurge)
-    
-    //Publish a message to the channel and then the four subscribers of the channel will 
-    //receives the message each that "The boss resurge first." .
-    //發布一則訊息到頻道中然後頻道中的四個訂閱者將會各自收到一則"魔王首次復活"的訊息
-    channel.Publish("The boss resurge first.")
-    
-    //Unsubscribe p3 and p4 from the channel.
-    //取消第3位和第4位玩家在該頻道的訂閱
-    channel.Unsubscribe(p3Subscribe)
-    p4Subscribe.Unsubscribe()
-    
-    //This time just p1 and p2 receives the message that "The boss resurge second.".
-    //這次發布的訊息將只有第1位與第2位玩家各自收到一則"魔王第二次復活"的訊息
-    channel.Publish("The boss resurge second.")
-    
-    //Unsubscribe all subscribers from the channel
-    //取消頻道內的所有訂閱者 
-    channel.Clear()
-    
-    //The channel is empty so no one can receive the message
-    //頻道內沒有任何訂閱者，所以沒有玩家會收到"魔王第三次復活"的訊息
-    channel.Publish("The boss resurge third.")
-}
+#### Type-safe Enqueue
 
-func runCron(s string) {
-    log.Printf("I am %s CronTest %v\n", s, time.Now())
-}
+Generic helpers with compile-time type checking (no reflection for zero-arg):
 
-type player struct {
-	Nickname string
-}
-func (p player) eventFinalBossResurge(someBossInfo string) {
-	log.Printf("%s receive a message : %s", p.Nickname, someBossInfo)
-}
-~~~
-[More example](<https://github.com/jiansoft/robin/blob/master/example/main.go>)
+```go
+robin.Enqueue0(fiber, func () { fmt.Println("no args") })
+robin.Enqueue1(fiber, func (s string) { fmt.Println(s) }, "hello")
+robin.Enqueue2(fiber, func (a int, b string) { fmt.Println(a, b) }, 42, "world")
+robin.Enqueue3(fiber, func (a int, b string, c bool) { fmt.Println(a, b, c) }, 1, "x", true)
+```
+
+### Cron
+
+Human-friendly job scheduling with a fluent builder API. Inspired by [schedule](https://github.com/dbader/schedule).
+
+```go
+// Execute immediately
+robin.RightNow().Do(task, args...)
+
+// Execute once after delay
+robin.Delay(2000).Do(task, args...)
+
+// Execute up to N times at interval
+robin.Delay(1000).Times(3).Do(task, args...)
+
+// Every N milliseconds / seconds / minutes / hours / days
+robin.Every(500).Milliseconds().Do(task, args...)
+robin.Every(10).Seconds().Do(task, args...)
+robin.Every(5).Minutes().Do(task, args...)
+robin.Every(2).Hours().At(0, 30, 0).Do(task, args...) // at mm:ss
+robin.Every(1).Days().At(8, 0, 0).Do(task, args...)     // at HH:mm:ss
+robin.Everyday().At(23, 59, 59).Do(task, args...)
+
+// Weekly scheduling
+robin.EveryMonday().At(9, 0, 0).Do(task, args...)
+robin.EveryFriday().At(14, 30, 0).Do(task, args...)
+// Also: EveryTuesday, EveryWednesday, EveryThursday, EverySaturday, EverySunday
+
+// Execute once at a specific time
+robin.Until(time.Date(2025, 12, 31, 23, 59, 59, 0, time.Local)).Do(task, args...)
+
+// Limit execution count
+robin.Every(1).Seconds().Times(10).Do(task, args...)
+
+// Restrict to a time range (HH:mm:ss)
+from := time.Date(0, 0, 0, 9, 0, 0, 0, time.Local)
+to := time.Date(0, 0, 0, 17, 0, 0, 0, time.Local)
+robin.Every(30).Seconds().Between(from, to).Do(task, args...)
+
+// Calculate next time after task completes (for long-running tasks)
+robin.Every(10).Seconds().AfterExecuteTask().Do(task, args...)
+
+// Cancel a scheduled job
+job := robin.Every(1).Seconds().Do(task, args...)
+job.Dispose()
+```
+
+#### CronScheduler (Instance-based)
+
+For independent lifecycle management — each scheduler owns its own fiber:
+
+```go
+cs := robin.NewCronScheduler()
+cs.Every(5).Seconds().Do(task, args...)
+cs.Delay(1000).Do(task, args...)
+cs.RightNow().Do(task, args...)
+cs.Everyday().At(12, 0, 0).Do(task, args...)
+cs.EveryMonday().At(9, 0, 0).Do(task, args...)
+cs.Until(targetTime).Do(task, args...)
+cs.Dispose() // stops all jobs on this scheduler
+```
+
+### Channel (Pub/Sub)
+
+Thread-safe publish-subscribe messaging:
+
+```go
+channel := robin.NewChannel()
+
+// Subscribe — returns a *Subscriber
+sub1 := channel.Subscribe(func (msg string) {
+fmt.Println("received:", msg)
+})
+sub2 := channel.Subscribe(handler)
+
+// Publish to all subscribers
+channel.Publish("hello")
+
+// Unsubscribe
+sub1.Unsubscribe() // via subscriber
+channel.Unsubscribe(sub2)   // via channel
+
+// Get subscriber count
+fmt.Println(channel.Count())
+
+// Remove all subscribers
+channel.Clear()
+```
+
+### Concurrent Collections
+
+Generic, thread-safe collections with zero external dependencies.
+
+#### ConcurrentQueue[T] (FIFO)
+
+Ring buffer implementation with automatic grow/shrink:
+
+```go
+q := robin.NewConcurrentQueue[string]()
+q.Enqueue("a")
+q.Enqueue("b")
+
+val, ok := q.TryPeek() // peek without removing
+val, ok = q.TryDequeue() // remove and return
+fmt.Println(q.Len()) // element count (lock-free)
+arr := q.ToArray() // copy to slice
+q.Clear()          // remove all
+```
+
+#### ConcurrentStack[T] (LIFO)
+
+```go
+s := robin.NewConcurrentStack[int]()
+s.Push(10)
+s.Push(20)
+
+val, ok := s.TryPeek() // peek at top
+val, ok = s.TryPop() // pop from top
+arr := s.ToArray() // LIFO order (top first)
+s.Clear()
+```
+
+#### ConcurrentBag[T] (Unordered)
+
+```go
+b := robin.NewConcurrentBag[float64]()
+b.Add(3.14)
+
+val, ok := b.TryTake() // remove an element
+arr := b.ToArray()
+b.Clear()
+```
+
+### Utility
+
+```go
+robin.Abs(-42) // 42 (int)
+robin.Abs(-3.14) // 3.14 (float64)
+```
+
+## Installation
+
+```
+go get github.com/jiansoft/robin
+```
+
+## Full Example
+
+See [example/main.go](https://github.com/jiansoft/robin/blob/master/example/main.go) for a comprehensive, self-verifying
+example that demonstrates and validates every public API.
 
 ## License
 
@@ -129,6 +209,5 @@ Copyright (c) 2017
 Released under the MIT license:
 
 - [www.opensource.org/licenses/MIT](http://www.opensource.org/licenses/MIT)
-
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fjiansoft%2Frobin.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fjiansoft%2Frobin?ref=badge_large)

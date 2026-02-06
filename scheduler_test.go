@@ -12,8 +12,8 @@ func TestScheduler(t *testing.T) {
 	gm := NewGoroutineMulti()
 
 	type fields struct {
-		gs IFiber
-		gm IFiber
+		gs Fiber
+		gm Fiber
 	}
 
 	tests := []struct {
@@ -26,7 +26,7 @@ func TestScheduler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			schedulerTest(t, tt.fields.gs)
 			schedulerTest(t, tt.fields.gm)
-			timeout := time.NewTimer(time.Duration(10) * time.Millisecond)
+			timeout := time.NewTimer(10 * time.Millisecond)
 			select {
 			case <-timeout.C:
 			}
@@ -34,15 +34,56 @@ func TestScheduler(t *testing.T) {
 	}
 }
 
-func schedulerTest(t *testing.T, fiber IFiber) {
+func TestSchedulerRemove(t *testing.T) {
+	gm := NewGoroutineMulti()
+	defer func() {
+		gm.Dispose()
+		time.Sleep(50 * time.Millisecond)
+	}()
+
+	s := newScheduler(gm)
+	d := s.ScheduleOnInterval(0, 100, func() {})
+
+	// Verify the timerTask is stored in the sync.Map
+	found := false
+	s.tasks.Range(func(k, v any) bool {
+		if k == d {
+			found = true
+			return false
+		}
+		return true
+	})
+	if !found {
+		t.Fatal("timerTask should be stored in scheduler before Remove")
+	}
+
+	// Remove it
+	s.Remove(d)
+
+	// Verify it's gone
+	found = false
+	s.tasks.Range(func(k, v any) bool {
+		if k == d {
+			found = true
+			return false
+		}
+		return true
+	})
+	if found {
+		t.Fatal("timerTask should be removed from scheduler after Remove")
+	}
+
+	d.Dispose()
+}
+
+func schedulerTest(t *testing.T, f Fiber) {
 	wg := sync.WaitGroup{}
 	wg.Add(4)
 	loop := int32(0)
-	s := newScheduler(fiber)
+	s := newScheduler(f)
 
 	taskFun := func(s string, t *testing.T) {
 		atomic.AddInt32(&loop, 1)
-		//t.Logf("loop:%v msg:%v",atomic.LoadInt32(&loop), s)
 		wg.Done()
 	}
 
@@ -59,10 +100,9 @@ func schedulerTest(t *testing.T, fiber IFiber) {
 
 	wg.Add(4)
 	s.ScheduleOnInterval(0, 10, taskFun, "second", t)
-	s.isDispose = true
+	s.disposed.Store(true)
 	d := s.ScheduleOnInterval(0, 10, taskFun, "remove", t)
 	d.Dispose()
-	//s.Remove(d)
 
 	wg.Wait()
 	s.Dispose()

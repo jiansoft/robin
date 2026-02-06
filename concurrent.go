@@ -1,250 +1,287 @@
 package robin
 
 import (
-	"container/list"
 	"sync"
 )
 
+const defaultRingCapacity = 16
+
 // ConcurrentQueue represents a thread-safe first in-first out (FIFO) collection.
-type ConcurrentQueue struct {
-	container *list.List
-	sync.Mutex
+// Uses a ring buffer with power-of-two capacity and bitwise masking for O(1) index calculations.
+// Automatically grows when full and shrinks when usage drops below 25% capacity.
+type ConcurrentQueue[T any] struct {
+	buf   []T
+	head  int
+	tail  int
+	count int
+	mask  int // len(buf) - 1, bitwise AND replaces modulo
+	mu    sync.Mutex
 }
 
-// NewConcurrentQueue new a ConcurrentQueue instance
-func NewConcurrentQueue() *ConcurrentQueue {
-	c := new(ConcurrentQueue)
-	c.container = list.New()
-
-	return c
+// NewConcurrentQueue creates a new ConcurrentQueue instance.
+func NewConcurrentQueue[T any]() *ConcurrentQueue[T] {
+	return &ConcurrentQueue[T]{
+		buf:  make([]T, defaultRingCapacity),
+		mask: defaultRingCapacity - 1,
+	}
 }
 
-// Enqueue adds an object to the end of the ConcurrentQueue.
-func (c *ConcurrentQueue) Enqueue(element any) {
-	c.Lock()
-	defer c.Unlock()
+// Enqueue adds an element to the end of the ConcurrentQueue.
+func (q *ConcurrentQueue[T]) Enqueue(element T) {
+	q.mu.Lock()
+	if q.count == q.mask+1 {
+		q.grow()
+	}
+	q.buf[q.tail] = element
+	q.tail = (q.tail + 1) & q.mask
+	q.count++
+	q.mu.Unlock()
+}
 
-	c.container.PushFront(element)
+func (q *ConcurrentQueue[T]) grow() {
+	newCap := (q.mask + 1) << 1
+	newBuf := make([]T, newCap)
+	if q.head < q.tail {
+		copy(newBuf, q.buf[q.head:q.tail])
+	} else {
+		copied := copy(newBuf, q.buf[q.head:])
+		copy(newBuf[copied:], q.buf[:q.tail])
+	}
+	q.head = 0
+	q.tail = q.count
+	q.buf = newBuf
+	q.mask = newCap - 1
+}
+
+func (q *ConcurrentQueue[T]) shrink() {
+	curCap := q.mask + 1
+	if curCap <= defaultRingCapacity || q.count >= curCap>>2 {
+		return
+	}
+	newCap := curCap >> 1
+	if newCap < defaultRingCapacity {
+		newCap = defaultRingCapacity
+	}
+	newBuf := make([]T, newCap)
+	for i := range q.count {
+		newBuf[i] = q.buf[(q.head+i)&q.mask]
+	}
+	q.head = 0
+	q.tail = q.count
+	q.buf = newBuf
+	q.mask = newCap - 1
 }
 
 // TryPeek tries to return an element from the beginning of the ConcurrentQueue without removing it.
-func (c *ConcurrentQueue) TryPeek() (any, bool) {
-	c.Lock()
-	defer c.Unlock()
+func (q *ConcurrentQueue[T]) TryPeek() (T, bool) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	element := c.container.Back()
-	if element == nil {
-		return nil, false
+	if q.count == 0 {
+		var zero T
+		return zero, false
 	}
 
-	return element.Value, true
+	return q.buf[q.head], true
 }
 
 // TryDequeue tries to remove and return the element at the beginning of the ConcurrentQueue.
-func (c *ConcurrentQueue) TryDequeue() (any, bool) {
-	c.Lock()
-	defer c.Unlock()
+func (q *ConcurrentQueue[T]) TryDequeue() (T, bool) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	element := c.container.Back()
-	if element == nil {
-		return nil, false
+	if q.count == 0 {
+		var zero T
+		return zero, false
 	}
 
-	c.container.Remove(element)
-
-	return element.Value, true
+	element := q.buf[q.head]
+	var zero T
+	q.buf[q.head] = zero // clear reference for GC
+	q.head = (q.head + 1) & q.mask
+	q.count--
+	q.shrink()
+	return element, true
 }
 
 // Len gets the number of elements contained in the ConcurrentQueue.
-func (c *ConcurrentQueue) Len() int {
-	c.Lock()
-	defer c.Unlock()
+func (q *ConcurrentQueue[T]) Len() int {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	return c.container.Len()
+	return q.count
 }
 
-// Clear remove all element in the ConcurrentQueue.
-func (c *ConcurrentQueue) Clear() {
-	c.Lock()
-	defer c.Unlock()
+// Clear removes all elements from the ConcurrentQueue.
+// The buffer is retained for reuse; memory is reclaimed gradually via shrink on TryDequeue.
+func (q *ConcurrentQueue[T]) Clear() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	var next *list.Element
-	for e := c.container.Front(); e != nil; e = next {
-		next = e.Next()
-		c.container.Remove(e)
+	var zero T
+	for i := range q.buf {
+		q.buf[i] = zero
 	}
+	q.head = 0
+	q.tail = 0
+	q.count = 0
 }
 
-// ToArray copies the elements stored in the ConcurrentQueue to a new array.
-func (c *ConcurrentQueue) ToArray() (elements []any) {
-	c.Lock()
-	defer c.Unlock()
+// ToArray copies the elements stored in the ConcurrentQueue to a new slice.
+func (q *ConcurrentQueue[T]) ToArray() []T {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	count := c.container.Len()
-	elements = make([]any, count)
-	for temp, i := c.container.Back(), 0; temp != nil; temp, i = temp.Prev(), i+1 {
-		elements[i] = temp.Value
+	result := make([]T, q.count)
+	for i := range q.count {
+		result[i] = q.buf[(q.head+i)&q.mask]
 	}
 
-	return
+	return result
 }
 
 // ConcurrentStack represents a thread-safe last in-first out (LIFO) collection.
-type ConcurrentStack struct {
-	container *list.List
-	sync.Mutex
+type ConcurrentStack[T any] struct {
+	container []T
+	mu        sync.Mutex
 }
 
-// NewConcurrentStack new a ConcurrentStack instance
-func NewConcurrentStack() *ConcurrentStack {
-	c := new(ConcurrentStack)
-	c.container = list.New()
-
-	return c
+// NewConcurrentStack creates a new ConcurrentStack instance.
+func NewConcurrentStack[T any]() *ConcurrentStack[T] {
+	return &ConcurrentStack[T]{}
 }
 
-// Push adds an object to the end of the ConcurrentStack.
-func (c *ConcurrentStack) Push(element any) {
-	c.Lock()
-	defer c.Unlock()
-
-	c.container.PushFront(element)
+// Push adds an element to the top of the ConcurrentStack.
+func (s *ConcurrentStack[T]) Push(element T) {
+	s.mu.Lock()
+	s.container = append(s.container, element)
+	s.mu.Unlock()
 }
 
-// TryPeek tries to return an element from the beginning of the ConcurrentStack without removing it.
-func (c *ConcurrentStack) TryPeek() (any, bool) {
-	c.Lock()
-	defer c.Unlock()
+// TryPeek tries to return the element at the top of the ConcurrentStack without removing it.
+func (s *ConcurrentStack[T]) TryPeek() (T, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	element := c.container.Front()
-	if element == nil {
-		return nil, false
+	if len(s.container) == 0 {
+		var zero T
+		return zero, false
 	}
 
-	return element.Value, true
+	return s.container[len(s.container)-1], true
 }
 
-// TryPop attempts to pop and return the object at the top of the
-func (c *ConcurrentStack) TryPop() (any, bool) {
-	c.Lock()
-	defer c.Unlock()
+// TryPop attempts to pop and return the element at the top of the ConcurrentStack.
+func (s *ConcurrentStack[T]) TryPop() (T, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	element := c.container.Front()
-	if element == nil {
-		return nil, false
+	n := len(s.container)
+	if n == 0 {
+		var zero T
+		return zero, false
 	}
 
-	c.container.Remove(element)
-
-	return element.Value, true
+	element := s.container[n-1]
+	var zero T
+	s.container[n-1] = zero // clear reference for GC
+	s.container = s.container[:n-1]
+	return element, true
 }
 
 // Len gets the number of elements contained in the ConcurrentStack.
-func (c *ConcurrentStack) Len() int {
-	c.Lock()
-	defer c.Unlock()
+func (s *ConcurrentStack[T]) Len() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	return c.container.Len()
+	return len(s.container)
 }
 
-// Clear remove all element in the ConcurrentStack.
-func (c *ConcurrentStack) Clear() {
-	c.Lock()
-	defer c.Unlock()
+// Clear removes all elements from the ConcurrentStack.
+func (s *ConcurrentStack[T]) Clear() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	var next *list.Element
-	for e := c.container.Front(); e != nil; e = next {
-		next = e.Next()
-		c.container.Remove(e)
+	clear(s.container)
+	s.container = s.container[:0]
+}
+
+// ToArray copies the elements stored in the ConcurrentStack to a new slice.
+// Elements are returned in LIFO order (top of stack first).
+func (s *ConcurrentStack[T]) ToArray() []T {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	n := len(s.container)
+	result := make([]T, n)
+	for i, j := n-1, 0; i >= 0; i, j = i-1, j+1 {
+		result[j] = s.container[i]
+	}
+
+	return result
+}
+
+// ConcurrentBag represents a thread-safe, unordered collection of elements.
+type ConcurrentBag[T any] struct {
+	container []T
+	mu        sync.Mutex
+}
+
+// NewConcurrentBag creates a new ConcurrentBag instance.
+func NewConcurrentBag[T any]() *ConcurrentBag[T] {
+	return &ConcurrentBag[T]{
+		container: make([]T, 0, 64),
 	}
 }
 
-// ToArray copies the elements stored in the ConcurrentStack to a new array.
-func (c *ConcurrentStack) ToArray() (elements []any) {
-	c.Lock()
-	defer c.Unlock()
-
-	count := c.container.Len()
-	elements = make([]any, count)
-	for temp, i := c.container.Front(), 0; temp != nil; temp, i = temp.Next(), i+1 {
-		elements[i] = temp.Value
-	}
-
-	return
-}
-
-// ConcurrentBag represents a thread-safe, unordered collection of element.
-type ConcurrentBag struct {
-	container []any
-	sync.Mutex
-}
-
-// NewConcurrentBag new a ConcurrentStack instance
-func NewConcurrentBag() *ConcurrentBag {
-	c := new(ConcurrentBag)
-	c.container = make([]any, 0, 64)
-	return c
-}
-
-// Add an element to the ConcurrentBag.
-func (cb *ConcurrentBag) Add(element any) {
-	cb.Lock()
-	s, c := len(cb.container), cap(cb.container)
-	if s >= c {
-		nc := make([]any, s, c*2)
-		copy(nc, cb.container)
-		cb.container = nc
-	}
-
+// Add adds an element to the ConcurrentBag.
+func (cb *ConcurrentBag[T]) Add(element T) {
+	cb.mu.Lock()
 	cb.container = append(cb.container, element)
-	cb.Unlock()
+	cb.mu.Unlock()
 }
 
 // Len gets the number of elements contained in the ConcurrentBag.
-func (cb *ConcurrentBag) Len() int {
-	cb.Lock()
-	defer cb.Unlock()
+func (cb *ConcurrentBag[T]) Len() int {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
 
 	return len(cb.container)
 }
 
-// TryTake attempts to remove and return an element from the ConcurrentBag
-func (cb *ConcurrentBag) TryTake() (any, bool) {
-	cb.Lock()
-	defer cb.Unlock()
+// TryTake attempts to remove and return an element from the ConcurrentBag.
+func (cb *ConcurrentBag[T]) TryTake() (T, bool) {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
 
-	var s int
-	if s = len(cb.container); s == 0 {
-		return nil, false
+	if len(cb.container) == 0 {
+		var zero T
+		return zero, false
 	}
 
-	c := cap(cb.container)
-	if s < (c/2) && c > 64 {
-		nc := make([]any, s, c/2)
-		copy(nc, cb.container)
-		cb.container = nc
-	}
-
-	takeOne := cb.container[0]
+	element := cb.container[0]
+	var zero T
+	cb.container[0] = zero // clear reference for GC
 	cb.container = cb.container[1:]
-	return takeOne, true
+	return element, true
 }
 
-// ToArray copies the ConcurrentBag elements to a new array.
-func (cb *ConcurrentBag) ToArray() (elements []any) {
-	cb.Lock()
-	defer cb.Unlock()
+// ToArray copies the ConcurrentBag elements to a new slice.
+func (cb *ConcurrentBag[T]) ToArray() []T {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
 
-	nc := make([]any, len(cb.container))
-	copy(nc, cb.container)
+	result := make([]T, len(cb.container))
+	copy(result, cb.container)
 
-	return nc
+	return result
 }
 
-// Clear remove all element in the ConcurrentBag.
-func (cb *ConcurrentBag) Clear() {
-	cb.Lock()
-	defer cb.Unlock()
+// Clear removes all elements from the ConcurrentBag.
+func (cb *ConcurrentBag[T]) Clear() {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
 
+	clear(cb.container)
 	cb.container = cb.container[:0]
 }

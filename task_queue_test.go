@@ -2,8 +2,6 @@ package robin
 
 import (
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDefaultQueue(t *testing.T) {
@@ -39,7 +37,9 @@ func TestDefaultQueue(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, 0, d.count(), "they should be equal")
+			if d.count() != 0 {
+				t.Fatalf("expected 0, got %d", d.count())
+			}
 
 			for _, ttt := range tt.args {
 				d.enqueue(ttt.task)

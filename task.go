@@ -9,12 +9,16 @@ import (
 
 // task a struct
 type task struct {
+	fn          func() // fast path: no reflection needed
 	funcCache   reflect.Value
 	paramsCache []reflect.Value
 }
 
 // newTask returns a task instance.
 func newTask(f any, p ...any) task {
+	if fn, ok := f.(func()); ok && len(p) == 0 {
+		return task{fn: fn}
+	}
 	t := task{funcCache: reflect.ValueOf(f)}
 	t.params(p...)
 
@@ -22,71 +26,76 @@ func newTask(f any, p ...any) task {
 }
 
 func (t *task) params(p ...any) {
-	t.paramsCache = make([]reflect.Value,  len(p))
+	t.paramsCache = make([]reflect.Value, len(p))
 	for k, param := range p {
 		t.paramsCache[k] = reflect.ValueOf(param)
 	}
 }
 
 func (t *task) execute() {
+	if t.fn != nil {
+		t.fn()
+		return
+	}
 	_ = t.funcCache.Call(t.paramsCache)
-	//func(f reflect.Value, in []reflect.Value) { _ = f.Call(in) }(t.funcCache, t.paramsCache)
 }
 
 type timerTask struct {
-	scheduler    IScheduler
-	exitC        chan bool
+	scheduler    Scheduler
 	task         task
+	done         chan struct{}
 	firstInMs    int64
 	intervalInMs int64
-	sync.Mutex
-	disposed int32
+	mu           sync.Mutex
+	disposed     atomic.Bool
 }
 
-func newTimerTask(scheduler IScheduler, task task, firstInMs int64, intervalInMs int64) *timerTask {
-	var t = &timerTask{scheduler: scheduler, task: task, firstInMs: firstInMs, intervalInMs: intervalInMs, exitC: make(chan bool)}
-	return t
+func newTimerTask(scheduler Scheduler, task task, firstInMs int64, intervalInMs int64) *timerTask {
+	return &timerTask{
+		scheduler:    scheduler,
+		task:         task,
+		firstInMs:    firstInMs,
+		intervalInMs: intervalInMs,
+		done:         make(chan struct{}),
+	}
 }
 
 // Dispose releases the resources associated with the timerTask.
-// It closes the exitC channel, removes the task from the scheduler, and sets the scheduler to nil.
 func (tk *timerTask) Dispose() {
-	if !atomic.CompareAndSwapInt32(&tk.disposed, 0, 1) {
+	if !tk.disposed.CompareAndSwap(false, true) {
 		return
 	}
 
-	close(tk.exitC)
-	tk.scheduler.Remove(tk)
-	tk.Lock()
+	close(tk.done)
+	tk.mu.Lock()
+	s := tk.scheduler
 	tk.scheduler = nil
-	tk.Unlock()
+	tk.mu.Unlock()
+	if s != nil {
+		s.Remove(tk)
+	}
 }
 
 // schedule starts the execution of the timerTask.
 // If firstInMs is 0 or less, it executes the task immediately,
 // otherwise it schedules the task to run after firstInMs milliseconds.
 func (tk *timerTask) schedule() {
-	if atomic.LoadInt64(&tk.firstInMs) <= 0 {
+	if tk.firstInMs <= 0 {
 		tk.next()
 		return
 	}
 
-	//This goroutine is for the time.NewTimer in runFirst function
 	go tk.runFirst()
 }
 
 // runFirst runs the task for the first time after the delay specified in firstInMs.
-// If the task is signaled to stop through exitC before the delay expires, it stops the timer and returns.
 func (tk *timerTask) runFirst() {
-	firstDuration := time.Duration(tk.firstInMs) * time.Millisecond
-	firstRun := time.NewTimer(firstDuration)
+	timer := time.NewTimer(time.Duration(tk.firstInMs) * time.Millisecond)
+	defer timer.Stop()
 	select {
-	case <-firstRun.C:
+	case <-timer.C:
 		tk.next()
-	case <-tk.exitC:
-		if !firstRun.Stop() {
-			<-firstRun.C
-		}
+	case <-tk.done:
 	}
 }
 
@@ -95,43 +104,41 @@ func (tk *timerTask) runFirst() {
 // otherwise it schedules the task to run again after intervalInMs milliseconds.
 func (tk *timerTask) next() {
 	tk.executeOnFiber()
-	if atomic.LoadInt64(&tk.intervalInMs) <= 0 {
+	if tk.intervalInMs <= 0 {
 		tk.Dispose()
 		return
 	}
 
-	if atomic.LoadInt32(&tk.disposed) == 1 {
+	if tk.disposed.Load() {
 		return
 	}
 
-	//This goroutine is for the time.NewTicker in runInterval function
 	go tk.runInterval()
 }
 
 // runInterval runs the task at regular intervals specified by intervalInMs.
-// If the task is signaled to stop through exitC, it stops the timer and returns.
 func (tk *timerTask) runInterval() {
-	intervalDuration := time.Duration(tk.intervalInMs) * time.Millisecond
-	intervalRun := time.NewTicker(intervalDuration)
-	for atomic.LoadInt32(&tk.disposed) == 0 {
+	ticker := time.NewTicker(time.Duration(tk.intervalInMs) * time.Millisecond)
+	defer ticker.Stop()
+	for !tk.disposed.Load() {
 		select {
-		case <-intervalRun.C:
+		case <-ticker.C:
 			tk.executeOnFiber()
-		case <-tk.exitC:
-			intervalRun.Stop()
-			break
+		case <-tk.done:
+			return
 		}
 	}
 }
 
 // executeOnFiber enqueues the task in the scheduler for execution.
-// If the task is disposed, it does nothing.
 func (tk *timerTask) executeOnFiber() {
-	if atomic.LoadInt32(&tk.disposed) == 1 {
+	if tk.disposed.Load() {
 		return
 	}
 
-	tk.Lock()
-	tk.scheduler.enqueueTask(tk.task)
-	tk.Unlock()
+	tk.mu.Lock()
+	if tk.scheduler != nil {
+		tk.scheduler.enqueueTask(tk.task)
+	}
+	tk.mu.Unlock()
 }

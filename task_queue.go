@@ -15,7 +15,7 @@ type taskQueue interface {
 type defaultQueue struct {
 	pending  []task
 	upcoming []task
-	sync.Mutex
+	mu       sync.Mutex
 }
 
 // newDefaultQueue return a new defaultQueue
@@ -25,23 +25,23 @@ func newDefaultQueue() *defaultQueue {
 
 // dispose dispose defaultQueue
 func (dq *defaultQueue) dispose() {
-	dq.Lock()
+	dq.mu.Lock()
 	dq.pending = nil
 	dq.upcoming = nil
-	dq.Unlock()
+	dq.mu.Unlock()
 }
 
 // enqueue put a task into queue
 func (dq *defaultQueue) enqueue(task task) {
-	dq.Lock()
+	dq.mu.Lock()
 	dq.pending = append(dq.pending, task)
-	dq.Unlock()
+	dq.mu.Unlock()
 }
 
 // dequeueAll return current tasks
 func (dq *defaultQueue) dequeueAll() ([]task, bool) {
-	dq.Lock()
-	defer dq.Unlock()
+	dq.mu.Lock()
+	defer dq.mu.Unlock()
 
 	dq.upcoming, dq.pending = dq.pending, dq.upcoming
 	dq.pending = dq.pending[:0]
@@ -49,11 +49,11 @@ func (dq *defaultQueue) dequeueAll() ([]task, bool) {
 	return dq.upcoming, len(dq.upcoming) > 0
 }
 
-// count return padding tasks length
+// count return pending tasks length
 func (dq *defaultQueue) count() int {
-	dq.Lock()
+	dq.mu.Lock()
 	count := len(dq.pending)
-	dq.Unlock()
+	dq.mu.Unlock()
 
 	return count
 }

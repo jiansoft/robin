@@ -4,12 +4,8 @@ import (
 	"sync"
 )
 
-// IFiber define some function
-type IFiber interface {
-	// Deprecated: This method is no longer used.
-	Start()
-	// Deprecated: This method is no longer used.
-	Stop()
+// Fiber defines the interface for task execution fibers.
+type Fiber interface {
 	Dispose()
 	Enqueue(taskFunc any, params ...any)
 	enqueueTask(task task)
@@ -19,7 +15,7 @@ type IFiber interface {
 
 type fiberCommon struct {
 	queue      taskQueue
-	scheduler  IScheduler
+	scheduler  Scheduler
 	executor   executor
 	mu         sync.Mutex
 	isDisposed bool
@@ -47,14 +43,6 @@ func NewGoroutineMulti() *GoroutineMulti {
 	return g
 }
 
-// Deprecated: This method is no longer used.
-func (g *GoroutineMulti) Start() {
-}
-
-// Deprecated: This method is no longer used.
-func (g *GoroutineMulti) Stop() {
-}
-
 // Dispose stop the fiber and release resource
 func (g *GoroutineMulti) Dispose() {
 	g.mu.Lock()
@@ -70,7 +58,7 @@ func (g *GoroutineMulti) Enqueue(taskFunc any, params ...any) {
 	g.enqueueTask(newTask(taskFunc, params...))
 }
 
-// EnqueueWithTask use the fiber to execute a task
+// enqueueTask use the fiber to execute a task
 func (g *GoroutineMulti) enqueueTask(task task) {
 	flushTask := newTask(g.flush)
 
@@ -140,14 +128,6 @@ func NewGoroutineSingle() *GoroutineSingle {
 	return g
 }
 
-// Deprecated: This method is no longer used.
-func (g *GoroutineSingle) Start() {
-}
-
-// Deprecated: This method is no longer used.
-func (g *GoroutineSingle) Stop() {
-}
-
 // Dispose stop the fiber and release resource
 func (g *GoroutineSingle) Dispose() {
 	g.cond.L.Lock()
@@ -164,7 +144,7 @@ func (g *GoroutineSingle) Enqueue(taskFunc any, params ...any) {
 	g.enqueueTask(newTask(taskFunc, params...))
 }
 
-// EnqueueWithTask enqueue the parameter task
+// enqueueTask enqueue the parameter task
 // into the queue waiting for executing.
 func (g *GoroutineSingle) enqueueTask(task task) {
 	g.cond.L.Lock()
@@ -175,7 +155,6 @@ func (g *GoroutineSingle) enqueueTask(task task) {
 	}
 
 	g.queue.enqueue(task)
-	//Wake up the waiting goroutine
 	g.cond.Signal()
 }
 
@@ -214,7 +193,6 @@ func (g *GoroutineSingle) dequeueAll() ([]task, bool) {
 }
 
 func (g *GoroutineSingle) waitingForTask() {
-	//若貯列中已沒有任務要執行時，將 Goroutine 進入等侯訊號的狀態
 	for g.queue.count() == 0 {
 		if g.isDisposed {
 			return

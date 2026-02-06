@@ -1,1 +1,35 @@
-.idea
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Markdown (project-specific)
+*.md
+
+# Go binary output
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test binary
+*.test
+
+# Go coverage
+*.out
+*.prof
+coverage.txt
+coverage.html
+
+# Go build cache / module
+vendor/
+go.work
+go.work.sum
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini

@@ -25,9 +25,10 @@ func TestFiber(t *testing.T) {
 			atomic.SwapInt32(&tt.intervalCount, 0)
 			totalCount := loop * loop * 2 * 2
 			wg.Add(totalCount)
-			for ii := 0; ii < loop; ii++ {
+			for ii := range loop {
+				_ = ii
 				gm.Schedule(10, func() {
-					for i := 0; i < loop; i++ {
+					for i := range loop {
 						gm.Enqueue(func(s int) {
 							atomic.AddInt32(&tt.count, 1)
 							wg.Done()
@@ -39,12 +40,11 @@ func TestFiber(t *testing.T) {
 					}
 				})
 				gs.Schedule(10, func() {
-					for i := 0; i < loop; i++ {
+					for i := range loop {
 						gs.Enqueue(func(s int) {
 							atomic.AddInt32(&tt.count, 1)
 							wg.Done()
 						}, i)
-
 						gs.enqueueTask(newTask(func() {
 							atomic.AddInt32(&tt.count, 1)
 							wg.Done()
@@ -65,7 +65,6 @@ func TestFiber(t *testing.T) {
 			})
 			wg.Wait()
 			gmd.Dispose()
-			//assert.Equal(t, int32(loop), atomic.LoadInt32(&tt.intervalCount), "they should be equal")
 			if int32(loop) != atomic.LoadInt32(&tt.intervalCount) {
 				t.Fatal("they should be equal")
 			}
@@ -80,40 +79,29 @@ func TestFiber(t *testing.T) {
 
 			wg.Wait()
 			gsd.Dispose()
-			//assert.Equal(t, int32(loop), atomic.LoadInt32(&tt.intervalCount), "they should be equal")
 			if int32(loop) != atomic.LoadInt32(&tt.intervalCount) {
 				t.Fatal("they should be equal")
 			}
-			/*gm.Stop()
-			gs.Stop()*/
 
 			gm.enqueueTask(newTask(func() {
 				atomic.AddInt32(&tt.count, 1)
-
 			}))
 
 			gm.flush()
 
 			gs.enqueueTask(newTask(func() {
 				atomic.AddInt32(&tt.count, 1)
-
 			}))
 
 			gm.Dispose()
 			gs.Dispose()
-			//_, got := gs.dequeueAll()
-			//assert.Equal(t, false, got, "GoroutineSingle.dequeueAll() got = %v, want %v", got, false)
-			//if false != got {
-			//	t.Fatalf("GoroutineSingle.dequeueAll() got = %v, want %v", got, false)
-			//}
-
 		})
 	}
 }
 
 func TestFiberSchedule(t *testing.T) {
 	type fields struct {
-		fiber IFiber
+		fiber Fiber
 	}
 
 	tests := []struct {
@@ -140,7 +128,7 @@ func TestFiberSchedule(t *testing.T) {
 				t.Logf("%s Schedule 2500", tt.name)
 			})
 
-			<-time.After(time.Duration(3) * time.Second)
+			<-time.After(3 * time.Second)
 			tt.fields.fiber.Dispose()
 			loop := atomic.LoadInt32(&tt.loop)
 			if tt.want != loop {
@@ -172,7 +160,7 @@ func TestFiber_GoroutineSingle_executeNextBatch(t *testing.T) {
 			}()
 
 			g.Dispose()
-			<-time.After(time.Duration(200) * time.Millisecond)
+			<-time.After(200 * time.Millisecond)
 
 			if atomic.LoadInt32(&tt.exit) != 1 {
 				t.Fatalf("%s executeNextBatch is not exit Goroutine", tt.name)

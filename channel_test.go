@@ -9,11 +9,34 @@ import (
 	"time"
 )
 
-var recvCount int32
+var recvCount atomic.Int32
 
 func recvMsgAction(s string) {
-	atomic.AddInt32(&recvCount, 1)
-	//log.Printf("recvMsgAction %s recvCount:%v", s, atomic.LoadInt32(&recvCount))
+	recvCount.Add(1)
+}
+
+// waitForCount polls until counter reaches target or timeout expires.
+func waitForCount(t *testing.T, counter *atomic.Int32, target int32) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if counter.Load() >= target {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for count to reach %d, got %d", target, counter.Load())
+}
+
+func TestChannelPublishNoSubscribers(t *testing.T) {
+	ch := NewChannel()
+	// Publish with no subscribers should not panic
+	ch.Publish("hello")
+	ch.Publish("world")
+	<-time.After(100 * time.Millisecond)
+	if ch.Count() != 0 {
+		t.Errorf("Channel count = %d, want 0", ch.Count())
+	}
 }
 
 func TestChannel(t *testing.T) {
@@ -22,7 +45,6 @@ func TestChannel(t *testing.T) {
 		want int32
 	}{
 		{name: "TestChannel", want: 6},
-		/*{name: "Test_TestNewChannel_2", want: 3},*/
 	}
 
 	channel := NewChannel()
@@ -30,33 +52,36 @@ func TestChannel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			atomic.SwapInt32(&recvCount, 0)
+			recvCount.Store(0)
 
 			subscriber1 := channel.Subscribe(recvMsgAction)
 			subscriber2 := channel.Subscribe(recvMsgAction)
 
+			// Publish 1: 3 subscribers → cumulative count = 3
 			channel.Publish(fmt.Sprintf("Publish message 1 Channel:%v", channel.Count()))
-			<-time.After(time.Duration(30) * time.Millisecond)
+			waitForCount(t, &recvCount, 3)
 
 			subscriber1.Unsubscribe()
 			channel.Unsubscribe(subscriber2)
 			subscriber1 = nil
 			subscriber2 = nil
 
+			// Publish 2: 1 subscriber → cumulative count = 4
 			channel.Publish(fmt.Sprintf("Publish message 2 Channel:%v", channel.Count()))
-			<-time.After(time.Duration(30) * time.Millisecond)
+			waitForCount(t, &recvCount, 4)
 
 			channel.Subscribe(recvMsgAction)
 
+			// Publish 3: 2 subscribers → cumulative count = 6
 			channel.Publish(fmt.Sprintf("Publish message 3 Channel:%v", channel.Count()))
-			<-time.After(time.Duration(30) * time.Millisecond)
+			waitForCount(t, &recvCount, 6)
 
 			channel.Clear()
+			// Publish 4: 0 subscribers → count stays at 6
 			channel.Publish(fmt.Sprintf("Publish message 4 Channel:%v", channel.Count()))
-			<-time.After(time.Duration(30) * time.Millisecond)
+			<-time.After(50 * time.Millisecond)
 
-			//log.Printf("recvCount %v", atomic.LoadInt32(&recvCount))
-			if got := atomic.LoadInt32(&recvCount); got != tt.want {
+			if got := recvCount.Load(); got != tt.want {
 				t.Errorf("recvCount = %v, want %v", got, tt.want)
 			}
 
@@ -96,35 +121,30 @@ func TestChannelConcurrency(t *testing.T) {
 		name string
 	}{
 		{name: "Test_TestConcurrency_1"},
-		//{name: "Test_TestConcurrency_2",},
 	}
 	lock := sync.RWMutex{}
 	channel := NewChannel()
 	wg := sync.WaitGroup{}
 	for _, tt := range tests {
-		//atomic.SwapInt32(&recvCount, 0)
 		t.Run(tt.name, func(t *testing.T) {
 			lock.Lock()
 			count := 0
 			lock.Unlock()
 			loop := 8
 			wg.Add(loop * loop)
-			for i := 0; i < loop; i++ {
+			for range loop {
 				RightNow().Do(func(c *Channel) {
-					for i := 0; i < loop; i++ {
+					for range loop {
 						lock.RLock()
 						p := &player{Nickname: strconv.Itoa(count)}
 						lock.RUnlock()
-						/*d :=*/ c.Subscribe(p.recvMsgAction)
-						//c.Publish(fmt.Sprintf("Publish message Channel:%v", c.Count()))
-						//d.Unsubscribe()
-						//wg.Done()
+						c.Subscribe(p.recvMsgAction)
 						lock.Lock()
 						count++
 						lock.Unlock()
 					}
 
-					for i := 0; i < loop; i++ {
+					for range loop {
 						c.Publish(fmt.Sprintf("Publish message Channel:%v", c.Count()))
 						wg.Done()
 					}
@@ -132,8 +152,6 @@ func TestChannelConcurrency(t *testing.T) {
 			}
 
 			wg.Wait()
-			//<-time.After(time.Duration(5 * time.Second))
-			//log.Printf("Finish %d", atomic.LoadInt32(&recvCount))
 		})
 	}
 }
@@ -143,8 +161,5 @@ type player struct {
 }
 
 func (p player) recvMsgAction(msg string) {
-	atomic.AddInt32(&recvCount, 1)
-	//wg.Add(1)
-	//log.Printf("%s receive a message recvCount : %v", p.Nickname, atomic.LoadInt32(&recvCount))
-	//wg.Done()
+	recvCount.Add(1)
 }

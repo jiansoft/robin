@@ -9,110 +9,198 @@
 [![codecov](https://codecov.io/gh/jiansoft/robin/branch/master/graph/badge.svg)](https://codecov.io/gh/jiansoft/robin)
 [![](https://img.shields.io/github/tag/jiansoft/robin.svg)](https://github.com/jiansoft/robin/releases)
 
-### 功能特色
+Go 函式庫，提供 **Fiber（Actor 模型）**、**Cron（任務排程）**、**Channel（發布/訂閱）**、**Concurrent Collections（執行緒安全集合）
+**— 單一套件、零外部依賴。
 
-Fiber（纖程）
--------
+需要 **Go 1.22+**。
 
-* GoroutineSingle - 由單一專屬 goroutine 驅動的 fiber，所有任務依序在同一個 goroutine 中執行。
-* GoroutineMulti - 由多個 goroutine 驅動的 fiber，每個任務由一個新的 goroutine 執行。
+## 功能特色
 
-Channels（頻道）
--------
+### Fiber
 
-* 頻道的回呼函式會在每次收到訊息時被執行。
+以 goroutine 驅動的任務執行纖程。
 
-Cron（排程）
--------
-為 Golang 設計的人性化任務排程，靈感來自 [schedule](<https://github.com/dbader/schedule>)。
+- **GoroutineSingle** — 單一專屬 goroutine，所有任務依序串行執行。
+- **GoroutineMulti** — 每個任務批次由新的 goroutine 併發執行。
 
-使用方式
-================
+```go
+gm := robin.NewGoroutineMulti()
+defer gm.Dispose()
 
-### 快速開始
+gm.Enqueue(func (msg string) {
+fmt.Println(msg)
+}, "hello")
 
-1.安裝
+gm.Schedule(1000, func () {
+fmt.Println("1 秒後執行")
+})
 
-~~~
-  go get github.com/jiansoft/robin
-~~~
+d := gm.ScheduleOnInterval(0, 500, func () {
+fmt.Println("每 500ms 執行一次")
+})
+// d.Dispose() 取消排程
+```
 
-2.使用範例
+#### 型別安全入列（Type-safe Enqueue）
 
-~~~ golang
-import (
-    "log"
-    "time"
+泛型輔助函式，提供編譯期型別檢查（零參數版本不經反射）：
 
-    "github.com/jiansoft/robin"
-)
+```go
+robin.Enqueue0(fiber, func () { fmt.Println("無參數") })
+robin.Enqueue1(fiber, func (s string) { fmt.Println(s) }, "hello")
+robin.Enqueue2(fiber, func (a int, b string) { fmt.Println(a, b) }, 42, "world")
+robin.Enqueue3(fiber, func (a int, b string, c bool) { fmt.Println(a, b, c) }, 1, "x", true)
+```
 
-func main() {
-    // 指定的方法將在 2000 毫秒之後執行一次
-    robin.Delay(2000).Do(runCron, "a Delay 2000 ms")
+### Cron
 
-    minute := 11
-    second := 50
+人性化的任務排程，使用流式建構器 API。靈感來自 [schedule](https://github.com/dbader/schedule)。
 
-    // 每星期五在 14:11:50 時執行一次
-    robin.EveryFriday().At(14, minute, second).Do(runCron, "Friday")
+```go
+// 立即執行
+robin.RightNow().Do(task, args...)
 
-    // 每 N 天在 14:11:50 時執行一次
-    robin.Every(1).Days().At(14, minute, second).Do(runCron, "Days")
+// 延遲 N 毫秒後執行一次
+robin.Delay(2000).Do(task, args...)
 
-    // 每過 N 小時在 11 分 50 秒時執行一次
-    robin.Every(1).Hours().At(0, minute, second).Do(runCron, "Every 1 Hours")
+// 延遲後重複執行，最多 N 次
+robin.Delay(1000).Times(3).Do(task, args...)
 
-    // 每過 N 分鐘在第 50 秒時執行一次
-    robin.Every(1).Minutes().At(0, 0, second).Do(runCron, "Every 1 Minutes")
+// 每 N 毫秒 / 秒 / 分 / 時 / 天
+robin.Every(500).Milliseconds().Do(task, args...)
+robin.Every(10).Seconds().Do(task, args...)
+robin.Every(5).Minutes().Do(task, args...)
+robin.Every(2).Hours().At(0, 30, 0).Do(task, args...) // 在 mm:ss 時
+robin.Every(1).Days().At(8, 0, 0).Do(task, args...)     // 在 HH:mm:ss 時
+robin.Everyday().At(23, 59, 59).Do(task, args...)
 
-    // 每過 N 秒執行一次
-    robin.Every(10).Seconds().Do(runCron, "Every 10 Seconds")
+// 每週排程
+robin.EveryMonday().At(9, 0, 0).Do(task, args...)
+robin.EveryFriday().At(14, 30, 0).Do(task, args...)
+// 另有：EveryTuesday, EveryWednesday, EveryThursday, EverySaturday, EverySunday
 
-    p1 := player{Nickname: "Player 1"}
-    p2 := player{Nickname: "Player 2"}
-    p3 := player{Nickname: "Player 3"}
-    p4 := player{Nickname: "Player 4"}
+// 在指定時間點執行一次
+robin.Until(time.Date(2025, 12, 31, 23, 59, 59, 0, time.Local)).Do(task, args...)
 
-    // 建立一個頻道
-    channel := robin.NewChannel()
+// 限制執行次數
+robin.Every(1).Seconds().Times(10).Do(task, args...)
 
-    // 四個玩家訂閱頻道
-    channel.Subscribe(p1.eventFinalBossResurge)
-    channel.Subscribe(p2.eventFinalBossResurge)
-    p3Subscribe := channel.Subscribe(p3.eventFinalBossResurge)
-    p4Subscribe := channel.Subscribe(p4.eventFinalBossResurge)
+// 限制在指定時間區間內執行（HH:mm:ss）
+from := time.Date(0, 0, 0, 9, 0, 0, 0, time.Local)
+to := time.Date(0, 0, 0, 17, 0, 0, 0, time.Local)
+robin.Every(30).Seconds().Between(from, to).Do(task, args...)
 
-    // 發布一則訊息到頻道，四個訂閱者將各自收到「魔王首次復活」的訊息
-    channel.Publish("The boss resurge first.")
+// 等待任務完成後才計算下次執行時間（適用於耗時任務）
+robin.Every(10).Seconds().AfterExecuteTask().Do(task, args...)
 
-    // 取消第 3 位和第 4 位玩家的頻道訂閱
-    channel.Unsubscribe(p3Subscribe)
-    p4Subscribe.Unsubscribe()
+// 取消已排程的工作
+job := robin.Every(1).Seconds().Do(task, args...)
+job.Dispose()
+```
 
-    // 這次只有第 1 位與第 2 位玩家會各自收到「魔王第二次復活」的訊息
-    channel.Publish("The boss resurge second.")
+#### CronScheduler
 
-    // 取消頻道內的所有訂閱者
-    channel.Clear()
+獨立生命週期管理 — 每個排程器擁有自己的 Fiber：
 
-    // 頻道內沒有任何訂閱者，所以沒有玩家會收到「魔王第三次復活」的訊息
-    channel.Publish("The boss resurge third.")
-}
+```go
+cs := robin.NewCronScheduler()
+cs.Every(5).Seconds().Do(task, args...)
+cs.Delay(1000).Do(task, args...)
+cs.RightNow().Do(task, args...)
+cs.Everyday().At(12, 0, 0).Do(task, args...)
+cs.EveryMonday().At(9, 0, 0).Do(task, args...)
+cs.Until(targetTime).Do(task, args...)
+cs.Dispose() // 停止此排程器上所有工作
+```
 
-func runCron(s string) {
-    log.Printf("I am %s CronTest %v\n", s, time.Now())
-}
+### Channel
 
-type player struct {
-	Nickname string
-}
-func (p player) eventFinalBossResurge(someBossInfo string) {
-	log.Printf("%s receive a message : %s", p.Nickname, someBossInfo)
-}
-~~~
+執行緒安全的發布/訂閱訊息頻道：
 
-[更多範例](<https://github.com/jiansoft/robin/blob/master/example/main.go>)
+```go
+channel := robin.NewChannel()
+
+// Subscribe 訂閱 — 回傳 *Subscriber
+sub1 := channel.Subscribe(func (msg string) {
+fmt.Println("收到:", msg)
+})
+sub2 := channel.Subscribe(handler)
+
+// Publish 發布訊息給所有訂閱者
+channel.Publish("hello")
+
+// 取消訂閱
+sub1.Unsubscribe() // 透過訂閱者物件
+channel.Unsubscribe(sub2)   // 透過頻道方法
+
+// 取得訂閱者數量
+fmt.Println(channel.Count())
+
+// 移除所有訂閱者
+channel.Clear()
+```
+
+### Concurrent Collections（執行緒安全集合）
+
+泛型、執行緒安全的集合，零外部依賴。
+
+#### ConcurrentQueue[T]（FIFO 佇列）
+
+環形緩衝區實作，自動擴容/縮容：
+
+```go
+q := robin.NewConcurrentQueue[string]()
+q.Enqueue("a")
+q.Enqueue("b")
+
+val, ok := q.TryPeek() // 查看前端元素但不移除
+val, ok = q.TryDequeue() // 取出並移除前端元素
+fmt.Println(q.Len()) // 元素數量（無鎖，使用 atomic）
+arr := q.ToArray() // 複製到 slice
+q.Clear()          // 清除所有元素
+```
+
+#### ConcurrentStack[T]（LIFO 堆疊）
+
+```go
+s := robin.NewConcurrentStack[int]()
+s.Push(10)
+s.Push(20)
+
+val, ok := s.TryPeek() // 查看頂端
+val, ok = s.TryPop() // 彈出頂端
+arr := s.ToArray() // LIFO 順序（頂端在前）
+s.Clear()
+```
+
+#### ConcurrentBag[T]（無序集合）
+
+```go
+b := robin.NewConcurrentBag[float64]()
+b.Add(3.14)
+
+val, ok := b.TryTake() // 取出一個元素
+arr := b.ToArray()
+b.Clear()
+```
+
+### 工具函式
+
+```go
+robin.Abs(-42) // 42 (int)
+robin.Abs(-3.14) // 3.14 (float64)
+```
+
+## 安裝
+
+```
+go get github.com/jiansoft/robin
+```
+
+## 完整範例
+
+參閱 [example/main.go](https://github.com/jiansoft/robin/blob/master/example/main.go) — 包含所有公開 API
+的自我驗證範例，可直接執行驗證所有功能是否正確運作。
 
 ## 授權條款
 
