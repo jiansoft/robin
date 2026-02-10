@@ -13,6 +13,7 @@ type Fiber interface {
 	ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFunc any, params ...any) (d Disposable)
 }
 
+// fiberCommon holds shared state for all fiber implementations.
 type fiberCommon struct {
 	queue      taskQueue
 	scheduler  Scheduler
@@ -21,29 +22,31 @@ type fiberCommon struct {
 	isDisposed bool
 }
 
-// GoroutineMulti a fiber backed by more goroutine. Each job is executed by a new goroutine.
+// GoroutineMulti is a fiber backed by multiple goroutines. Each task batch is dispatched concurrently.
 type GoroutineMulti struct {
 	fiberCommon
 	flushPending bool
+	flushFn      func() // cached bound method, avoids per-enqueue closure allocation
 }
 
-// GoroutineSingle a fiber backed by a dedicated goroutine. Every job is executed by a goroutine.
+// GoroutineSingle is a fiber backed by a single dedicated goroutine. Tasks execute serially in order.
 type GoroutineSingle struct {
 	cond *sync.Cond
 	fiberCommon
 }
 
-// NewGoroutineMulti create a GoroutineMulti instance
+// NewGoroutineMulti creates a new GoroutineMulti fiber instance.
 func NewGoroutineMulti() *GoroutineMulti {
 	g := new(GoroutineMulti)
 	g.queue = newDefaultQueue()
 	g.scheduler = newScheduler(g)
 	g.executor = newDefaultExecutor()
+	g.flushFn = g.flush
 
 	return g
 }
 
-// Dispose stop the fiber and release resource
+// Dispose stops the fiber, cancels all scheduled tasks, and releases resources.
 func (g *GoroutineMulti) Dispose() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -53,15 +56,13 @@ func (g *GoroutineMulti) Dispose() {
 	g.queue.dispose()
 }
 
-// Enqueue use the fiber to execute a task
+// Enqueue submits a task for concurrent execution on this fiber.
 func (g *GoroutineMulti) Enqueue(taskFunc any, params ...any) {
 	g.enqueueTask(newTask(taskFunc, params...))
 }
 
-// enqueueTask use the fiber to execute a task
-func (g *GoroutineMulti) enqueueTask(task task) {
-	flushTask := newTask(g.flush)
-
+// enqueueTask adds a task to the queue and triggers a flush if none is pending.
+func (g *GoroutineMulti) enqueueTask(t task) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -69,7 +70,7 @@ func (g *GoroutineMulti) enqueueTask(task task) {
 		return
 	}
 
-	g.queue.enqueue(task)
+	g.queue.enqueue(t)
 
 	if g.flushPending {
 		return
@@ -77,21 +78,20 @@ func (g *GoroutineMulti) enqueueTask(task task) {
 
 	g.flushPending = true
 
-	g.executor.executeTaskWithGoroutine(flushTask)
+	g.executor.executeTaskWithGoroutine(newTask(g.flushFn))
 }
 
-// Schedule execute the task once at the specified time
-// that depends on parameter firstInMs.
+// Schedule executes the task once after firstInMs milliseconds.
 func (g *GoroutineMulti) Schedule(firstInMs int64, taskFunc any, params ...any) (d Disposable) {
 	return g.scheduler.Schedule(firstInMs, taskFunc, params...)
 }
 
-// ScheduleOnInterval execute the task once at the specified time
-// that depends on parameters both firstInMs and regularInMs.
+// ScheduleOnInterval executes the task after firstInMs milliseconds, then repeats every regularInMs milliseconds.
 func (g *GoroutineMulti) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFunc any, params ...any) (d Disposable) {
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFunc, params...)
 }
 
+// flush drains all pending tasks from the queue and dispatches them via goroutines.
 func (g *GoroutineMulti) flush() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -112,7 +112,7 @@ func (g *GoroutineMulti) flush() {
 	}
 }
 
-// NewGoroutineSingle create a GoroutineSingle instance
+// NewGoroutineSingle creates a new GoroutineSingle fiber instance with a dedicated goroutine loop.
 func NewGoroutineSingle() *GoroutineSingle {
 	g := new(GoroutineSingle)
 	g.queue = newDefaultQueue()
@@ -128,7 +128,7 @@ func NewGoroutineSingle() *GoroutineSingle {
 	return g
 }
 
-// Dispose stop the fiber and release resource
+// Dispose stops the fiber, signals the goroutine to exit, and releases resources.
 func (g *GoroutineSingle) Dispose() {
 	g.cond.L.Lock()
 	defer g.cond.L.Unlock()
@@ -139,13 +139,12 @@ func (g *GoroutineSingle) Dispose() {
 	g.queue.dispose()
 }
 
-// Enqueue use the fiber to execute a task
+// Enqueue submits a task for serial execution on this fiber's dedicated goroutine.
 func (g *GoroutineSingle) Enqueue(taskFunc any, params ...any) {
 	g.enqueueTask(newTask(taskFunc, params...))
 }
 
-// enqueueTask enqueue the parameter task
-// into the queue waiting for executing.
+// enqueueTask adds a task to the queue and signals the dedicated goroutine.
 func (g *GoroutineSingle) enqueueTask(task task) {
 	g.cond.L.Lock()
 	defer g.cond.L.Unlock()
@@ -158,18 +157,17 @@ func (g *GoroutineSingle) enqueueTask(task task) {
 	g.cond.Signal()
 }
 
-// Schedule execute the task once at the specified time
-// that depends on parameter firstInMs.
+// Schedule executes the task once after firstInMs milliseconds.
 func (g *GoroutineSingle) Schedule(firstInMs int64, taskFunc any, params ...any) (d Disposable) {
 	return g.scheduler.Schedule(firstInMs, taskFunc, params...)
 }
 
-// ScheduleOnInterval execute the task once at the specified time
-// that depends on parameters both firstInMs and regularInMs.
+// ScheduleOnInterval executes the task after firstInMs milliseconds, then repeats every regularInMs milliseconds.
 func (g *GoroutineSingle) ScheduleOnInterval(firstInMs int64, regularInMs int64, taskFunc any, params ...any) (d Disposable) {
 	return g.scheduler.ScheduleOnInterval(firstInMs, regularInMs, taskFunc, params...)
 }
 
+// executeNextBatch dequeues and executes one batch of tasks. Returns false when disposed.
 func (g *GoroutineSingle) executeNextBatch() bool {
 	tasks, ok := g.dequeueAll()
 	if ok {
@@ -179,6 +177,7 @@ func (g *GoroutineSingle) executeNextBatch() bool {
 	return ok
 }
 
+// dequeueAll waits for tasks and returns them all. Returns (nil, false) when disposed.
 func (g *GoroutineSingle) dequeueAll() ([]task, bool) {
 	g.cond.L.Lock()
 	defer g.cond.L.Unlock()
@@ -192,6 +191,7 @@ func (g *GoroutineSingle) dequeueAll() ([]task, bool) {
 	return g.queue.dequeueAll()
 }
 
+// waitingForTask blocks on sync.Cond until tasks are available or the fiber is disposed.
 func (g *GoroutineSingle) waitingForTask() {
 	for g.queue.count() == 0 {
 		if g.isDisposed {

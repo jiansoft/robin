@@ -235,8 +235,8 @@ func TestBetween(t *testing.T) {
 	t.Run("valid between range executes", func(t *testing.T) {
 		var count int32
 		now := time.Now()
-		from := time.Date(0, 1, 1, now.Hour(), now.Minute(), now.Second()-1, 0, time.Local)
-		to := time.Date(0, 1, 1, now.Hour(), now.Minute()+5, 0, 0, time.Local)
+		from := time.Date(0, 1, 1, now.Hour(), 0, 0, 0, time.Local)
+		to := time.Date(0, 1, 1, now.Hour(), 59, 59, 0, time.Local)
 
 		d := Every(100).Milliseconds().Between(from, to).Do(func() {
 			atomic.AddInt32(&count, 1)
@@ -284,8 +284,8 @@ func TestBetween(t *testing.T) {
 	t.Run("delay model ignores between", func(t *testing.T) {
 		var count int32
 		now := time.Now()
-		from := time.Date(0, 1, 1, now.Hour(), now.Minute(), now.Second()-1, 0, time.Local)
-		to := time.Date(0, 1, 1, now.Hour(), now.Minute()+5, 0, 0, time.Local)
+		from := time.Date(0, 1, 1, now.Hour(), 0, 0, 0, time.Local)
+		to := time.Date(0, 1, 1, now.Hour(), 59, 59, 0, time.Local)
 
 		d := Delay(50).Milliseconds().Between(from, to).Do(func() {
 			atomic.AddInt32(&count, 1)
@@ -414,6 +414,89 @@ func TestCronScheduler(t *testing.T) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	})
+}
+
+func TestJobDoBetweenTimeShift(t *testing.T) {
+	// Cover Do() lines 334-341: Between with millisecond unit where
+	// fromTime (adjusted to today) > toTime (adjusted to today),
+	// triggering the 24-hour time shift in Do().
+	//
+	// Dynamically compute hours so fromTime is always in the future
+	// and fromTime > toTime after today-adjustment.
+	now := time.Now()
+	fromMinute := now.Add(2 * time.Minute)
+	toMinute := now.Add(-2 * time.Minute)
+
+	// Guard: if now is near midnight (00:00~00:02), toMinute wraps to
+	// 23:58 yesterday, making adjusted toTime > fromTime. Skip this edge case.
+	if now.Hour() == 0 && now.Minute() < 3 {
+		t.Skip("skipping: too close to midnight for reliable time-shift test")
+	}
+
+	// Original to must have to.Unix() > from.Unix() to pass Between's guard.
+	// Use different base dates to guarantee this.
+	from := time.Date(2099, 1, 1, fromMinute.Hour(), fromMinute.Minute(), fromMinute.Second(), 0, time.Local)
+	to := time.Date(2099, 1, 2, toMinute.Hour(), toMinute.Minute(), toMinute.Second(), 0, time.Local)
+
+	var count int32
+	d := Every(100).Milliseconds().Between(from, to).Do(func() {
+		atomic.AddInt32(&count, 1)
+	})
+
+	// Job is scheduled far in the future (tomorrow), so no executions
+	time.Sleep(200 * time.Millisecond)
+	d.Dispose()
+
+	got := atomic.LoadInt32(&count)
+	if got != 0 {
+		t.Errorf("expected 0 executions (scheduled for tomorrow), got %d", got)
+	}
+}
+
+func TestJobRunBetweenWindowExpires(t *testing.T) {
+	// Cover run() canRun=false path (line 364-366) and
+	// toTime 24h shift in run() (lines 398-401).
+	//
+	// Creates a ~2 second Between window. After window expires,
+	// run() finds canRun=false, skips execution, then shifts times by 24h.
+	var count int32
+	now := time.Now()
+
+	from := time.Date(2000, 6, 1, now.Hour(), now.Minute(), now.Second(), 0, time.Local)
+	to := time.Date(2000, 6, 1, now.Hour(), now.Minute(), now.Second()+2, 0, time.Local)
+
+	d := Every(100).Milliseconds().Between(from, to).Do(func() {
+		atomic.AddInt32(&count, 1)
+	})
+
+	// Wait for the 2-second window to expire + one more run cycle
+	time.Sleep(3 * time.Second)
+	d.Dispose()
+
+	got := atomic.LoadInt32(&count)
+	if got < 5 {
+		t.Errorf("expected at least 5 executions in between window, got %d", got)
+	}
+}
+
+func TestJobRunAfterCalculateDisposeDuringExec(t *testing.T) {
+	// Cover run() lines 375-378: afterCalculate=true, job disposed
+	// while task is executing synchronously.
+	started := make(chan struct{}, 1)
+
+	d := Every(50).Milliseconds().AfterExecuteTask().Do(func() {
+		select {
+		case started <- struct{}{}:
+		default:
+		}
+		time.Sleep(200 * time.Millisecond)
+	})
+
+	<-started   // wait for first execution to start
+	d.Dispose() // dispose while task is executing synchronously
+
+	time.Sleep(300 * time.Millisecond) // wait for task to finish
+	// If we reach here without deadlock or panic, the path is covered
 }
 
 func TestAbs(t *testing.T) {

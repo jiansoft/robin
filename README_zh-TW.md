@@ -41,17 +41,6 @@ fmt.Println("每 500ms 執行一次")
 // d.Dispose() 取消排程
 ```
 
-#### 型別安全入列（Type-safe Enqueue）
-
-泛型輔助函式，提供編譯期型別檢查（零參數版本不經反射）：
-
-```go
-robin.Enqueue0(fiber, func () { fmt.Println("無參數") })
-robin.Enqueue1(fiber, func (s string) { fmt.Println(s) }, "hello")
-robin.Enqueue2(fiber, func (a int, b string) { fmt.Println(a, b) }, 42, "world")
-robin.Enqueue3(fiber, func (a int, b string, c bool) { fmt.Println(a, b, c) }, 1, "x", true)
-```
-
 ### Cron
 
 人性化的任務排程，使用流式建構器 API。靈感來自 [schedule](https://github.com/dbader/schedule)。
@@ -113,7 +102,7 @@ cs.Until(targetTime).Do(task, args...)
 cs.Dispose() // 停止此排程器上所有工作
 ```
 
-### Channel
+### Channel（發布/訂閱）
 
 執行緒安全的發布/訂閱訊息頻道：
 
@@ -138,6 +127,47 @@ fmt.Println(channel.Count())
 
 // 移除所有訂閱者
 channel.Clear()
+```
+
+#### TypedChannel（泛型，無反射）
+
+型別安全的泛型頻道 — 不經反射，效能更好：
+
+```go
+ch := robin.NewTypedChannel[string]()
+
+sub := ch.Subscribe(func (msg string) {
+fmt.Println("收到:", msg)
+})
+
+ch.Publish("hello")
+
+sub.Unsubscribe()
+fmt.Println(ch.Count())
+ch.Clear()
+```
+
+支援任意型別，包含結構體：
+
+```go
+type Event struct {
+Name string
+Code int
+}
+
+ch := robin.NewTypedChannel[Event]()
+ch.Subscribe(func (e Event) {
+fmt.Printf("事件: %s (%d)\n", e.Name, e.Code)
+})
+ch.Publish(Event{Name: "click", Code: 42})
+```
+
+使用 `NewTypedChannelWithFiber` 指定自訂 Fiber：
+
+```go
+f := robin.NewGoroutineSingle()
+defer f.Dispose()
+ch := robin.NewTypedChannelWithFiber[string](f)
 ```
 
 ### Concurrent Collections（執行緒安全集合）
@@ -182,6 +212,20 @@ b.Add(3.14)
 val, ok := b.TryTake() // 取出一個元素
 arr := b.ToArray()
 b.Clear()
+```
+
+### PanicHandler（Panic 處理）
+
+預設情況下，任務 panic 時 robin 會攔截並印到 stderr — Fiber 繼續處理後續任務。可自訂或停用此行為：
+
+```go
+// 自訂處理：導向自己的 logger
+robin.SetPanicHandler(func (r any, stack []byte) {
+log.Printf("task panic: %v\n%s", r, stack)
+})
+
+// 停用攔截：讓 panic 直接終止程式（Go 預設行為）
+robin.SetPanicHandler(nil)
 ```
 
 ### 工具函式

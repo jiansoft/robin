@@ -138,6 +138,34 @@ func TestFiberSchedule(t *testing.T) {
 	}
 }
 
+func TestFiberEnqueueAfterDispose(t *testing.T) {
+	t.Run("GoroutineMulti", func(t *testing.T) {
+		gm := NewGoroutineMulti()
+		gm.Dispose()
+		// enqueueTask after dispose should not panic, just return
+		gm.Enqueue(func() {
+			t.Error("should not execute after dispose")
+		})
+		gm.enqueueTask(newTask(func() {
+			t.Error("should not execute after dispose")
+		}))
+		time.Sleep(50 * time.Millisecond)
+	})
+
+	t.Run("GoroutineSingle", func(t *testing.T) {
+		gs := NewGoroutineSingle()
+		gs.Dispose()
+		// enqueueTask after dispose should not panic, just return
+		gs.Enqueue(func() {
+			t.Error("should not execute after dispose")
+		})
+		gs.enqueueTask(newTask(func() {
+			t.Error("should not execute after dispose")
+		}))
+		time.Sleep(50 * time.Millisecond)
+	})
+}
+
 func TestFiber_GoroutineSingle_executeNextBatch(t *testing.T) {
 	tests := []struct {
 		name string

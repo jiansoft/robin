@@ -100,10 +100,12 @@ func schedulerTest(t *testing.T, f Fiber) {
 
 	wg.Add(4)
 	s.ScheduleOnInterval(0, 10, taskFun, "second", t)
-	s.disposed.Store(true)
+	wg.Wait()
+
+	// Dispose stops all running tasks and sets disposed=true.
+	s.Dispose()
+
+	// ScheduleOnInterval after Dispose returns without scheduling.
 	d := s.ScheduleOnInterval(0, 10, taskFun, "remove", t)
 	d.Dispose()
-
-	wg.Wait()
-	s.Dispose()
 }

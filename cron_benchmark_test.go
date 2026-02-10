@@ -16,17 +16,17 @@ func BenchmarkCron_StartStop(b *testing.B) {
 	for _, c := range cases {
 		b.Run(c.name, func(b *testing.B) {
 			base := make([]Disposable, c.N)
-			for i := 0; i < len(base); i++ {
+			for i := range base {
 				base[i] = Every(100).Seconds().Do(func() {})
 			}
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				Every(100).Seconds().Do(func() {}).Dispose()
 			}
 
 			b.StopTimer()
-			for i := 0; i < len(base); i++ {
+			for i := range base {
 				base[i].Dispose()
 			}
 		})

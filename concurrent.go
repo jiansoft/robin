@@ -39,18 +39,7 @@ func (q *ConcurrentQueue[T]) Enqueue(element T) {
 }
 
 func (q *ConcurrentQueue[T]) grow() {
-	newCap := (q.mask + 1) << 1
-	newBuf := make([]T, newCap)
-	if q.head < q.tail {
-		copy(newBuf, q.buf[q.head:q.tail])
-	} else {
-		copied := copy(newBuf, q.buf[q.head:])
-		copy(newBuf[copied:], q.buf[:q.tail])
-	}
-	q.head = 0
-	q.tail = q.count
-	q.buf = newBuf
-	q.mask = newCap - 1
+	q.resize((q.mask + 1) << 1)
 }
 
 func (q *ConcurrentQueue[T]) shrink() {
@@ -58,13 +47,18 @@ func (q *ConcurrentQueue[T]) shrink() {
 	if curCap <= defaultRingCapacity || q.count >= curCap>>2 {
 		return
 	}
-	newCap := curCap >> 1
-	if newCap < defaultRingCapacity {
-		newCap = defaultRingCapacity
-	}
+	// curCap is always a power of two > defaultRingCapacity,
+	// so curCap>>1 >= defaultRingCapacity is guaranteed.
+	q.resize(curCap >> 1)
+}
+
+func (q *ConcurrentQueue[T]) resize(newCap int) {
 	newBuf := make([]T, newCap)
-	for i := range q.count {
-		newBuf[i] = q.buf[(q.head+i)&q.mask]
+	if q.head < q.tail {
+		copy(newBuf, q.buf[q.head:q.tail])
+	} else {
+		copied := copy(newBuf, q.buf[q.head:])
+		copy(newBuf[copied:], q.buf[:q.tail])
 	}
 	q.head = 0
 	q.tail = q.count
@@ -112,19 +106,16 @@ func (q *ConcurrentQueue[T]) Len() int {
 	return q.count
 }
 
-// Clear removes all elements from the ConcurrentQueue.
-// The buffer is retained for reuse; memory is reclaimed gradually via shrink on TryDequeue.
+// Clear removes all elements from the ConcurrentQueue and resets the buffer to default capacity.
 func (q *ConcurrentQueue[T]) Clear() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	var zero T
-	for i := range q.buf {
-		q.buf[i] = zero
-	}
+	q.buf = make([]T, defaultRingCapacity)
 	q.head = 0
 	q.tail = 0
 	q.count = 0
+	q.mask = defaultRingCapacity - 1
 }
 
 // ToArray copies the elements stored in the ConcurrentQueue to a new slice.
@@ -176,17 +167,7 @@ func (s *ConcurrentStack[T]) TryPop() (T, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	n := len(s.container)
-	if n == 0 {
-		var zero T
-		return zero, false
-	}
-
-	element := s.container[n-1]
-	var zero T
-	s.container[n-1] = zero // clear reference for GC
-	s.container = s.container[:n-1]
-	return element, true
+	return popLast(&s.container)
 }
 
 // Len gets the number of elements contained in the ConcurrentStack.
@@ -254,16 +235,7 @@ func (cb *ConcurrentBag[T]) TryTake() (T, bool) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 
-	if len(cb.container) == 0 {
-		var zero T
-		return zero, false
-	}
-
-	element := cb.container[0]
-	var zero T
-	cb.container[0] = zero // clear reference for GC
-	cb.container = cb.container[1:]
-	return element, true
+	return popLast(&cb.container)
 }
 
 // ToArray copies the ConcurrentBag elements to a new slice.
@@ -284,4 +256,20 @@ func (cb *ConcurrentBag[T]) Clear() {
 
 	clear(cb.container)
 	cb.container = cb.container[:0]
+}
+
+// popLast removes and returns the last element from the slice.
+// Returns the zero value and false if the slice is empty.
+func popLast[T any](container *[]T) (T, bool) {
+	n := len(*container)
+	if n == 0 {
+		var zero T
+		return zero, false
+	}
+
+	element := (*container)[n-1]
+	var zero T
+	(*container)[n-1] = zero // clear reference for GC
+	*container = (*container)[:n-1]
+	return element, true
 }

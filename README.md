@@ -41,17 +41,6 @@ fmt.Println("every 500ms")
 // d.Dispose() to cancel
 ```
 
-#### Type-safe Enqueue
-
-Generic helpers with compile-time type checking (no reflection for zero-arg):
-
-```go
-robin.Enqueue0(fiber, func () { fmt.Println("no args") })
-robin.Enqueue1(fiber, func (s string) { fmt.Println(s) }, "hello")
-robin.Enqueue2(fiber, func (a int, b string) { fmt.Println(a, b) }, 42, "world")
-robin.Enqueue3(fiber, func (a int, b string, c bool) { fmt.Println(a, b, c) }, 1, "x", true)
-```
-
 ### Cron
 
 Human-friendly job scheduling with a fluent builder API. Inspired by [schedule](https://github.com/dbader/schedule).
@@ -122,7 +111,7 @@ channel := robin.NewChannel()
 
 // Subscribe — returns a *Subscriber
 sub1 := channel.Subscribe(func (msg string) {
-fmt.Println("received:", msg)
+    fmt.Println("received:", msg)
 })
 sub2 := channel.Subscribe(handler)
 
@@ -130,7 +119,7 @@ sub2 := channel.Subscribe(handler)
 channel.Publish("hello")
 
 // Unsubscribe
-sub1.Unsubscribe() // via subscriber
+sub1.Unsubscribe()          // via subscriber
 channel.Unsubscribe(sub2)   // via channel
 
 // Get subscriber count
@@ -138,6 +127,47 @@ fmt.Println(channel.Count())
 
 // Remove all subscribers
 channel.Clear()
+```
+
+#### TypedChannel (Generic, No Reflection)
+
+Type-safe pub/sub channel using generics — avoids reflection for better performance:
+
+```go
+ch := robin.NewTypedChannel[string]()
+
+sub := ch.Subscribe(func(msg string) {
+    fmt.Println("received:", msg)
+})
+
+ch.Publish("hello")
+
+sub.Unsubscribe()
+fmt.Println(ch.Count())
+ch.Clear()
+```
+
+Supports any type including structs:
+
+```go
+type Event struct {
+    Name string
+    Code int
+}
+
+ch := robin.NewTypedChannel[Event]()
+ch.Subscribe(func(e Event) {
+    fmt.Printf("event: %s (%d)\n", e.Name, e.Code)
+})
+ch.Publish(Event{Name: "click", Code: 42})
+```
+
+Use `NewTypedChannelWithFiber` for a custom fiber:
+
+```go
+f := robin.NewGoroutineSingle()
+defer f.Dispose()
+ch := robin.NewTypedChannelWithFiber[string](f)
 ```
 
 ### Concurrent Collections
@@ -184,10 +214,25 @@ arr := b.ToArray()
 b.Clear()
 ```
 
+### PanicHandler
+
+By default, if a task panics, robin recovers the panic and prints it to stderr — the fiber continues
+processing subsequent tasks. You can customize or disable this behavior:
+
+```go
+// Custom handler: log to your own logger
+robin.SetPanicHandler(func(r any, stack []byte) {
+    log.Printf("task panic: %v\n%s", r, stack)
+})
+
+// Disable recovery: let panics crash the process (Go default behavior)
+robin.SetPanicHandler(nil)
+```
+
 ### Utility
 
 ```go
-robin.Abs(-42) // 42 (int)
+robin.Abs(-42)   // 42 (int)
 robin.Abs(-3.14) // 3.14 (float64)
 ```
 

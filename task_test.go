@@ -32,7 +32,7 @@ func Test_timerTask_schedule(t *testing.T) {
 	}
 }
 
-func Test_timerTask_schedule_runFirst(t *testing.T) {
+func Test_timerTask_schedule_withDelay(t *testing.T) {
 	g := NewGoroutineMulti()
 	tests := []struct {
 		timerTask *timerTask
@@ -145,4 +145,74 @@ func exampleFunc1(args ...string) {
 }
 func exampleFunc2() {
 	fmt.Printf("exampleFunc2 ")
+}
+
+func TestPanicHandler_recover(t *testing.T) {
+	var captured any
+	var capturedStack []byte
+	original := getPanicHandler()
+	SetPanicHandler(func(r any, stack []byte) {
+		captured = r
+		capturedStack = stack
+	})
+	defer SetPanicHandler(original)
+
+	tk := newTask(func() { panic("boom") })
+	tk.execute() // should not crash
+
+	if captured != "boom" {
+		t.Fatalf("PanicHandler got %v, want 'boom'", captured)
+	}
+	if len(capturedStack) == 0 {
+		t.Fatal("PanicHandler received empty stack trace")
+	}
+}
+
+func TestPanicHandler_nil_propagates(t *testing.T) {
+	original := getPanicHandler()
+	SetPanicHandler(nil)
+	defer SetPanicHandler(original)
+
+	defer func() {
+		r := recover()
+		if r != "boom" {
+			t.Fatalf("expected panic 'boom', got %v", r)
+		}
+	}()
+
+	tk := newTask(func() { panic("boom") })
+	tk.execute() // should panic through
+	t.Fatal("should not reach here")
+}
+
+func TestPanicHandler_fiber_survives(t *testing.T) {
+	original := getPanicHandler()
+	var wg sync.WaitGroup
+	wg.Add(2) // one for panic handler, one for normal task
+
+	SetPanicHandler(func(r any, stack []byte) {
+		wg.Done()
+	})
+	defer SetPanicHandler(original)
+
+	g := NewGoroutineMulti()
+	defer g.Dispose()
+
+	// first task panics — PanicHandler calls wg.Done
+	g.Enqueue(func() { panic("bad task") })
+	// second task should still execute
+	g.Enqueue(func() { wg.Done() })
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// success: both panic handler and normal task completed
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out: fiber did not survive panic")
+	}
 }

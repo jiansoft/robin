@@ -67,6 +67,71 @@ func TestConcurrentBagEmpty(t *testing.T) {
 	b.Clear() // should not panic
 }
 
+func TestConcurrentQueueShrink(t *testing.T) {
+	q := NewConcurrentQueue[int]()
+
+	// Enqueue 17 items to trigger grow (cap 16 → 32)
+	for i := range 17 {
+		q.Enqueue(i)
+	}
+
+	// Dequeue 10 items: count 17 → 7, which is < cap(32)/4 = 8
+	// The 10th dequeue triggers shrink (cap 32 → 16)
+	for i := range 10 {
+		v, ok := q.TryDequeue()
+		if !ok {
+			t.Fatalf("TryDequeue failed at i=%d", i)
+		}
+		equal(t, i, v)
+	}
+
+	equal(t, 7, q.Len())
+
+	// Verify remaining elements are intact after shrink
+	for i := range 7 {
+		v, ok := q.TryDequeue()
+		if !ok {
+			t.Fatalf("TryDequeue failed at i=%d", i)
+		}
+		equal(t, i+10, v)
+	}
+	equal(t, 0, q.Len())
+}
+
+func TestConcurrentQueueResizeWrapAround(t *testing.T) {
+	q := NewConcurrentQueue[int]()
+
+	// Step 1: Enqueue 12, dequeue 10 → advance head to 10
+	for i := range 12 {
+		q.Enqueue(i)
+	}
+	for range 10 {
+		q.TryDequeue()
+	}
+	// State: head=10, tail=12, count=2
+
+	// Step 2: Enqueue 14 more → tail wraps around, count=16=capacity
+	// head=10, tail=10 (wrapped)
+	for i := 12; i < 26; i++ {
+		q.Enqueue(i)
+	}
+
+	// Step 3: One more enqueue triggers grow with wrap-around state
+	// resize is called with head >= tail → else branch
+	q.Enqueue(26)
+	equal(t, 17, q.Len())
+
+	// Verify all elements in correct FIFO order
+	for i := range 17 {
+		v, ok := q.TryDequeue()
+		if !ok {
+			t.Fatalf("TryDequeue failed at i=%d", i)
+		}
+		equal(t, i+10, v)
+	}
+	equal(t, 0, q.Len())
+}
+
 func TestConcurrent(t *testing.T) {
 	type args struct {
 		item string
@@ -157,7 +222,7 @@ func TestConcurrent(t *testing.T) {
 		total := c.ToArray()
 		equal(t, len(items), len(total))
 
-		for i := range total {
+		for i := len(total) - 1; i >= 0; i-- {
 			if v, ok := c.TryTake(); !ok {
 				break
 			} else {

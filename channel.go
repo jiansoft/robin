@@ -1,24 +1,26 @@
 package robin
 
 import (
+	"reflect"
 	"sync"
 	"sync/atomic"
 )
 
 // Channel is a pub/sub messaging channel with thread-safe subscriber management.
 type Channel struct {
+	fiber       Fiber
 	subscribers sync.Map
 	count       atomic.Int64
 }
 
-// NewChannel creates a new Channel instance.
+// NewChannel creates a new Channel instance using the default global fiber.
 func NewChannel() *Channel {
-	return &Channel{}
+	return &Channel{fiber: fiber}
 }
 
-// Subscribe registers a receiver to receive the Channel's messages.
-func (c *Channel) Subscribe(taskFunc any, params ...any) *Subscriber {
-	s := &Subscriber{channel: c, receiver: newTask(taskFunc, params...)}
+// Subscribe registers a function to receive the Channel's messages.
+func (c *Channel) Subscribe(taskFunc any) *Subscriber {
+	s := &Subscriber{channel: c, funcValue: reflect.ValueOf(taskFunc)}
 	c.subscribers.Store(s, s)
 	c.count.Add(1)
 	return s
@@ -26,17 +28,22 @@ func (c *Channel) Subscribe(taskFunc any, params ...any) *Subscriber {
 
 // Publish sends a message to all subscribers.
 func (c *Channel) Publish(msg ...any) {
-	fiber.Enqueue(func(ch *Channel, message []any) {
-		ch.subscribers.Range(func(k, v any) bool {
+	// Pre-convert message to reflect.Value once, shared across all subscribers.
+	params := make([]reflect.Value, len(msg))
+	for i, m := range msg {
+		params[i] = reflect.ValueOf(m)
+	}
+	c.fiber.enqueueTask(task{fn: func() {
+		c.subscribers.Range(func(k, v any) bool {
 			if s, ok := v.(*Subscriber); ok {
-				s.mu.Lock()
-				s.receiver.params(message...)
-				fiber.enqueueTask(s.receiver)
-				s.mu.Unlock()
+				c.fiber.enqueueTask(task{
+					funcCache:   s.funcValue,
+					paramsCache: params,
+				})
 			}
 			return true
 		})
-	}, c, msg)
+	}})
 }
 
 // Clear removes all subscribers from the channel.
@@ -62,9 +69,8 @@ func (c *Channel) Unsubscribe(subscriber any) {
 
 // Subscriber is a struct for registering to a channel.
 type Subscriber struct {
-	channel  *Channel
-	receiver task
-	mu       sync.Mutex
+	channel   *Channel
+	funcValue reflect.Value
 }
 
 // Unsubscribe removes the subscriber from the channel.

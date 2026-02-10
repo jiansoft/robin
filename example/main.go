@@ -14,6 +14,15 @@ import (
 // timingTolerance allowed deviation for timing verification (accounts for OS scheduling & timer precision)
 const timingTolerance = 150 * time.Millisecond
 
+// gameEvent 用於驗證 TypedChannel 結構體泛型的測試型別
+// gameEvent is a struct used to verify TypedChannel with non-primitive types
+type gameEvent struct {
+	Source string
+	Target string
+	Damage int
+	Time   time.Time
+}
+
 var (
 	passCount atomic.Int32
 	failCount atomic.Int32
@@ -74,10 +83,10 @@ func main() {
 	// 非同步驗證（需等待排程執行）
 	// Asynchronous verification (waits for scheduled execution)
 	verifyFiber()
-	verifyTypeSafeEnqueue()
 	verifyCron()
 	verifyCronScheduler()
 	verifyChannel()
+	verifyTypedChannel()
 
 	// 展示長間隔排程 API（僅展示用法，無法在短時間內驗證）
 	// Showcase long-interval scheduling APIs (usage demo only, cannot verify in short time)
@@ -231,10 +240,10 @@ func verifyConcurrentBag() {
 	b.Add(3.3)
 	verify("Bag.Add+Len", b.Len() == 3, "len=%d, want 3", b.Len())
 
-	// TryTake 取出一個元素
-	// TryTake removes and returns an element
+	// TryTake 取出一個元素（從尾部取出，無序集合不保證順序）
+	// TryTake removes and returns an element (from tail, unordered collection)
 	val, ok := b.TryTake()
-	verify("Bag.TryTake", ok && val == 1.1, "val=%.1f ok=%v, want 1.1/true", val, ok)
+	verify("Bag.TryTake", ok && val == 3.3, "val=%.1f ok=%v, want 3.3/true", val, ok)
 	verify("Bag.Len(after take)", b.Len() == 2, "len=%d, want 2", b.Len())
 
 	// ToArray 複製元素到新 slice
@@ -379,6 +388,49 @@ func verifyFiber() {
 			"order=%v, want [1 2 3]", order)
 	}
 
+	// GoroutineSingle.Schedule — 驗證延遲 N 毫秒後串行執行
+	// GoroutineSingle.Schedule — verify serial execution after N milliseconds delay
+	{
+		gs := robin.NewGoroutineSingle()
+		defer gs.Dispose()
+
+		var wg sync.WaitGroup
+		var elapsed atomic.Int64
+		wg.Add(1)
+		start := time.Now()
+		gs.Schedule(200, func() {
+			elapsed.Store(int64(time.Since(start)))
+			wg.Done()
+		})
+		completed := waitTimeout(&wg, 2*time.Second)
+		actual := time.Duration(elapsed.Load())
+		ok := completed && nearDuration(actual, 200*time.Millisecond, timingTolerance)
+		verify("GoroutineSingle.Schedule(200ms)", ok,
+			"delay=%v, want ~200ms", actual.Round(time.Millisecond))
+	}
+
+	// GoroutineSingle.ScheduleOnInterval — 驗證串行重複執行
+	// GoroutineSingle.ScheduleOnInterval — verify serial repeated execution
+	{
+		gs := robin.NewGoroutineSingle()
+		defer gs.Dispose()
+
+		var count atomic.Int32
+		var wg sync.WaitGroup
+		wg.Add(3)
+		d := gs.ScheduleOnInterval(0, 100, func() {
+			if count.Add(1) <= 3 {
+				wg.Done()
+			}
+		})
+		completed := waitTimeout(&wg, 3*time.Second)
+		d.Dispose()
+		got := count.Load()
+		verify("GoroutineSingle.ScheduleOnInterval",
+			completed && got >= 3,
+			"count=%d, want >=3", got)
+	}
+
 	// Fiber.Dispose — 驗證 Dispose 後 Enqueue 不會 panic
 	// Fiber.Dispose — verify Enqueue after Dispose doesn't panic
 	{
@@ -394,87 +446,6 @@ func verifyFiber() {
 			gm.Enqueue(func() {})
 		}()
 		verify("Fiber.Dispose+Enqueue", noPanic, "no panic=%v", noPanic)
-	}
-}
-
-// ================================================================
-// Type-safe Enqueue 驗證 / Type-safe Enqueue Verification
-// ================================================================
-
-func verifyTypeSafeEnqueue() {
-	log.Println("\n--- Type-safe Enqueue — 型別安全入列（編譯期檢查）/ Compile-time type-safe enqueue ---")
-
-	gm := robin.NewGoroutineMulti()
-	defer gm.Dispose()
-
-	// Enqueue0 — 無參數函式（快速路徑：不經反射）
-	// Enqueue0 — zero-argument function (fast path: no reflection)
-	{
-		var wg sync.WaitGroup
-		var executed atomic.Bool
-		wg.Add(1)
-		robin.Enqueue0(gm, func() {
-			executed.Store(true)
-			wg.Done()
-		})
-		completed := waitTimeout(&wg, 2*time.Second)
-		verify("Enqueue0", completed && executed.Load(),
-			"executed=%v", executed.Load())
-	}
-
-	// Enqueue1 — 單參數泛型：驗證型別與值正確
-	// Enqueue1 — one generic param: verify type and value
-	{
-		var wg sync.WaitGroup
-		var got atomic.Value
-		wg.Add(1)
-		robin.Enqueue1(gm, func(s string) {
-			got.Store(s)
-			wg.Done()
-		}, "hello")
-		completed := waitTimeout(&wg, 2*time.Second)
-		verify("Enqueue1", completed && got.Load() == "hello",
-			"got=%v, want hello", got.Load())
-	}
-
-	// Enqueue2 — 雙參數泛型
-	// Enqueue2 — two generic params
-	{
-		var wg sync.WaitGroup
-		var gotA atomic.Int32
-		var gotB atomic.Value
-		wg.Add(1)
-		robin.Enqueue2(gm, func(a int, b string) {
-			gotA.Store(int32(a))
-			gotB.Store(b)
-			wg.Done()
-		}, 42, "world")
-		completed := waitTimeout(&wg, 2*time.Second)
-		ok := completed && gotA.Load() == 42 && gotB.Load() == "world"
-		verify("Enqueue2", ok,
-			"got (%d, %v), want (42, world)", gotA.Load(), gotB.Load())
-	}
-
-	// Enqueue3 — 三參數泛型
-	// Enqueue3 — three generic params
-	{
-		type result struct {
-			a int
-			b string
-			c bool
-		}
-		var wg sync.WaitGroup
-		var got atomic.Value
-		wg.Add(1)
-		robin.Enqueue3(gm, func(a int, b string, c bool) {
-			got.Store(result{a, b, c})
-			wg.Done()
-		}, 1, "test", true)
-		completed := waitTimeout(&wg, 2*time.Second)
-		v, _ := got.Load().(result)
-		ok := completed && v.a == 1 && v.b == "test" && v.c
-		verify("Enqueue3", ok,
-			"got (%d, %s, %v), want (1, test, true)", v.a, v.b, v.c)
 	}
 }
 
@@ -960,6 +931,258 @@ func verifyChannel() {
 }
 
 // ================================================================
+// TypedChannel 驗證 / TypedChannel Verification (Generic Pub/Sub)
+// ================================================================
+
+func verifyTypedChannel() {
+	log.Println("\n--- TypedChannel — 泛型發布/訂閱（無反射）/ Generic Pub/Sub (no reflection) ---")
+
+	// ---- string 型別 / string type ----
+
+	// Subscribe + Publish — 驗證所有訂閱者都收到字串訊息
+	// Subscribe + Publish — verify all subscribers receive a string message
+	{
+		ch := robin.NewTypedChannel[string]()
+		var count atomic.Int32
+		var wg sync.WaitGroup
+		wg.Add(3)
+		ch.Subscribe(func(msg string) { count.Add(1); wg.Done() })
+		ch.Subscribe(func(msg string) { count.Add(1); wg.Done() })
+		ch.Subscribe(func(msg string) { count.Add(1); wg.Done() })
+		ch.Publish("test")
+		completed := waitTimeout(&wg, 2*time.Second)
+		verify("Typed[string].Pub(3 subs)",
+			completed && count.Load() == 3,
+			"received=%d, want 3", count.Load())
+	}
+
+	// Publish — 驗證字串內容正確傳遞
+	// Publish — verify string content is correctly delivered
+	{
+		ch := robin.NewTypedChannel[string]()
+		var got atomic.Value
+		var wg sync.WaitGroup
+		wg.Add(1)
+		ch.Subscribe(func(msg string) {
+			got.Store(msg)
+			wg.Done()
+		})
+		ch.Publish("hello typed")
+		completed := waitTimeout(&wg, 2*time.Second)
+		verify("Typed[string].Pub(content)",
+			completed && got.Load() == "hello typed",
+			"got=%v, want 'hello typed'", got.Load())
+	}
+
+	// ---- struct 型別 / struct type ----
+
+	// Subscribe + Publish — 驗證所有訂閱者都收到結構體訊息
+	// Subscribe + Publish — verify all subscribers receive a struct message
+	{
+		ch := robin.NewTypedChannel[gameEvent]()
+		var count atomic.Int32
+		var wg sync.WaitGroup
+		wg.Add(3)
+		ch.Subscribe(func(e gameEvent) { count.Add(1); wg.Done() })
+		ch.Subscribe(func(e gameEvent) { count.Add(1); wg.Done() })
+		ch.Subscribe(func(e gameEvent) { count.Add(1); wg.Done() })
+		ch.Publish(gameEvent{Source: "boss", Damage: 999})
+		completed := waitTimeout(&wg, 2*time.Second)
+		verify("Typed[struct].Pub(3 subs)",
+			completed && count.Load() == 3,
+			"received=%d, want 3", count.Load())
+	}
+
+	// Publish — 驗證結構體欄位完整傳遞
+	// Publish — verify struct fields are correctly delivered
+	{
+		ch := robin.NewTypedChannel[gameEvent]()
+		var got atomic.Value
+		var wg sync.WaitGroup
+		wg.Add(1)
+		sent := gameEvent{Source: "archer", Target: "dragon", Damage: 42, Time: time.Now()}
+		ch.Subscribe(func(e gameEvent) {
+			got.Store(e)
+			wg.Done()
+		})
+		ch.Publish(sent)
+		completed := waitTimeout(&wg, 2*time.Second)
+		e, _ := got.Load().(gameEvent)
+		verify("Typed[struct].Pub(fields)",
+			completed && e.Source == sent.Source && e.Target == sent.Target && e.Damage == sent.Damage,
+			"got=%+v, want Source=%s Target=%s Damage=%d", e, sent.Source, sent.Target, sent.Damage)
+	}
+
+	// ---- Count / Unsubscribe / Clear（混合 string 與 struct）----
+
+	// Count — 驗證 string 訂閱者計數
+	// Count — verify string subscriber count
+	{
+		ch := robin.NewTypedChannel[string]()
+		ch.Subscribe(func(string) {})
+		ch.Subscribe(func(string) {})
+		verify("Typed[string].Count", ch.Count() == 2,
+			"count=%d, want 2", ch.Count())
+	}
+
+	// Count — 驗證 struct 訂閱者計數
+	// Count — verify struct subscriber count
+	{
+		ch := robin.NewTypedChannel[gameEvent]()
+		ch.Subscribe(func(gameEvent) {})
+		ch.Subscribe(func(gameEvent) {})
+		ch.Subscribe(func(gameEvent) {})
+		verify("Typed[struct].Count", ch.Count() == 3,
+			"count=%d, want 3", ch.Count())
+	}
+
+	// Subscriber.Unsubscribe — 透過訂閱者物件取消訂閱（string）
+	// Subscriber.Unsubscribe — unsubscribe via subscriber object (string)
+	{
+		ch := robin.NewTypedChannel[string]()
+		ch.Subscribe(func(string) {})
+		sub := ch.Subscribe(func(string) {})
+		sub.Unsubscribe()
+		verify("Typed[string].Sub.Unsub", ch.Count() == 1,
+			"count=%d, want 1", ch.Count())
+	}
+
+	// Subscriber.Unsubscribe — 透過訂閱者物件取消訂閱（struct）
+	// Subscriber.Unsubscribe — unsubscribe via subscriber object (struct)
+	{
+		ch := robin.NewTypedChannel[gameEvent]()
+		ch.Subscribe(func(gameEvent) {})
+		sub := ch.Subscribe(func(gameEvent) {})
+		sub.Unsubscribe()
+		verify("Typed[struct].Sub.Unsub", ch.Count() == 1,
+			"count=%d, want 1", ch.Count())
+	}
+
+	// Channel.Unsubscribe — 透過頻道方法取消訂閱（struct）
+	// Channel.Unsubscribe — unsubscribe via channel method (struct)
+	{
+		ch := robin.NewTypedChannel[gameEvent]()
+		sub := ch.Subscribe(func(gameEvent) {})
+		ch.Unsubscribe(sub)
+		verify("Typed[struct].Ch.Unsub", ch.Count() == 0,
+			"count=%d, want 0", ch.Count())
+	}
+
+	// 取消訂閱後不再收到結構體訊息
+	// After unsubscribe, subscriber no longer receives struct messages
+	{
+		ch := robin.NewTypedChannel[gameEvent]()
+		var sub1Count, sub2Count atomic.Int32
+		ch.Subscribe(func(e gameEvent) { sub1Count.Add(1) })
+		sub2 := ch.Subscribe(func(e gameEvent) { sub2Count.Add(1) })
+
+		ch.Publish(gameEvent{Source: "mage", Damage: 100})
+		time.Sleep(200 * time.Millisecond)
+
+		sub2.Unsubscribe()
+		ch.Publish(gameEvent{Source: "mage", Damage: 200})
+		time.Sleep(200 * time.Millisecond)
+
+		ok := sub1Count.Load() == 2 && sub2Count.Load() == 1
+		verify("Typed[struct].Unsub(no msg)", ok,
+			"sub1=%d (want 2), sub2=%d (want 1)", sub1Count.Load(), sub2Count.Load())
+	}
+
+	// Clear — 移除所有 struct 訂閱者
+	// Clear — remove all struct subscribers
+	{
+		ch := robin.NewTypedChannel[gameEvent]()
+		ch.Subscribe(func(gameEvent) {})
+		ch.Subscribe(func(gameEvent) {})
+		ch.Clear()
+		verify("Typed[struct].Clear", ch.Count() == 0,
+			"count=%d, want 0", ch.Count())
+	}
+
+	// ---- WithFiber（string + struct）----
+
+	// NewTypedChannelWithFiber — 使用自訂 Fiber（string）
+	// NewTypedChannelWithFiber — use custom Fiber (string)
+	{
+		f := robin.NewGoroutineSingle()
+		defer f.Dispose()
+
+		ch := robin.NewTypedChannelWithFiber[string](f)
+		var got atomic.Value
+		var wg sync.WaitGroup
+		wg.Add(1)
+		ch.Subscribe(func(msg string) {
+			got.Store(msg)
+			wg.Done()
+		})
+		ch.Publish("custom fiber")
+		completed := waitTimeout(&wg, 2*time.Second)
+		verify("WithFiber[string]",
+			completed && got.Load() == "custom fiber",
+			"got=%v, want 'custom fiber'", got.Load())
+	}
+
+	// NewTypedChannelWithFiber — 使用自訂 Fiber（struct）
+	// NewTypedChannelWithFiber — use custom Fiber (struct)
+	{
+		f := robin.NewGoroutineSingle()
+		defer f.Dispose()
+
+		ch := robin.NewTypedChannelWithFiber[gameEvent](f)
+		var got atomic.Value
+		var wg sync.WaitGroup
+		wg.Add(1)
+		sent := gameEvent{Source: "healer", Target: "ally", Damage: -50}
+		ch.Subscribe(func(e gameEvent) {
+			got.Store(e)
+			wg.Done()
+		})
+		ch.Publish(sent)
+		completed := waitTimeout(&wg, 2*time.Second)
+		e, _ := got.Load().(gameEvent)
+		verify("WithFiber[struct]",
+			completed && e.Source == sent.Source && e.Target == sent.Target && e.Damage == sent.Damage,
+			"got=%+v, want Source=%s Target=%s Damage=%d", e, sent.Source, sent.Target, sent.Damage)
+	}
+
+	// ---- 邊界情境 / Edge cases ----
+
+	// Publish 到無訂閱者的頻道不 panic（string）
+	// Publish to empty channel doesn't panic (string)
+	{
+		ch := robin.NewTypedChannel[string]()
+		noPanic := true
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					noPanic = false
+				}
+			}()
+			ch.Publish("test")
+		}()
+		time.Sleep(100 * time.Millisecond)
+		verify("Typed[string].Pub(empty)", noPanic, "no panic=%v", noPanic)
+	}
+
+	// Publish 到無訂閱者的頻道不 panic（struct）
+	// Publish to empty channel doesn't panic (struct)
+	{
+		ch := robin.NewTypedChannel[gameEvent]()
+		noPanic := true
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					noPanic = false
+				}
+			}()
+			ch.Publish(gameEvent{Source: "ghost", Damage: 0})
+		}()
+		time.Sleep(100 * time.Millisecond)
+		verify("Typed[struct].Pub(empty)", noPanic, "no panic=%v", noPanic)
+	}
+}
+
+// ================================================================
 // 長間隔排程展示（僅示範 API 用法，不驗證時序）
 // Long-interval scheduling showcase (API usage demo only, no timing verification)
 // ================================================================
@@ -968,6 +1191,13 @@ func showSchedulingExamples() {
 	log.Println("\n--- Scheduling Examples — 排程 API 展示（僅建立，不等待執行）---")
 	log.Println("  以下排程已建立但不驗證執行時序（需等待數小時/天/週才會觸發）")
 	log.Println("  The following schedules are created but not verified (require hours/days/weeks to trigger)")
+
+	// Every + Minutes — 每 N 分鐘執行
+	// Every + Minutes — execute every N minutes
+	robin.Every(30).Minutes().Do(func() {
+		log.Println("[Showcase] Every 30 Minutes")
+	})
+	log.Println("  robin.Every(30).Minutes().Do(...)")
 
 	// Every + Hours + At — 每 N 小時在指定 mm:ss 執行
 	// Every + Hours + At — execute every N hours at specified mm:ss
@@ -1004,8 +1234,8 @@ func showSchedulingExamples() {
 	// Between — 限制任務只在指定時間區間內執行
 	// Between — restrict execution to a time range
 	now := time.Now()
-	f := time.Date(0, 0, 0, now.Hour(), now.Minute(), 0, 0, time.Local)
-	t := time.Date(0, 0, 0, now.Hour(), now.Minute()+5, 0, 0, time.Local)
+	f := time.Date(0, 1, 1, now.Hour(), 0, 0, 0, time.Local)
+	t := time.Date(0, 1, 1, now.Hour(), 59, 59, 0, time.Local)
 	robin.Every(30).Seconds().Between(f, t).Times(5).Do(func() {
 		log.Println("[Showcase] Between range execution")
 	})
