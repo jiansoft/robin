@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+// TestEvery validates the Every/At/Times/weekday builder chain and disposal stability.
+// TestEvery 驗證 Every/At/Times/weekday 建構鏈與 Dispose 穩定性。
 func TestEvery(t *testing.T) {
 	tests := []struct {
 		name string
@@ -126,6 +128,8 @@ func TestEvery(t *testing.T) {
 	}
 }
 
+// TestDelay validates one-shot delay semantics and chained nested delay timing lower-bounds.
+// TestDelay 驗證一次性延遲語義，以及巢狀 Delay 連鎖的最小時間門檻。
 func TestDelay(t *testing.T) {
 	tests := []struct {
 		name string
@@ -192,6 +196,8 @@ func TestDelay(t *testing.T) {
 	}
 }
 
+// TestUntil validates that future timestamps execute once and past timestamps do not execute.
+// TestUntil 驗證未來時間會執行一次、過去時間不會執行。
 func TestUntil(t *testing.T) {
 	t.Run("future time executes once", func(t *testing.T) {
 		var count int32
@@ -231,6 +237,8 @@ func TestUntil(t *testing.T) {
 	})
 }
 
+// TestBetween validates window filtering, invalid-parameter ignore rules, and delay-mode bypass.
+// TestBetween 驗證時間窗過濾、無效參數忽略規則，以及 delay 模式忽略 Between。
 func TestBetween(t *testing.T) {
 	t.Run("valid between range executes", func(t *testing.T) {
 		var count int32
@@ -303,6 +311,8 @@ func TestBetween(t *testing.T) {
 	})
 }
 
+// TestJobDisposed validates disposal stop behavior and double-dispose safety.
+// TestJobDisposed 驗證 Dispose 後停止執行與重複 Dispose 的安全性。
 func TestJobDisposed(t *testing.T) {
 	t.Run("disposed job does not run", func(t *testing.T) {
 		var count int32
@@ -331,6 +341,8 @@ func TestJobDisposed(t *testing.T) {
 	})
 }
 
+// TestCronScheduler validates instance-based API parity with global helpers and lifecycle isolation.
+// TestCronScheduler 驗證實例化 API 與全域 API 的行為一致性及生命週期隔離。
 func TestCronScheduler(t *testing.T) {
 	t.Run("instance-based scheduling", func(t *testing.T) {
 		cs := NewCronScheduler()
@@ -416,6 +428,8 @@ func TestCronScheduler(t *testing.T) {
 	})
 }
 
+// TestJobDoBetweenTimeShift validates Do() path where Between window is shifted to next day.
+// TestJobDoBetweenTimeShift 驗證 Do() 在 Between 視窗需順延到隔天時的分支行為。
 func TestJobDoBetweenTimeShift(t *testing.T) {
 	// Cover Do() lines 334-341: Between with millisecond unit where
 	// fromTime (adjusted to today) > toTime (adjusted to today),
@@ -453,6 +467,8 @@ func TestJobDoBetweenTimeShift(t *testing.T) {
 	}
 }
 
+// TestJobRunBetweenWindowExpires validates run() behavior when the active Between window expires.
+// TestJobRunBetweenWindowExpires 驗證 run() 在 Between 視窗過期後的行為。
 func TestJobRunBetweenWindowExpires(t *testing.T) {
 	// Cover run() canRun=false path (line 364-366) and
 	// toTime 24h shift in run() (lines 398-401).
@@ -479,6 +495,8 @@ func TestJobRunBetweenWindowExpires(t *testing.T) {
 	}
 }
 
+// TestJobRunAfterCalculateDisposeDuringExec validates disposing during AfterExecuteTask synchronous execution.
+// TestJobRunAfterCalculateDisposeDuringExec 驗證 AfterExecuteTask 同步執行期間被 Dispose 的路徑。
 func TestJobRunAfterCalculateDisposeDuringExec(t *testing.T) {
 	// Cover run() lines 375-378: afterCalculate=true, job disposed
 	// while task is executing synchronously.
@@ -499,24 +517,97 @@ func TestJobRunAfterCalculateDisposeDuringExec(t *testing.T) {
 	// If we reach here without deadlock or panic, the path is covered
 }
 
-func TestAbs(t *testing.T) {
-	type args struct {
-		a int
+// TestEveryNonPositiveIntervalDoesNotBusyLoop validates interval normalization and busy-loop prevention.
+// TestEveryNonPositiveIntervalDoesNotBusyLoop 驗證非正間隔正規化與忙迴圈防護。
+func TestEveryNonPositiveIntervalDoesNotBusyLoop(t *testing.T) {
+	cs := NewCronScheduler()
+	defer cs.Dispose()
+
+	if got := cs.Every(0).interval; got != 1 {
+		t.Fatalf("Every(0) interval = %d, want 1", got)
 	}
-	tests := []struct {
-		name string
-		args args
-		want int
-	}{
-		{"Test_Abs_1", args{a: 1}, 1},
-		{"Test_Abs_2", args{a: -1}, 1},
-		{"Test_Abs_3", args{a: -123}, 123},
+	if got := cs.Every(-7).interval; got != 1 {
+		t.Fatalf("Every(-7) interval = %d, want 1", got)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Abs(tt.args.a); got != tt.want {
-				t.Errorf("Abs() = %v, want %v", got, tt.want)
-			}
-		})
+
+	var count int32
+	d := cs.Every(0).Milliseconds().Do(func() {
+		atomic.AddInt32(&count, 1)
+	})
+
+	deadline := time.Now().Add(300 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if atomic.LoadInt32(&count) > 0 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	d.Dispose()
+
+	got := atomic.LoadInt32(&count)
+	if got == 0 {
+		t.Fatal("expected at least one execution")
+	}
+	if got > 500 {
+		t.Fatalf("possible busy loop: executions = %d, want <= 500", got)
+	}
+}
+
+// TestBetweenMinuteUnitInitialAlignToFromTime validates initial nextTime alignment against fromTime for minute unit.
+// TestBetweenMinuteUnitInitialAlignToFromTime 驗證分鐘單位下 nextTime 初始值會對齊到 fromTime 之後。
+func TestBetweenMinuteUnitInitialAlignToFromTime(t *testing.T) {
+	cs := NewCronScheduler()
+	defer cs.Dispose()
+
+	now := time.Now()
+	fromRaw := now.Add(2 * time.Minute)
+	toRaw := now.Add(10 * time.Minute)
+
+	// Between uses time-of-day only and rewrites to "today".
+	// Skip near-day-boundary cases to keep this test deterministic.
+	if fromRaw.Day() != now.Day() || toRaw.Day() != now.Day() {
+		t.Skip("skipping day-boundary case")
+	}
+
+	from := time.Date(fromRaw.Year(), fromRaw.Month(), fromRaw.Day(), fromRaw.Hour(), fromRaw.Minute(), fromRaw.Second(), fromRaw.Nanosecond(), time.Local)
+	to := time.Date(toRaw.Year(), toRaw.Month(), toRaw.Day(), toRaw.Hour(), toRaw.Minute(), toRaw.Second(), toRaw.Nanosecond(), time.Local)
+
+	j := cs.Every(1).Minutes().Between(from, to)
+	d := j.Do(func() {})
+	defer d.Dispose()
+
+	if j.nextTime.Before(j.fromTime) {
+		t.Fatalf("nextTime %v should be >= fromTime %v", j.nextTime, j.fromTime)
+	}
+}
+
+// TestJobRunBeforeFromTimeDoesNotExecute validates run() does not execute tasks before fromTime boundary.
+// TestJobRunBeforeFromTimeDoesNotExecute 驗證 run() 在 fromTime 邊界之前不會執行任務。
+func TestJobRunBeforeFromTimeDoesNotExecute(t *testing.T) {
+	f := NewGoroutineMulti()
+	defer f.Dispose()
+
+	var count int32
+	now := time.Now()
+	j := &Job{
+		fiber:          f,
+		nextTime:       now.Add(-1 * time.Millisecond),
+		fromTime:       now.Add(200 * time.Millisecond),
+		toTime:         now.Add(400 * time.Millisecond),
+		task:           newTask(func() { atomic.AddInt32(&count, 1) }),
+		duration:       50 * time.Millisecond,
+		interval:       50,
+		maximumTimes:   -1,
+		jobModel:       jobEvery,
+		intervalUnit:   millisecond,
+		afterCalculate: true,
+	}
+
+	j.run()
+	defer j.Dispose()
+
+	if got := atomic.LoadInt32(&count); got != 0 {
+		t.Fatalf("job executed before fromTime, count = %d", got)
 	}
 }

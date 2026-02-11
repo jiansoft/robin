@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// TestScheduler validates enqueue/schedule/interval/dispose flows on both fiber types.
+// TestScheduler 驗證兩種 fiber 下 enqueue/schedule/interval/dispose 的流程正確性。
 func TestScheduler(t *testing.T) {
 	gs := NewGoroutineSingle()
 	gm := NewGoroutineMulti()
@@ -34,6 +36,8 @@ func TestScheduler(t *testing.T) {
 	}
 }
 
+// TestSchedulerRemove validates Remove only detaches task tracking entry from scheduler map.
+// TestSchedulerRemove 驗證 Remove 僅移除 scheduler 內部追蹤項目。
 func TestSchedulerRemove(t *testing.T) {
 	gm := NewGoroutineMulti()
 	defer func() {
@@ -76,6 +80,8 @@ func TestSchedulerRemove(t *testing.T) {
 	d.Dispose()
 }
 
+// schedulerTest runs the shared scheduler behavior assertions for one fiber instance.
+// schedulerTest 會針對單一 fiber 執行共用的 scheduler 行為驗證。
 func schedulerTest(t *testing.T, f Fiber) {
 	wg := sync.WaitGroup{}
 	wg.Add(4)

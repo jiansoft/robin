@@ -11,11 +11,14 @@ import (
 
 var recvCount atomic.Int32
 
+// recvMsgAction increments the shared receive counter for message-delivery assertions.
+// recvMsgAction 會遞增共用接收計數器，用於驗證訊息是否被成功投遞。
 func recvMsgAction(s string) {
 	recvCount.Add(1)
 }
 
 // waitForCount polls until counter reaches target or timeout expires.
+// waitForCount 會輪詢等待計數器達到目標值，逾時則使測試失敗。
 func waitForCount(t *testing.T, counter *atomic.Int32, target int32) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
@@ -28,6 +31,8 @@ func waitForCount(t *testing.T, counter *atomic.Int32, target int32) {
 	t.Fatalf("timed out waiting for count to reach %d, got %d", target, counter.Load())
 }
 
+// TestChannelPublishNoSubscribers verifies publishing on an empty channel is safe and count remains zero.
+// TestChannelPublishNoSubscribers 驗證在無訂閱者時發布訊息是安全的，且訂閱數維持為 0。
 func TestChannelPublishNoSubscribers(t *testing.T) {
 	ch := NewChannel()
 	// Publish with no subscribers should not panic
@@ -39,6 +44,8 @@ func TestChannelPublishNoSubscribers(t *testing.T) {
 	}
 }
 
+// TestChannel validates subscribe/publish/unsubscribe/clear lifecycle and subscriber count consistency.
+// TestChannel 驗證訂閱/發布/取消訂閱/清空的完整生命週期，以及訂閱者數量一致性。
 func TestChannel(t *testing.T) {
 	tests := []struct {
 		name string
@@ -116,6 +123,8 @@ func TestChannel(t *testing.T) {
 	}
 }
 
+// TestChannelConcurrency exercises concurrent subscribe/publish paths to ensure no deadlock or missed completion.
+// TestChannelConcurrency 驗證並發訂閱/發布路徑，確保不死鎖且可完整完成。
 func TestChannelConcurrency(t *testing.T) {
 	tests := []struct {
 		name string
@@ -156,10 +165,14 @@ func TestChannelConcurrency(t *testing.T) {
 	}
 }
 
+// player is a lightweight test receiver model used in concurrency scenarios.
+// player 是並發情境測試中使用的輕量接收者模型。
 type player struct {
 	Nickname string
 }
 
+// recvMsgAction records one delivered message for this player.
+// recvMsgAction 會記錄此玩家收到的一次訊息投遞。
 func (p player) recvMsgAction(msg string) {
 	recvCount.Add(1)
 }

@@ -4,6 +4,8 @@ import (
 	"testing"
 )
 
+// TestDefaultQueue validates enqueue/count/dequeue/dispose behavior of the internal double-buffer queue.
+// TestDefaultQueue 驗證內部雙緩衝佇列的 enqueue/count/dequeue/dispose 行為。
 func TestDefaultQueue(t *testing.T) {
 	type args struct {
 		task task

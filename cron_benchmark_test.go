@@ -4,6 +4,8 @@ import (
 	"testing"
 )
 
+// BenchmarkCron_StartStop measures the overhead of creating, scheduling, and disposing one interval job.
+// BenchmarkCron_StartStop 量測建立、排程並釋放單一週期任務的整體成本。
 func BenchmarkCron_StartStop(b *testing.B) {
 	cases := []struct {
 		name string

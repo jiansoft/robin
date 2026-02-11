@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// TestFiber validates high-volume enqueue/flush behavior on both multi and single fiber implementations.
+// TestFiber 驗證多/單 fiber 在高量 enqueue 與 flush 情境下的行為正確性。
 func TestFiber(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -99,6 +101,8 @@ func TestFiber(t *testing.T) {
 	}
 }
 
+// TestFiberSchedule validates schedule and interval timing paths for both fiber variants.
+// TestFiberSchedule 驗證兩種 fiber 的一次性與週期性排程路徑。
 func TestFiberSchedule(t *testing.T) {
 	type fields struct {
 		fiber Fiber
@@ -138,6 +142,8 @@ func TestFiberSchedule(t *testing.T) {
 	}
 }
 
+// TestFiberEnqueueAfterDispose validates enqueue calls become no-op after disposal.
+// TestFiberEnqueueAfterDispose 驗證 fiber Dispose 後 enqueue 會成為 no-op。
 func TestFiberEnqueueAfterDispose(t *testing.T) {
 	t.Run("GoroutineMulti", func(t *testing.T) {
 		gm := NewGoroutineMulti()
@@ -166,6 +172,8 @@ func TestFiberEnqueueAfterDispose(t *testing.T) {
 	})
 }
 
+// TestFiber_GoroutineSingle_executeNextBatch validates dedicated worker loop can exit after Dispose.
+// TestFiber_GoroutineSingle_executeNextBatch 驗證 GoroutineSingle 在 Dispose 後可正常退出 worker 迴圈。
 func TestFiber_GoroutineSingle_executeNextBatch(t *testing.T) {
 	tests := []struct {
 		name string
@@ -194,5 +202,34 @@ func TestFiber_GoroutineSingle_executeNextBatch(t *testing.T) {
 				t.Fatalf("%s executeNextBatch is not exit Goroutine", tt.name)
 			}
 		})
+	}
+}
+
+// TestFiber_executeNextBatch_clearsUpcomingTaskReferences validates processed task references are cleared.
+// TestFiber_executeNextBatch_clearsUpcomingTaskReferences 驗證已處理任務的引用會被清空。
+func TestFiber_executeNextBatch_clearsUpcomingTaskReferences(t *testing.T) {
+	g := new(GoroutineSingle)
+	g.queue = newDefaultQueue()
+	g.scheduler = newScheduler(g)
+	g.executor = newDefaultExecutor()
+	g.cond = sync.NewCond(&g.mu)
+
+	dq, ok := g.queue.(*defaultQueue)
+	if !ok {
+		t.Fatal("queue type assertion failed")
+	}
+
+	g.enqueueTask(newTask(func() {}))
+	if !g.executeNextBatch() {
+		t.Fatal("executeNextBatch returned false unexpectedly")
+	}
+
+	if len(dq.upcoming) == 0 {
+		t.Fatal("expected upcoming buffer to contain the processed slot")
+	}
+
+	cleared := dq.upcoming[0]
+	if cleared.fn != nil || cleared.invoke != nil || cleared.invokeArg != nil || cleared.funcCache.IsValid() || len(cleared.paramsCache) != 0 {
+		t.Fatal("processed task references were not cleared from upcoming buffer")
 	}
 }

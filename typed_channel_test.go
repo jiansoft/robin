@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-// gameEvent is a struct used to test TypedChannel with non-primitive types.
+// gameEvent is a non-primitive payload model used in TypedChannel generic tests.
+// gameEvent 是 TypedChannel 泛型測試使用的非基礎型別訊息模型。
 type gameEvent struct {
 	Source string
 	Target string
@@ -17,6 +18,8 @@ type gameEvent struct {
 	Time   time.Time
 }
 
+// TestTypedChannelPublishNoSubscribers verifies publishing with zero subscribers is safe for string/struct payloads.
+// TestTypedChannelPublishNoSubscribers 驗證在無訂閱者時，string/struct 發布都安全且不影響計數。
 func TestTypedChannelPublishNoSubscribers(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
 		ch := NewTypedChannel[string]()
@@ -39,6 +42,8 @@ func TestTypedChannelPublishNoSubscribers(t *testing.T) {
 	})
 }
 
+// TestTypedChannel validates full subscribe/publish/unsubscribe/clear lifecycle for string and struct types.
+// TestTypedChannel 驗證 string 與 struct 型別在訂閱生命週期上的完整流程。
 func TestTypedChannel(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
 		testTypedChannelFlow(t,
@@ -66,6 +71,8 @@ func TestTypedChannel(t *testing.T) {
 
 // testTypedChannelFlow exercises the full subscribe/publish/unsubscribe/clear lifecycle
 // for any message type T.
+// testTypedChannelFlow 會對任意型別 T 執行完整生命週期驗證：
+// 訂閱、發布、取消訂閱、重新訂閱與清空行為。
 func testTypedChannelFlow[T any](t *testing.T, channel *TypedChannel[T], makeMsg func(int) T) {
 	t.Helper()
 	var recvCount atomic.Int32
@@ -135,6 +142,8 @@ func testTypedChannelFlow[T any](t *testing.T, channel *TypedChannel[T], makeMsg
 	}
 }
 
+// TestTypedChannelStructFieldVerify verifies struct field values are preserved through publish/subscribe.
+// TestTypedChannelStructFieldVerify 驗證結構體欄位值在發布/接收過程中能被完整保留。
 func TestTypedChannelStructFieldVerify(t *testing.T) {
 	ch := NewTypedChannel[gameEvent]()
 	var received atomic.Value
@@ -160,6 +169,8 @@ func TestTypedChannelStructFieldVerify(t *testing.T) {
 	t.Fatal("timed out waiting for struct event")
 }
 
+// TestTypedChannelConcurrency exercises concurrent subscribe/publish workloads for both string and struct channels.
+// TestTypedChannelConcurrency 驗證 string 與 struct typed channel 在並發訂閱/發布下的穩定性。
 func TestTypedChannelConcurrency(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
 		channel := NewTypedChannel[string]()

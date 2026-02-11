@@ -8,6 +8,8 @@ import (
 	"testing"
 )
 
+// equal compares values with DeepEqual and reports caller location on mismatch.
+// equal 以 DeepEqual 比較值，若不相等會帶出呼叫端位置方便定位。
 func equal(t *testing.T, got, want any) {
 	if !reflect.DeepEqual(got, want) {
 		_, file, line, _ := runtime.Caller(1)
@@ -16,6 +18,8 @@ func equal(t *testing.T, got, want any) {
 	}
 }
 
+// TestConcurrentQueueEmpty validates empty-queue semantics for peek/dequeue/len/toArray/clear.
+// TestConcurrentQueueEmpty 驗證空佇列在 peek/dequeue/len/toArray/clear 的語義。
 func TestConcurrentQueueEmpty(t *testing.T) {
 	q := NewConcurrentQueue[string]()
 
@@ -34,6 +38,8 @@ func TestConcurrentQueueEmpty(t *testing.T) {
 	q.Clear() // should not panic
 }
 
+// TestConcurrentStackEmpty validates empty-stack semantics for peek/pop/len/toArray/clear.
+// TestConcurrentStackEmpty 驗證空堆疊在 peek/pop/len/toArray/clear 的語義。
 func TestConcurrentStackEmpty(t *testing.T) {
 	s := NewConcurrentStack[string]()
 
@@ -52,6 +58,8 @@ func TestConcurrentStackEmpty(t *testing.T) {
 	s.Clear() // should not panic
 }
 
+// TestConcurrentBagEmpty validates empty-bag semantics for take/len/toArray/clear.
+// TestConcurrentBagEmpty 驗證空 bag 在 take/len/toArray/clear 的語義。
 func TestConcurrentBagEmpty(t *testing.T) {
 	b := NewConcurrentBag[string]()
 
@@ -67,6 +75,8 @@ func TestConcurrentBagEmpty(t *testing.T) {
 	b.Clear() // should not panic
 }
 
+// TestConcurrentQueueShrink verifies automatic shrink from 32 to 16 and data order preservation.
+// TestConcurrentQueueShrink 驗證佇列會由 32 縮回 16，且資料順序保持正確。
 func TestConcurrentQueueShrink(t *testing.T) {
 	q := NewConcurrentQueue[int]()
 
@@ -98,6 +108,8 @@ func TestConcurrentQueueShrink(t *testing.T) {
 	equal(t, 0, q.Len())
 }
 
+// TestConcurrentQueueResizeWrapAround verifies resize correctness when head/tail are wrapped.
+// TestConcurrentQueueResizeWrapAround 驗證 head/tail 發生環繞時擴容仍能維持正確順序。
 func TestConcurrentQueueResizeWrapAround(t *testing.T) {
 	q := NewConcurrentQueue[int]()
 
@@ -132,6 +144,8 @@ func TestConcurrentQueueResizeWrapAround(t *testing.T) {
 	equal(t, 0, q.Len())
 }
 
+// TestConcurrent validates end-to-end behaviors of queue/stack/bag in normal non-empty flows.
+// TestConcurrent 驗證 queue/stack/bag 在一般非空流程下的端到端行為。
 func TestConcurrent(t *testing.T) {
 	type args struct {
 		item string

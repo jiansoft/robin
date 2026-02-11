@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+// TestDefaultExecutorExecuteTask verifies executeTask runs exactly once in synchronous mode.
+// TestDefaultExecutorExecuteTask 驗證 executeTask 在同步模式下只會執行一次。
 func TestDefaultExecutorExecuteTask(t *testing.T) {
 	var called int32
 	de := newDefaultExecutor()
@@ -20,6 +22,8 @@ func TestDefaultExecutorExecuteTask(t *testing.T) {
 	}
 }
 
+// Test_defaultExecutor_ExecuteTasks verifies sequential and goroutine execution paths both invoke tasks.
+// Test_defaultExecutor_ExecuteTasks 驗證序列與 goroutine 路徑都會正確觸發任務。
 func Test_defaultExecutor_ExecuteTasks(t *testing.T) {
 	var wg sync.WaitGroup
 	type args struct {

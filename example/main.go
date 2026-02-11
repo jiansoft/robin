@@ -67,6 +67,8 @@ func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 	}
 }
 
+// main is the program entry point for the verification example.
+// main 是此驗證範例程式的進入點。
 func main() {
 	log.SetFlags(log.Ltime | log.Lmicroseconds)
 	log.Println("========================================")
@@ -107,6 +109,8 @@ func main() {
 // Abs 驗證 / Abs Verification
 // ================================================================
 
+// verifyAbs runs a grouped verification flow and reports pass/fail results.
+// verifyAbs 會執行一組驗證流程並輸出通過/失敗結果。
 func verifyAbs() {
 	log.Println("\n--- Abs — 泛型絕對值 / Generic absolute value ---")
 
@@ -126,6 +130,8 @@ func verifyAbs() {
 // ConcurrentQueue 驗證 / ConcurrentQueue Verification
 // ================================================================
 
+// verifyConcurrentQueue runs a grouped verification flow and reports pass/fail results.
+// verifyConcurrentQueue 會執行一組驗證流程並輸出通過/失敗結果。
 func verifyConcurrentQueue() {
 	log.Println("\n--- ConcurrentQueue[T] — 執行緒安全 FIFO 佇列 / Thread-safe FIFO queue ---")
 
@@ -176,6 +182,8 @@ func verifyConcurrentQueue() {
 // ConcurrentStack 驗證 / ConcurrentStack Verification
 // ================================================================
 
+// verifyConcurrentStack runs a grouped verification flow and reports pass/fail results.
+// verifyConcurrentStack 會執行一組驗證流程並輸出通過/失敗結果。
 func verifyConcurrentStack() {
 	log.Println("\n--- ConcurrentStack[T] — 執行緒安全 LIFO 堆疊 / Thread-safe LIFO stack ---")
 
@@ -222,6 +230,8 @@ func verifyConcurrentStack() {
 // ConcurrentBag 驗證 / ConcurrentBag Verification
 // ================================================================
 
+// verifyConcurrentBag runs a grouped verification flow and reports pass/fail results.
+// verifyConcurrentBag 會執行一組驗證流程並輸出通過/失敗結果。
 func verifyConcurrentBag() {
 	log.Println("\n--- ConcurrentBag[T] — 執行緒安全無序集合 / Thread-safe unordered collection ---")
 
@@ -261,6 +271,8 @@ func verifyConcurrentBag() {
 // Fiber 驗證 / Fiber Verification
 // ================================================================
 
+// verifyFiber runs a grouped verification flow and reports pass/fail results.
+// verifyFiber 會執行一組驗證流程並輸出通過/失敗結果。
 func verifyFiber() {
 	log.Println("\n--- Fiber — 纖程任務執行 / Fiber task execution ---")
 
@@ -453,6 +465,8 @@ func verifyFiber() {
 // Cron 驗證 / Cron Verification (global functions)
 // ================================================================
 
+// verifyCron runs a grouped verification flow and reports pass/fail results.
+// verifyCron 會執行一組驗證流程並輸出通過/失敗結果。
 func verifyCron() {
 	log.Println("\n--- Cron — 排程工作驗證 / Job scheduling verification ---")
 
@@ -699,6 +713,8 @@ func verifyCron() {
 // CronScheduler 驗證 / CronScheduler Verification (instance-based)
 // ================================================================
 
+// verifyCronScheduler runs a grouped verification flow and reports pass/fail results.
+// verifyCronScheduler 會執行一組驗證流程並輸出通過/失敗結果。
 func verifyCronScheduler() {
 	log.Println("\n--- CronScheduler — 實例化排程器 / Instance-based scheduler ---")
 
@@ -812,6 +828,8 @@ func verifyCronScheduler() {
 // Channel 驗證 / Channel Verification (Pub/Sub)
 // ================================================================
 
+// verifyChannel runs a grouped verification flow and reports pass/fail results.
+// verifyChannel 會執行一組驗證流程並輸出通過/失敗結果。
 func verifyChannel() {
 	log.Println("\n--- Channel — 發布/訂閱 / Pub/Sub ---")
 
@@ -934,6 +952,8 @@ func verifyChannel() {
 // TypedChannel 驗證 / TypedChannel Verification (Generic Pub/Sub)
 // ================================================================
 
+// verifyTypedChannel runs a grouped verification flow and reports pass/fail results.
+// verifyTypedChannel 會執行一組驗證流程並輸出通過/失敗結果。
 func verifyTypedChannel() {
 	log.Println("\n--- TypedChannel — 泛型發布/訂閱（無反射）/ Generic Pub/Sub (no reflection) ---")
 
@@ -1187,6 +1207,8 @@ func verifyTypedChannel() {
 // Long-interval scheduling showcase (API usage demo only, no timing verification)
 // ================================================================
 
+// showSchedulingExamples is an internal helper function used in this file.
+// showSchedulingExamples 是此檔案內部使用的輔助函式。
 func showSchedulingExamples() {
 	log.Println("\n--- Scheduling Examples — 排程 API 展示（僅建立，不等待執行）---")
 	log.Println("  以下排程已建立但不驗證執行時序（需等待數小時/天/週才會觸發）")
