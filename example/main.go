@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/jiansoft/robin"
+	"github.com/jiansoft/robin/v2"
 )
 
 // timingTolerance 計時驗證的容許誤差（考慮 OS 排程與 timer 精度）

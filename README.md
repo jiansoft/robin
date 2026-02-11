@@ -239,7 +239,7 @@ robin.Abs(-3.14) // 3.14 (float64)
 ## Installation
 
 ```
-go get github.com/jiansoft/robin
+go get github.com/jiansoft/robin/v2
 ```
 
 ## Full Example

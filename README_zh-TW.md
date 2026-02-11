@@ -238,7 +238,7 @@ robin.Abs(-3.14) // 3.14 (float64)
 ## 安裝
 
 ```
-go get github.com/jiansoft/robin
+go get github.com/jiansoft/robin/v2
 ```
 
 ## 完整範例
