@@ -129,6 +129,9 @@ fmt.Println(channel.Count())
 channel.Clear()
 ```
 
+Semantics: `Publish` uses a **call-time subscriber snapshot**.  
+Subscribers added/removed after `Publish(...)` is called affect only subsequent publishes.
+
 #### TypedChannel (Generic, No Reflection)
 
 Type-safe pub/sub channel using generics — avoids reflection for better performance:
@@ -146,6 +149,8 @@ sub.Unsubscribe()
 fmt.Println(ch.Count())
 ch.Clear()
 ```
+
+Semantics: same as `Channel` — `Publish` uses a **call-time subscriber snapshot**.
 
 Supports any type including structs:
 

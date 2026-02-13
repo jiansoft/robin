@@ -7,19 +7,27 @@ import (
 )
 
 // Channel is a pub/sub message bus with thread-safe subscriber management.
-// It uses sync.Map for concurrent subscription updates and an atomic counter for O(1) Count().
+// It keeps a copy-on-write subscriber snapshot for lock-free publish reads,
+// while subscription updates are guarded by a mutex.
 // Channel 是一個發布/訂閱訊息匯流排，具備執行緒安全的訂閱者管理能力。
-// 內部使用 sync.Map 處理併發訂閱更新，並以 atomic 計數器提供 O(1) 的 Count()。
+// 內部以 copy-on-write 快照提供發布讀取無鎖化，訂閱更新則由 mutex 保護。
 type Channel struct {
 	fiber       Fiber
-	subscribers sync.Map
+	mu          sync.Mutex
+	subscribers map[*Subscriber]struct{}
+	snapshot    atomic.Value // stores []*Subscriber (copy-on-write snapshot)
 	count       atomic.Int64
 }
 
 // NewChannel creates a Channel that publishes callbacks through the package-level default fiber.
 // NewChannel 會建立一個 Channel，並透過套件層級的預設 fiber 來排程回呼執行。
 func NewChannel() *Channel {
-	return &Channel{fiber: fiber}
+	c := &Channel{
+		fiber:       fiber,
+		subscribers: make(map[*Subscriber]struct{}),
+	}
+	c.snapshot.Store([]*Subscriber{})
+	return c
 }
 
 // Subscribe registers a callback function and returns a Subscriber handle for later removal.
@@ -28,42 +36,51 @@ func NewChannel() *Channel {
 // 函式會以 reflect.Value 保存，讓 Publish 時可呼叫任意簽章的函式。
 func (c *Channel) Subscribe(taskFunc any) *Subscriber {
 	s := &Subscriber{channel: c, funcValue: reflect.ValueOf(taskFunc)}
-	c.subscribers.Store(s, s)
+	c.mu.Lock()
+	c.ensureSubscribersLocked()
+	c.subscribers[s] = struct{}{}
+	c.rebuildSnapshotLocked()
 	c.count.Add(1)
+	c.mu.Unlock()
 	return s
 }
 
-// Publish asynchronously dispatches one message batch to all current subscribers.
+// Publish asynchronously dispatches one message batch to all subscribers captured
+// at Publish call time (call-time snapshot semantics).
 // The msg arguments are converted once and shared to reduce per-subscriber reflection overhead.
-// Publish 會以非同步方式把同一批訊息分送給目前所有訂閱者。
+// Publish 會以非同步方式把同一批訊息分送給 Publish 呼叫當下快照中的訂閱者。
 // msg 參數只會先轉換一次後共用，降低每位訂閱者的反射成本。
 func (c *Channel) Publish(msg ...any) {
+	subs := c.loadSnapshot()
+	if len(subs) == 0 {
+		return
+	}
+
 	// Pre-convert message to reflect.Value once, shared across all subscribers.
 	params := make([]reflect.Value, len(msg))
 	for i, m := range msg {
 		params[i] = reflect.ValueOf(m)
 	}
-	c.fiber.enqueueTask(task{fn: func() {
-		c.subscribers.Range(func(k, v any) bool {
-			if s, ok := v.(*Subscriber); ok {
-				c.fiber.enqueueTask(task{
-					funcCache:   s.funcValue,
-					paramsCache: params,
-				})
-			}
-			return true
+
+	for _, s := range subs {
+		c.fiber.enqueueTask(task{
+			funcCache:   s.funcValue,
+			paramsCache: params,
 		})
-	}})
+	}
 }
 
 // Clear removes all subscribers currently registered in the channel.
 // Clear 會移除頻道上目前已註冊的所有訂閱者。
 func (c *Channel) Clear() {
-	c.subscribers.Range(func(k, v any) bool {
-		c.subscribers.Delete(k)
-		c.count.Add(-1)
-		return true
-	})
+	c.mu.Lock()
+	n := len(c.subscribers)
+	if n > 0 {
+		clear(c.subscribers)
+		c.snapshot.Store([]*Subscriber{})
+		c.count.Add(-int64(n))
+	}
+	c.mu.Unlock()
 }
 
 // Count returns the current number of active subscribers.
@@ -77,9 +94,40 @@ func (c *Channel) Count() int {
 // Unsubscribe 會從頻道移除指定的訂閱者控制代碼。
 // 若訂閱者已移除，再次呼叫是安全的 no-op。
 func (c *Channel) Unsubscribe(subscriber any) {
-	if _, loaded := c.subscribers.LoadAndDelete(subscriber); loaded {
+	s, ok := subscriber.(*Subscriber)
+	if !ok || s == nil {
+		return
+	}
+	c.mu.Lock()
+	if _, exists := c.subscribers[s]; exists {
+		delete(c.subscribers, s)
+		c.rebuildSnapshotLocked()
 		c.count.Add(-1)
 	}
+	c.mu.Unlock()
+}
+
+func (c *Channel) loadSnapshot() []*Subscriber {
+	if v := c.snapshot.Load(); v != nil {
+		if subs, ok := v.([]*Subscriber); ok {
+			return subs
+		}
+	}
+	return nil
+}
+
+func (c *Channel) ensureSubscribersLocked() {
+	if c.subscribers == nil {
+		c.subscribers = make(map[*Subscriber]struct{})
+	}
+}
+
+func (c *Channel) rebuildSnapshotLocked() {
+	subs := make([]*Subscriber, 0, len(c.subscribers))
+	for s := range c.subscribers {
+		subs = append(subs, s)
+	}
+	c.snapshot.Store(subs)
 }
 
 // Subscriber is the subscription handle returned by Channel.Subscribe.

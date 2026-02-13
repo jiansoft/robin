@@ -129,6 +129,9 @@ fmt.Println(channel.Count())
 channel.Clear()
 ```
 
+語義說明：`Publish` 採用**呼叫當下訂閱者快照**。  
+在 `Publish(...)` 呼叫之後才新增/移除的訂閱者，只會影響後續發布。
+
 #### TypedChannel（泛型，無反射）
 
 型別安全的泛型頻道 — 不經反射，效能更好：
@@ -146,6 +149,8 @@ sub.Unsubscribe()
 fmt.Println(ch.Count())
 ch.Clear()
 ```
+
+語義說明：與 `Channel` 相同，`Publish` 採用**呼叫當下訂閱者快照**。
 
 支援任意型別，包含結構體：
 

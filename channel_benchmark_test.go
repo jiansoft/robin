@@ -2,7 +2,6 @@ package robin
 
 import (
 	"testing"
-	"time"
 )
 
 // receiveEvent is a no-op subscriber used to isolate publish-path benchmark cost.
@@ -24,9 +23,10 @@ func BenchmarkChannel_Publish(b *testing.B) {
 	channel.Subscribe(p3.receiveEvent)
 	channel.Subscribe(p4.receiveEvent)
 
+	msg := "boss-event"
 	b.ResetTimer()
 	for range b.N {
-		channel.Publish(time.Now().Format("15:04:05.000"))
+		channel.Publish(msg)
 	}
 }
 
@@ -44,8 +44,9 @@ func BenchmarkTypedChannel_Publish(b *testing.B) {
 	channel.Subscribe(p3.receiveEvent)
 	channel.Subscribe(p4.receiveEvent)
 
+	msg := "boss-event"
 	b.ResetTimer()
 	for range b.N {
-		channel.Publish(time.Now().Format("15:04:05.000"))
+		channel.Publish(msg)
 	}
 }
