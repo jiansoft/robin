@@ -611,3 +611,51 @@ func TestJobRunBeforeFromTimeDoesNotExecute(t *testing.T) {
 		t.Fatalf("job executed before fromTime, count = %d", got)
 	}
 }
+
+// TestJobRunAfterToTimeDoesNotExecute validates run() does not execute tasks
+// when current time is already after toTime.
+// TestJobRunAfterToTimeDoesNotExecute 驗證 run() 在超過 toTime 後不會執行任務。
+func TestJobRunAfterToTimeDoesNotExecute(t *testing.T) {
+	f := newManualFiber()
+	var count int32
+	now := time.Now()
+
+	j := &Job{
+		fiber:        f,
+		nextTime:     now.Add(-1 * time.Millisecond),   // force adjustTime < 0
+		fromTime:     now.Add(-2 * time.Second),        // already started
+		toTime:       now.Add(-500 * time.Millisecond), // already expired
+		task:         newTask(func() { atomic.AddInt32(&count, 1) }),
+		duration:     50 * time.Millisecond,
+		interval:     50,
+		maximumTimes: -1,
+		jobModel:     jobEvery,
+		intervalUnit: millisecond,
+	}
+
+	j.run()
+	j.Dispose()
+
+	if got := atomic.LoadInt32(&count); got != 0 {
+		t.Fatalf("job executed after toTime, count = %d", got)
+	}
+}
+
+// TestAlignNextTimeAtOrAfterZeroDurationUsesBound validates that when duration
+// is non-positive, alignNextTimeAtOrAfter snaps nextTime directly to bound.
+// TestAlignNextTimeAtOrAfterZeroDurationUsesBound 驗證 duration 非正時，
+// alignNextTimeAtOrAfter 會直接把 nextTime 對齊到 bound。
+func TestAlignNextTimeAtOrAfterZeroDurationUsesBound(t *testing.T) {
+	now := time.Now()
+	bound := now.Add(2 * time.Second)
+	j := &Job{
+		nextTime: now.Add(-2 * time.Second),
+		duration: 0,
+	}
+
+	j.alignNextTimeAtOrAfter(bound)
+
+	if !j.nextTime.Equal(bound) {
+		t.Fatalf("nextTime = %v, want bound %v", j.nextTime, bound)
+	}
+}
