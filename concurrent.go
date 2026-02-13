@@ -5,6 +5,7 @@ import (
 )
 
 const defaultRingCapacity = 16
+const maxRetainedQueueCapacity = defaultRingCapacity << 8 // 4096
 
 // ConcurrentQueue represents a thread-safe first in-first out (FIFO) collection.
 // Uses a power-of-two ring buffer so index wrapping can use bitwise masking for O(1) math.
@@ -124,17 +125,34 @@ func (q *ConcurrentQueue[T]) Len() int {
 	return q.count
 }
 
-// Clear removes all elements and resets queue storage to default capacity.
-// Clear 會清空所有元素，並把佇列容量重設為預設值。
+// Clear removes all elements and resets queue indices.
+// It keeps current capacity for reuse, but shrinks very large buffers back to default.
+// Clear 會清空所有元素並重設索引。
+// 預設會保留目前容量以利重複使用；若容量過大則回縮至預設值。
 func (q *ConcurrentQueue[T]) Clear() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.buf = make([]T, defaultRingCapacity)
+	if q.count > 0 {
+		if q.head < q.tail {
+			clear(q.buf[q.head:q.tail])
+		} else {
+			clear(q.buf[q.head:])
+			clear(q.buf[:q.tail])
+		}
+	}
+
 	q.head = 0
 	q.tail = 0
 	q.count = 0
-	q.mask = defaultRingCapacity - 1
+
+	if len(q.buf) > maxRetainedQueueCapacity {
+		q.buf = make([]T, defaultRingCapacity)
+		q.mask = defaultRingCapacity - 1
+		return
+	}
+
+	q.mask = len(q.buf) - 1
 }
 
 // ToArray copies queue contents into a new slice in FIFO order.

@@ -144,6 +144,52 @@ func TestConcurrentQueueResizeWrapAround(t *testing.T) {
 	equal(t, 0, q.Len())
 }
 
+// TestConcurrentQueueClearRetainsCapacityForReuse verifies Clear keeps moderate
+// grown capacity so subsequent reuse avoids regrowth allocations.
+// TestConcurrentQueueClearRetainsCapacityForReuse 驗證 Clear 在一般放大後會保留容量，
+// 以利後續重複使用時避免再次擴容配置。
+func TestConcurrentQueueClearRetainsCapacityForReuse(t *testing.T) {
+	q := NewConcurrentQueue[int]()
+
+	for i := range 1000 {
+		q.Enqueue(i)
+	}
+
+	capBefore := len(q.buf)
+	if capBefore <= defaultRingCapacity {
+		t.Fatalf("expected queue to grow beyond default capacity, got %d", capBefore)
+	}
+
+	q.Clear()
+	equal(t, 0, q.Len())
+	equal(t, capBefore, len(q.buf))
+
+	for i := range 1000 {
+		q.Enqueue(i)
+	}
+	equal(t, capBefore, len(q.buf))
+}
+
+// TestConcurrentQueueClearShrinksVeryLargeCapacity verifies Clear shrinks
+// excessively large buffers back to default capacity.
+// TestConcurrentQueueClearShrinksVeryLargeCapacity 驗證 Clear 會把過大容量回縮到預設值。
+func TestConcurrentQueueClearShrinksVeryLargeCapacity(t *testing.T) {
+	q := NewConcurrentQueue[int]()
+
+	need := maxRetainedQueueCapacity + 1
+	for i := range need {
+		q.Enqueue(i)
+	}
+
+	if len(q.buf) <= maxRetainedQueueCapacity {
+		t.Fatalf("expected capacity > %d, got %d", maxRetainedQueueCapacity, len(q.buf))
+	}
+
+	q.Clear()
+	equal(t, 0, q.Len())
+	equal(t, defaultRingCapacity, len(q.buf))
+}
+
 // TestConcurrent validates end-to-end behaviors of queue/stack/bag in normal non-empty flows.
 // TestConcurrent 驗證 queue/stack/bag 在一般非空流程下的端到端行為。
 func TestConcurrent(t *testing.T) {
